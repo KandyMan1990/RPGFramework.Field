@@ -1,0 +1,21 @@
+{
+  "name": "com.rpgframework.field",
+  "version": "0.1.0",
+  "displayName": "RPG Framework Field",
+  "description": "Field system for the RPG Framework",
+  "dependencies": {
+    "com.rpgframework.core": "0.1.1",
+    "com.rpgframework.di": "0.1.0",
+    "com.rpgframework.audio": "0.5.2",
+    "com.rpgframework.localisation": "0.1.0"
+  },
+  "unity": "6000.0",
+  "keywords": [
+    "RPG Framework",
+    "Field"
+  ],
+  "author": {
+    "name": "Elliott Armstrong",
+    "url": "https://github.com/KandyMan1990/RPGFramework.Field"
+  }
+}
