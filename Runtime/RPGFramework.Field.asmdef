@@ -2,12 +2,13 @@
     "name": "RPGFramework.Field",
     "rootNamespace": "RPGFramework.Field",
     "references": [
-        "RPGFramework.Core",
-        "RPGFramework.DI",
         "RPGFramework.Audio",
-        "RPGFramework.Localisation",
+        "RPGFramework.Core",
         "RPGFramework.Core.SharedTypes",
+        "RPGFramework.DI",
         "RPGFramework.Field.SharedTypes",
+        "RPGFramework.Localisation",
+        "RPGFramework.Menu.SharedTypes",
         "Unity.Mathematics"
     ],
     "includePlatforms": [],
