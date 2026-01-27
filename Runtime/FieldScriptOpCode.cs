@@ -5,30 +5,23 @@
         internal enum FieldScriptOpCode : ushort
         {
             // Script Flow and Control
-            Return,
+            Return,                                  //
             RunAnotherEntityScriptUnlessBusy,        // byte targetEntityId, byte targetScriptId
             RunAnotherEntityScriptWaitUntilStarted,  // byte targetEntityId, byte targetScriptId
             RunAnotherEntityScriptWaitUntilFinished, // byte targetEntityId, byte targetScriptId
             RunPartyMemberScriptUnlessBusy,
             RunPartyMemberScriptWaitUntilStarted,
             RunPartyMemberScriptWaitUntilFinished,
-            ReturnToAnotherScript,
-            GotoForward,
-            GotoForwardLong,
-            GotoBackward,
-            GotoBackwardLong,
-            CompareTwoValuesU8,
-            CompareTwoValuesU16,
-            CompareTwoValues16Bit,
-            CompareTwoValues16BitBigJump,
-            CompareTwoValuesU32,
-            CompareTwoValuesU32BitBigJump,
-            Yield,
+            ReturnToAnotherScript, // byte targetScriptId
+            Goto,                  // int offset
+            CompareTwoByteValues,
+            CompareTwoIntValues,
+            Yield,       //
             WaitSeconds, // float seconds
             IfKeyIsDown,
             IfKeyWasJustPressed,
             IfKeyWasJustReleased,
-            DoNothing,
+            DoNothing, //
             IfCharacterIsInParty,
             IfCharacterIsAvailable,
 

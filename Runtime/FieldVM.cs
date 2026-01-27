@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
@@ -13,6 +14,9 @@ namespace RPGFramework.Field
 
     internal sealed class FieldVM
     {
+        internal byte[] FieldVars;
+        internal byte[] GlobalVars;
+
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
 
         private const int INSTRUCTION_POINTER_SIZE = sizeof(FieldScriptOpCode);
@@ -40,6 +44,10 @@ namespace RPGFramework.Field
                                 { 0, new FieldScript(CreateTestEntityScript1()) },
                                 { 1, new FieldScript(CreateTestEntityScript2()) }
                         };
+
+            // temp, values should come from constructor when new'd up in FieldModule, then stored in the save map when changing field
+            FieldVars  = new byte[256];
+            GlobalVars = new byte[256];
         }
 
         private static byte[] CreateTestEntityScript1()
@@ -60,10 +68,10 @@ namespace RPGFramework.Field
             using MemoryStream ms = new MemoryStream();
             using BinaryWriter bw = new BinaryWriter(ms);
 
-            bw.Write((ushort)FieldScriptOpCode.Yield);
             bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
-            bw.Write(2.5f);
-            bw.Write((ushort)FieldScriptOpCode.DoNothing);
+            bw.Write(1f);
+            bw.Write((ushort)FieldScriptOpCode.PlaySound);
+            bw.Write(4);
             bw.Write((ushort)FieldScriptOpCode.Return);
 
             bw.Flush();
@@ -89,6 +97,7 @@ namespace RPGFramework.Field
             {
                 ctx = new ScriptExecutionContext
                       {
+                              EntityId           = entityId,
                               ScriptId           = scriptId,
                               InstructionPointer = 0
                       };
@@ -129,6 +138,27 @@ namespace RPGFramework.Field
 
             ctx.InstructionPointer += INSTRUCTION_POINTER_SIZE;
             return (FieldScriptOpCode)br.ReadUInt16();
+        }
+
+        private byte ReadByteFromBank(byte bank, byte address, ScriptExecutionContext ctx)
+        {
+            return bank switch
+                   {
+                           0x0 => FieldVars[address],
+                           0x1 => GlobalVars[address],
+                           _   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(ReadByteFromBank)} Unknown bank {bank}")
+                   };
+        }
+
+        // TODO: Currently reads byte-backed vars; widened to int, fix later
+        private int ReadIntFromBank(byte bank, byte address)
+        {
+            return bank switch
+                   {
+                           0x0 => FieldVars[address],
+                           0x1 => GlobalVars[address],
+                           _   => throw new InvalidOperationException($"Unknown variable bank {bank}")
+                   };
         }
 
         private byte ReadByte(ScriptExecutionContext ctx)
@@ -183,14 +213,38 @@ namespace RPGFramework.Field
             return br.ReadSingle();
         }
 
-        private static async Task WaitForScriptStartAsync(byte targetEntityId, byte targetScriptId)
+        private void ClearEntityContexts(int entityId)
         {
-            // TODO
+            List<(int entityId, int scriptId)> toRemove = new List<(int entityId, int scriptId)>();
+
+            foreach ((int entityId, int scriptId) key in m_Contexts.Keys)
+            {
+                if (key.entityId == entityId)
+                {
+                    toRemove.Add(key);
+                }
+            }
+
+            foreach ((int entityId, int scriptId) key in toRemove)
+            {
+                m_Contexts.Remove(key);
+            }
         }
 
-        private static async Task WaitForScriptFinishCondition(byte targetEntityId, byte targetScriptId)
+        private async Task WaitForScriptStartAsync(byte targetEntityId, byte targetScriptId)
         {
-            // TODO
+            while (!IsScriptRunning(targetEntityId, targetScriptId))
+            {
+                await Awaitable.NextFrameAsync();
+            }
+        }
+
+        private async Task WaitForScriptFinishCondition(byte targetEntityId, byte targetScriptId)
+        {
+            while (IsScriptRunning(targetEntityId, targetScriptId))
+            {
+                await Awaitable.NextFrameAsync();
+            }
         }
 
         private static async Task AwaitNextFrameAsync()
@@ -207,6 +261,7 @@ namespace RPGFramework.Field
         {
             return new Dictionary<FieldScriptOpCode, OpcodeHandler>
                    {
+                           // Script Flow and Control
                            { FieldScriptOpCode.Return, ReturnOpcodeHandler },
                            { FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy, RunAnotherEntityScriptUnlessBusyOpcodeHandler },
                            { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted, RunAnotherEntityScriptWaitUntilStartedOpcodeHandler },
@@ -214,17 +269,10 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.RunPartyMemberScriptUnlessBusy, RunPartyMemberScriptUnlessBusyOpcodeHandler },
                            // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilStarted, RunPartyMemberScriptWaitUntilStartedOpcodeHandler },
                            // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilFinished, RunPartyMemberScriptWaitUntilFinishedOpcodeHandler },
-                           // { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
-                           // { FieldScriptOpCode.GotoForward, GotoForwardOpcodeHandler },
-                           // { FieldScriptOpCode.GotoForwardLong, GotoForwardLongOpcodeHandler },
-                           // { FieldScriptOpCode.GotoBackward, GotoBackwardOpcodeHandler },
-                           // { FieldScriptOpCode.GotoBackwardLong, GotoBackwardLongOpcodeHandler },
-                           // { FieldScriptOpCode.CompareTwoValuesU8, CompareTwoValuesU8OpcodeHandler },
-                           // { FieldScriptOpCode.CompareTwoValuesU16, CompareTwoValuesU16OpcodeHandler },
-                           // { FieldScriptOpCode.CompareTwoValues16Bit, CompareTwoValues16BitOpcodeHandler },
-                           // { FieldScriptOpCode.CompareTwoValues16BitBigJump, CompareTwoValues16BitBigJumpOpcodeHandler },
-                           // { FieldScriptOpCode.CompareTwoValuesU32, CompareTwoValuesU32OpcodeHandler },
-                           // { FieldScriptOpCode.CompareTwoValuesU32BitBigJump, CompareTwoValuesU32BitBigJumpOpcodeHandler },
+                           { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
+                           { FieldScriptOpCode.Goto, GotoOpcodeHandler },
+                           { FieldScriptOpCode.CompareTwoByteValues, CompareTwoByteValuesOpcodeHandler },
+                           { FieldScriptOpCode.CompareTwoIntValues, CompareTwoIntValuesOpcodeHandler },
                            { FieldScriptOpCode.Yield, YieldOpcodeHandler },
                            { FieldScriptOpCode.WaitSeconds, WaitSecondsOpcodeHandler },
                            // { FieldScriptOpCode.IfKeyIsDown, IfKeyIsDownOpcodeHandler },
@@ -484,7 +532,6 @@ namespace RPGFramework.Field
             byte targetScriptId = ReadByte(ctx);
 
             m_Entities[targetEntityId].RequestScript(targetScriptId);
-
             ctx.Block(WaitForScriptStartAsync(targetEntityId, targetScriptId));
         }
 
@@ -496,6 +543,106 @@ namespace RPGFramework.Field
             m_Entities[targetEntityId].RequestScript(targetScriptId);
 
             ctx.Block(WaitForScriptFinishCondition(targetEntityId, targetScriptId));
+        }
+
+        private void ReturnToAnotherScriptOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            byte targetScriptId = ReadByte(ctx);
+
+            int entityId = ctx.EntityId;
+
+            ClearEntityContexts(entityId);
+
+            m_Entities[entityId].RequestScript(targetScriptId);
+        }
+
+        private void GotoOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            int offset = ReadInt(ctx);
+
+            ctx.InstructionPointer += offset;
+        }
+
+        private void CompareTwoByteValuesOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            byte bankByte = ReadByte(ctx);
+            byte bank1    = (byte)(bankByte >> 4);
+            byte bank2    = (byte)(bankByte & 0x0F);
+
+            byte addressA        = ReadByte(ctx);
+            byte valueOrAddressB = ReadByte(ctx);
+            byte comparisonType  = ReadByte(ctx);
+            byte jumpAmount      = ReadByte(ctx);
+
+            byte a = ReadByteFromBank(bank1, addressA, ctx);
+            byte b = bank2 == 0 ? valueOrAddressB : ReadByteFromBank(bank2, valueOrAddressB, ctx);
+
+            bool result = comparisonType switch
+                          {
+                                  0x0 => a              == b,
+                                  0x1 => a              != b,
+                                  0x2 => a              > b,
+                                  0x3 => a              < b,
+                                  0x4 => a              >= b,
+                                  0x5 => a              <= b,
+                                  0x6 => (a & b)        != 0,
+                                  0x7 => (a ^ b)        != 0,
+                                  0x8 => (a | b)        != 0,
+                                  0x9 => (a & (1 << b)) != 0,
+                                  0xA => (a & (1 << b)) == 0,
+                                  _   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoByteValuesOpcodeHandler)} Unknown comparison type {comparisonType}")
+                          };
+
+            if (!result)
+            {
+                ctx.InstructionPointer += jumpAmount;
+            }
+        }
+
+        private void CompareTwoIntValuesOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            byte banks = ReadByte(ctx);
+            byte bank1 = (byte)(banks >> 4);
+            byte bank2 = (byte)(banks & 0x0F);
+
+            byte addressA = ReadByte(ctx);
+
+            int a = ReadIntFromBank(bank1, addressA);
+
+            int b;
+            if (bank2 == 0)
+            {
+                b = ReadInt(ctx);
+            }
+            else
+            {
+                byte addressB = ReadByte(ctx);
+                b = ReadIntFromBank(bank2, addressB);
+            }
+
+            byte comparisonType = ReadByte(ctx);
+            byte jumpAmount     = ReadByte(ctx);
+
+            bool result = comparisonType switch
+                          {
+                                  0x0 => a              == b,
+                                  0x1 => a              != b,
+                                  0x2 => a              > b,
+                                  0x3 => a              < b,
+                                  0x4 => a              >= b,
+                                  0x5 => a              <= b,
+                                  0x6 => (a & b)        != 0,
+                                  0x7 => (a ^ b)        != 0,
+                                  0x8 => (a | b)        != 0,
+                                  0x9 => (a & (1 << b)) != 0,
+                                  0xA => (a & (1 << b)) == 0,
+                                  _   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoIntValuesOpcodeHandler)} Unknown comparison type {comparisonType}")
+                          };
+
+            if (!result)
+            {
+                ctx.InstructionPointer += jumpAmount;
+            }
         }
 
         private static void YieldOpcodeHandler(ScriptExecutionContext ctx)

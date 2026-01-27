@@ -6,6 +6,7 @@ namespace RPGFramework.Field
     {
         private Task m_BlockingTask;
 
+        internal int EntityId;
         internal int ScriptId;
         internal int InstructionPointer;
 
