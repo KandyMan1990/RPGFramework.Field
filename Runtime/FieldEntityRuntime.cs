@@ -28,7 +28,9 @@
         internal void Update(FieldVM vm)
         {
             if (!IsActive || !m_ScriptRequested)
+            {
                 return;
+            }
 
             vm.Execute(EntityId, m_CurrentScriptId, this);
         }

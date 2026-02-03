@@ -9,81 +9,62 @@ using RPGFramework.Core.SharedTypes;
 using RPGFramework.DI;
 using RPGFramework.Field.SharedTypes;
 using RPGFramework.Menu.SharedTypes;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field
 {
     public class FieldModule : IFieldModule, IInputContext, IUpdatable
     {
-        private readonly ICoreModule       m_CoreModule;
-        private readonly IDIResolver       m_DIResolver;
-        private readonly IInputRouter      m_InputRouter;
-        private readonly IMenuTypeProvider m_MenuTypeProvider;
-        private readonly IMusicPlayer      m_MusicPlayer;
-        private readonly ISfxPlayer        m_SfxPlayer;
+        private readonly ICoreModule        m_CoreModule;
+        private readonly IDIResolver        m_DIResolver;
+        private readonly IInputRouter       m_InputRouter;
+        private readonly IMenuTypeProvider  m_MenuTypeProvider;
+        private readonly IMusicPlayer       m_MusicPlayer;
+        private readonly ISfxPlayer         m_SfxPlayer;
+        private readonly IFieldRegistry     m_FieldRegistry;
+        private readonly IFieldPresentation m_FieldPresentation;
 
         private InputAdapter m_InputAdapter;
         private FieldContext m_FieldContext;
 
-        public FieldModule(ICoreModule       coreModule,
-                           IDIResolver       diResolver,
-                           IInputRouter      inputRouter,
-                           IMenuTypeProvider menuTypeProvider,
-                           IMusicPlayer      musicPlayer,
-                           ISfxPlayer        sfxPlayer)
+        private string m_TargetFieldId            = string.Empty;
+        private bool   m_FieldTransitionRequested = false;
+
+        public FieldModule(ICoreModule        coreModule,
+                           IDIResolver        diResolver,
+                           IInputRouter       inputRouter,
+                           IMenuTypeProvider  menuTypeProvider,
+                           IMusicPlayer       musicPlayer,
+                           ISfxPlayer         sfxPlayer,
+                           IFieldRegistry     fieldRegistry,
+                           IFieldPresentation fieldPresentation)
         {
-            m_CoreModule       = coreModule;
-            m_DIResolver       = diResolver;
-            m_InputRouter      = inputRouter;
-            m_MenuTypeProvider = menuTypeProvider;
-            m_MusicPlayer      = musicPlayer;
-            m_SfxPlayer        = sfxPlayer;
+            m_CoreModule        = coreModule;
+            m_DIResolver        = diResolver;
+            m_InputRouter       = inputRouter;
+            m_MenuTypeProvider  = menuTypeProvider;
+            m_MusicPlayer       = musicPlayer;
+            m_SfxPlayer         = sfxPlayer;
+            m_FieldRegistry     = fieldRegistry;
+            m_FieldPresentation = fieldPresentation;
         }
 
-        Task IModule.OnEnterAsync(IModuleArgs args)
+        async Task IModule.OnEnterAsync(IModuleArgs args)
         {
             m_InputAdapter = Object.FindFirstObjectByType<InputAdapter>();
             m_DIResolver.InjectInto(m_InputAdapter);
-            m_InputAdapter.Enable();
 
-            List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>
-                                                {
-                                                        new FieldEntityRuntime(0, 0),
-                                                        new FieldEntityRuntime(1, 1)
-                                                };
+            IFieldModuleArgs fieldArgs = (IFieldModuleArgs)args;
 
-            Dictionary<int, FieldEntityRuntime> entityMap = new Dictionary<int, FieldEntityRuntime>();
-
-            for (int i = 0; i < entities.Count; i++)
-            {
-                entityMap.Add(i, entities[i]);
-            }
-
-            FieldVM vm = new FieldVM(entityMap);
-            vm.SetCallbackHandlers(m_MusicPlayer.Play, m_SfxPlayer.Play);
-
-            m_FieldContext = new FieldContext(vm, entities);
-
-            UpdateManager.RegisterUpdatable(this);
-
-            m_InputRouter.Push(this);
-
-            return Task.CompletedTask;
+            await LoadNewFieldAsync(fieldArgs.GetFieldId);
         }
 
-        Task IModule.OnExitAsync()
+        async Task IModule.OnExitAsync()
         {
-            m_InputRouter.Pop(this);
-
-            UpdateManager.UnregisterUpdatable(this);
-
-            m_FieldContext = null;
-
-            m_InputAdapter.Disable();
+            await UnloadCurrentFieldAsync();
 
             m_CoreModule.ResetModule<IFieldModule, FieldModule>();
-
-            return Task.CompletedTask;
         }
 
         Task IFieldModule.LoadMenuModuleAsync(byte menuId)
@@ -113,6 +94,96 @@ namespace RPGFramework.Field
             {
                 entity.Update(m_FieldContext.VM);
             }
+
+            if (m_FieldTransitionRequested)
+            {
+                TriggerFieldTransitionAsync(m_TargetFieldId).FireAndForget();
+            }
+        }
+
+        private void SetTargetFieldId(string fieldId)
+        {
+            m_TargetFieldId            = fieldId;
+            m_FieldTransitionRequested = true;
+        }
+
+        private async Task TriggerFieldTransitionAsync(string fieldId)
+        {
+            m_TargetFieldId            = string.Empty;
+            m_FieldTransitionRequested = false;
+
+            await UnloadCurrentFieldAsync();
+            await LoadNewFieldAsync(fieldId);
+        }
+
+        private async Task LoadNewFieldAsync(string fieldId)
+        {
+            FieldDefinition fieldDefinition = m_FieldRegistry.LoadField(fieldId);
+
+            GameObject fieldGameObject = await m_FieldPresentation.LoadAsync(fieldDefinition);
+
+            FieldVM vm = new FieldVM();
+
+            FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
+
+            List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
+
+            int scriptId = 0;
+
+            foreach (FieldEntity entity in entitiesInGameObject)
+            {
+                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptId);
+
+                entities.Add(fieldEntityRuntime);
+                vm.RegisterEntity(entity.EntityId, fieldEntityRuntime);
+
+                foreach (ScriptEntry scriptEntry in entity.ScriptDefinition.Scripts)
+                {
+                    vm.RegisterScript(scriptId, scriptEntry.CompiledScript);
+                    scriptId++;
+                }
+            }
+
+            m_FieldContext = new FieldContext(vm, entities);
+
+            vm.RequestFieldTransition += SetTargetFieldId;
+            vm.RequestMusic           += RequestMusic;
+            vm.RequestSfx             += RequestSfx;
+
+            UpdateManager.RegisterUpdatable(this);
+
+            m_InputRouter.Push(this);
+
+            m_InputAdapter.Enable();
+        }
+
+        private Task UnloadCurrentFieldAsync()
+        {
+            m_InputAdapter.Disable();
+
+            m_InputRouter.Pop(this);
+
+            UpdateManager.QueueForUnregisterUpdatable(this);
+
+            m_FieldContext.VM.RequestSfx             -= RequestSfx;
+            m_FieldContext.VM.RequestMusic           -= RequestMusic;
+            m_FieldContext.VM.RequestFieldTransition -= SetTargetFieldId;
+
+            m_FieldContext = null;
+
+            m_FieldPresentation.Unload();
+
+            return Task.CompletedTask;
+        }
+
+        private void RequestMusic(int id)
+        {
+            m_MusicPlayer.Play(id).FireAndForget();
+        }
+
+        private void RequestSfx(int id)
+        {
+            m_SfxPlayer.Play(id);
         }
     }
 }

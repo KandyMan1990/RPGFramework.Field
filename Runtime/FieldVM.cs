@@ -2,18 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using RPGFramework.Audio;
-using RPGFramework.Core;
-using RPGFramework.Field.RPGFramework.Field;
 using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    internal delegate Task          PlayMusicHandler(int id);
-    internal delegate ISfxReference PlaySfxHandler(int   id);
-
     internal sealed class FieldVM
     {
+        internal event Action<string> RequestFieldTransition;
+        internal event Action<int>    RequestMusic;
+        internal event Action<int>    RequestSfx;
+
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
 
@@ -26,62 +24,31 @@ namespace RPGFramework.Field
 
         private readonly Dictionary<FieldScriptOpCode, OpcodeHandler>                     m_OpcodeHandlers;
         private readonly Dictionary<(int entityId, int scriptId), ScriptExecutionContext> m_Contexts;
-        private readonly IReadOnlyDictionary<int, FieldEntityRuntime>                     m_Entities;
+        private readonly Dictionary<int, FieldEntityRuntime>                              m_Entities;
 
-        private PlayMusicHandler m_PlayMusicHandler;
-        private PlaySfxHandler   m_PlaySfxHandler;
-
-        internal FieldVM(IReadOnlyDictionary<int, FieldEntityRuntime> entities)
+        internal FieldVM()
         {
             m_Contexts = new Dictionary<(int entityId, int scriptId), ScriptExecutionContext>();
-            m_Entities = entities;
+            m_Entities = new Dictionary<int, FieldEntityRuntime>();
 
             m_OpcodeHandlers = BuildOpcodeHandlersArray();
 
             // Hardcoded test scripts
-            m_Scripts = new Dictionary<int, FieldScript>
-                        {
-                                { 0, new FieldScript(CreateTestEntityScript1()) },
-                                { 1, new FieldScript(CreateTestEntityScript2()) }
-                        };
+            m_Scripts = new Dictionary<int, FieldScript>();
 
             // temp, values should come from constructor when new'd up in FieldModule, then stored in the save map when changing field
             FieldVars  = new byte[256];
             GlobalVars = new byte[256];
         }
 
-        private static byte[] CreateTestEntityScript1()
+        internal void RegisterEntity(int entityId, FieldEntityRuntime entity)
         {
-            using MemoryStream ms = new MemoryStream();
-            using BinaryWriter bw = new BinaryWriter(ms);
-
-            bw.Write((ushort)FieldScriptOpCode.PlayMusic);
-            bw.Write(0);
-            bw.Write((ushort)FieldScriptOpCode.Return);
-
-            bw.Flush();
-            return ms.ToArray();
+            m_Entities.Add(entityId, entity);
         }
 
-        private static byte[] CreateTestEntityScript2()
+        internal void RegisterScript(int scriptId, FieldCompiledScript script)
         {
-            using MemoryStream ms = new MemoryStream();
-            using BinaryWriter bw = new BinaryWriter(ms);
-
-            bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
-            bw.Write(1f);
-            bw.Write((ushort)FieldScriptOpCode.PlaySound);
-            bw.Write(4);
-            bw.Write((ushort)FieldScriptOpCode.Return);
-
-            bw.Flush();
-            return ms.ToArray();
-        }
-
-        internal void SetCallbackHandlers(PlayMusicHandler playMusicHandler, PlaySfxHandler playSfxHandler)
-        {
-            m_PlayMusicHandler = playMusicHandler;
-            m_PlaySfxHandler   = playSfxHandler;
+            m_Scripts.Add(scriptId, new FieldScript(script.Bytecode));
         }
 
         private bool IsScriptRunning(int entityId, int scriptId)
@@ -213,6 +180,19 @@ namespace RPGFramework.Field
             return br.ReadSingle();
         }
 
+        private byte[] ReadFieldNameBytes(ScriptExecutionContext ctx)
+        {
+            FieldScript script = m_Scripts[ctx.ScriptId];
+
+            using MemoryStream ms = new MemoryStream(script.Bytecode);
+            using BinaryReader br = new BinaryReader(ms);
+
+            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
+
+            ctx.InstructionPointer += FieldProvider.FieldNameSize;
+            return br.ReadBytes(FieldProvider.FieldNameSize);
+        }
+
         private void ClearEntityContexts(int entityId)
         {
             List<(int entityId, int scriptId)> toRemove = new List<(int entityId, int scriptId)>();
@@ -293,7 +273,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
                            // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
                            // { FieldScriptOpCode.SetBattleModeOptionsAgain, SetBattleModeOptionsAgainOpcodeHandler },
-                           // { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
+                           { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
                            // { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
 
                            // Assignment and Mathematics
@@ -661,16 +641,23 @@ namespace RPGFramework.Field
             // noop
         }
 
+        private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            byte[] fieldNameBytes = ReadFieldNameBytes(ctx);
+            string fieldName      = FieldProvider.FromBytes(fieldNameBytes);
+            RequestFieldTransition?.Invoke(fieldName);
+        }
+
         private void PlayMusicOpcodeHandler(ScriptExecutionContext ctx)
         {
             int id = ReadInt(ctx);
-            m_PlayMusicHandler(id).FireAndForget();
+            RequestMusic?.Invoke(id);
         }
 
         private void PlaySoundOpcodeHandler(ScriptExecutionContext ctx)
         {
             int id = ReadInt(ctx);
-            m_PlaySfxHandler(id);
+            RequestSfx?.Invoke(id);
         }
     }
 }

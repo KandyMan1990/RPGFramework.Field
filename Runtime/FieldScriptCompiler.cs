@@ -1,0 +1,66 @@
+﻿#if UNITY_EDITOR
+using System;
+using System.Globalization;
+using System.IO;
+
+namespace RPGFramework.Field
+{
+    public static class FieldScriptCompiler
+    {
+        public static byte[] Compile(string source)
+        {
+            using MemoryStream ms = new MemoryStream();
+            using BinaryWriter bw = new BinaryWriter(ms);
+
+            string[] lines = source.Split('\n');
+
+            foreach (string rawLine in lines)
+            {
+                string line = rawLine.Trim();
+                if (string.IsNullOrEmpty(line))
+                    continue;
+
+                string[] parts = line.Split(' ');
+
+                switch (parts[0])
+                {
+                    case "PLAY_MUSIC":
+                        bw.Write((ushort)FieldScriptOpCode.PlayMusic);
+                        bw.Write(int.Parse(parts[1]));
+                        break;
+
+                    case "PLAY_SOUND":
+                        bw.Write((ushort)FieldScriptOpCode.PlaySound);
+                        bw.Write(int.Parse(parts[1]));
+                        break;
+
+                    case "WAIT_SECONDS":
+                        bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
+                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
+                        break;
+
+                    case "YIELD":
+                        bw.Write((ushort)FieldScriptOpCode.Yield);
+                        break;
+
+                    case "RETURN":
+                        bw.Write((ushort)FieldScriptOpCode.Return);
+                        break;
+
+                    case "TRIGGER_GATEWAY":
+                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
+                        byte[] bytes = FieldProvider.ToBytes(parts[1]);
+                        bw.Write(bytes);
+                        break;
+
+                    default:
+                        throw new Exception($"Unknown opcode '{parts[0]}'");
+                }
+            }
+
+            return ms.ToArray();
+        }
+    }
+
+}
+#endif

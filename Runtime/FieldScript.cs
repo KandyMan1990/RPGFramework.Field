@@ -1,6 +1,5 @@
 ﻿namespace RPGFramework.Field
 {
-    //(Temporary, Hardcoded)
     internal sealed class FieldScript
     {
         internal readonly byte[] Bytecode;
