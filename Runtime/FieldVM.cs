@@ -2,15 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using RPGFramework.Field.SharedTypes;
 using UnityEngine;
 
 namespace RPGFramework.Field
 {
     internal sealed class FieldVM
     {
-        internal event Action<string> RequestFieldTransition;
-        internal event Action<int>    RequestMusic;
-        internal event Action<int>    RequestSfx;
+        internal event Action<IFieldModuleArgs> RequestFieldTransition;
+        internal event Action<int>              RequestMusic;
+        internal event Action<int>              RequestSfx;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -643,9 +644,13 @@ namespace RPGFramework.Field
 
         private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte[] fieldNameBytes = ReadFieldNameBytes(ctx);
-            string fieldName      = FieldProvider.FromBytes(fieldNameBytes);
-            RequestFieldTransition?.Invoke(fieldName);
+            byte[] fieldIdBytes = ReadFieldNameBytes(ctx);
+            int    spawnId      = ReadInt(ctx);
+
+            string fieldId = FieldProvider.FromBytes(fieldIdBytes);
+
+            IFieldModuleArgs args = new FieldModuleArgs(fieldId, spawnId);
+            RequestFieldTransition?.Invoke(args);
         }
 
         private void PlayMusicOpcodeHandler(ScriptExecutionContext ctx)

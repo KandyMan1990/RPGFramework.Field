@@ -28,8 +28,8 @@ namespace RPGFramework.Field
         private InputAdapter m_InputAdapter;
         private FieldContext m_FieldContext;
 
-        private string m_TargetFieldId            = string.Empty;
-        private bool   m_FieldTransitionRequested = false;
+        private IFieldModuleArgs m_FieldTransitionArgs;
+        private bool             m_FieldTransitionRequested = false;
 
         public FieldModule(ICoreModule        coreModule,
                            IDIResolver        diResolver,
@@ -57,7 +57,7 @@ namespace RPGFramework.Field
 
             IFieldModuleArgs fieldArgs = (IFieldModuleArgs)args;
 
-            await LoadNewFieldAsync(fieldArgs.GetFieldId);
+            await LoadNewFieldAsync(fieldArgs);
         }
 
         async Task IModule.OnExitAsync()
@@ -97,30 +97,33 @@ namespace RPGFramework.Field
 
             if (m_FieldTransitionRequested)
             {
-                TriggerFieldTransitionAsync(m_TargetFieldId).FireAndForget();
+                TriggerFieldTransitionAsync().FireAndForget();
             }
         }
 
-        private void SetTargetFieldId(string fieldId)
+        private void SetFieldModuleArgs(IFieldModuleArgs args)
         {
-            m_TargetFieldId            = fieldId;
+            m_FieldTransitionArgs      = args;
             m_FieldTransitionRequested = true;
         }
 
-        private async Task TriggerFieldTransitionAsync(string fieldId)
+        private async Task TriggerFieldTransitionAsync()
         {
-            m_TargetFieldId            = string.Empty;
             m_FieldTransitionRequested = false;
 
             await UnloadCurrentFieldAsync();
-            await LoadNewFieldAsync(fieldId);
+            await LoadNewFieldAsync(m_FieldTransitionArgs);
         }
 
-        private async Task LoadNewFieldAsync(string fieldId)
+        private async Task LoadNewFieldAsync(IFieldModuleArgs args)
         {
-            FieldDefinition fieldDefinition = m_FieldRegistry.LoadField(fieldId);
+            FieldDefinition fieldDefinition = m_FieldRegistry.LoadField(args.GetFieldId);
 
-            GameObject fieldGameObject = await m_FieldPresentation.LoadAsync(fieldDefinition);
+            GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(fieldDefinition);
+            SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
+
+            SpawnPoint spawnPoint = Array.Find(spawnPoints, sp => sp.Id == args.GetSpawnId);
+            Debug.Log($"SpawnPoint: name [{spawnPoint.name}] id [{spawnPoint.Id}] position [{spawnPoint.Position}]"); // TODO: spawn player here
 
             FieldVM vm = new FieldVM();
 
@@ -146,7 +149,7 @@ namespace RPGFramework.Field
 
             m_FieldContext = new FieldContext(vm, entities);
 
-            vm.RequestFieldTransition += SetTargetFieldId;
+            vm.RequestFieldTransition += SetFieldModuleArgs;
             vm.RequestMusic           += RequestMusic;
             vm.RequestSfx             += RequestSfx;
 
@@ -167,7 +170,7 @@ namespace RPGFramework.Field
 
             m_FieldContext.VM.RequestSfx             -= RequestSfx;
             m_FieldContext.VM.RequestMusic           -= RequestMusic;
-            m_FieldContext.VM.RequestFieldTransition -= SetTargetFieldId;
+            m_FieldContext.VM.RequestFieldTransition -= SetFieldModuleArgs;
 
             m_FieldContext = null;
 

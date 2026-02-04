@@ -34,7 +34,7 @@
         StartBattle,
         RandomEncounters,
         SetBattleModeOptionsAgain,
-        GatewayTriggerActivation,
+        GatewayTriggerActivation, // string targetFieldId, int spawnIndex
         GameOver,
 
         // Assignment and Mathematics

@@ -49,8 +49,12 @@ namespace RPGFramework.Field
 
                     case "TRIGGER_GATEWAY":
                         bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
-                        byte[] bytes = FieldProvider.ToBytes(parts[1]);
-                        bw.Write(bytes);
+
+                        byte[] fieldIdBytes = FieldProvider.ToBytes(parts[1]);
+                        int    spawnId      = int.Parse(parts[2], CultureInfo.InvariantCulture);
+
+                        bw.Write(fieldIdBytes);
+                        bw.Write(spawnId);
                         break;
 
                     default:
