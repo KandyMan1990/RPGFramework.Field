@@ -9,9 +9,11 @@ namespace RPGFramework.Field
 {
     internal sealed class FieldVM
     {
-        internal event Action<IFieldModuleArgs> RequestFieldTransition;
-        internal event Action<int>              RequestMusic;
-        internal event Action<int>              RequestSfx;
+        internal event Action<IFieldModuleArgs>   RequestFieldTransition;
+        internal event Action<int>                RequestMusic;
+        internal event Action<int>                RequestSfx;
+        internal event Action<FieldEntityRuntime> RequestSetPlayerEntity;
+        internal event Action<int, bool>          RequestSetEntityVisible;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -140,6 +142,18 @@ namespace RPGFramework.Field
 
             ctx.InstructionPointer += sizeof(byte);
             return br.ReadByte();
+        }
+        private bool ReadBool(ScriptExecutionContext ctx)
+        {
+            FieldScript script = m_Scripts[ctx.ScriptId];
+
+            using MemoryStream ms = new MemoryStream(script.Bytecode);
+            using BinaryReader br = new BinaryReader(ms);
+
+            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
+
+            ctx.InstructionPointer += sizeof(bool);
+            return br.ReadBoolean();
         }
 
         private ushort ReadUshort(ScriptExecutionContext ctx)
@@ -384,11 +398,10 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
                            // { FieldScriptOpCode.GetPartyMemberPosition, GetPartyMemberPositionOpcodeHandler },
                            // { FieldScriptOpCode.Interactibility, InteractibilityOpcodeHandler },
-                           // { FieldScriptOpCode.InitAsFieldModel, InitAsFieldModelOpcodeHandler },
-                           // { FieldScriptOpCode.InitAsCharacter, InitAsCharacterOpcodeHandler },
+                           { FieldScriptOpCode.InitAsCharacter, InitAsCharacterOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
-                           // { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
+                           { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
                            // { FieldScriptOpCode.SetEntityLocationXYZI, SetEntityLocationXYZIOpcodeHandler },
                            // { FieldScriptOpCode.SetEntityLocationXYI, SetEntityLocationXYIOpcodeHandler },
                            // { FieldScriptOpCode.SetEntityLocationXYZ, SetEntityLocationXYZOpcodeHandler },
@@ -651,6 +664,17 @@ namespace RPGFramework.Field
 
             IFieldModuleArgs args = new FieldModuleArgs(fieldId, spawnId);
             RequestFieldTransition?.Invoke(args);
+        }
+
+        private void InitAsCharacterOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestSetPlayerEntity?.Invoke(m_Entities[ctx.EntityId]);
+        }
+
+        private void VisibilityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            bool isVisible = ReadBool(ctx);
+            RequestSetEntityVisible?.Invoke(ctx.EntityId, isVisible);
         }
 
         private void PlayMusicOpcodeHandler(ScriptExecutionContext ctx)

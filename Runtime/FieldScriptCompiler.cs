@@ -48,13 +48,23 @@ namespace RPGFramework.Field
                         break;
 
                     case "TRIGGER_GATEWAY":
-                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
-
                         byte[] fieldIdBytes = FieldProvider.ToBytes(parts[1]);
                         int    spawnId      = int.Parse(parts[2], CultureInfo.InvariantCulture);
 
+                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
                         bw.Write(fieldIdBytes);
                         bw.Write(spawnId);
+                        break;
+
+                    case "INIT_CHARACTER":
+                        bw.Write((ushort)FieldScriptOpCode.InitAsCharacter);
+                        break;
+
+                    case "VISIBILITY":
+                        bool visibility = bool.Parse(parts[1]);
+
+                        bw.Write((ushort)FieldScriptOpCode.Visibility);
+                        bw.Write(visibility);
                         break;
 
                     default:

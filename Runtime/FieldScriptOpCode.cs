@@ -144,11 +144,10 @@
         GetPartyMemberDirection,
         GetPartyMemberPosition,
         Interactibility,
-        InitAsFieldModel,
         InitAsCharacter,
         PlayAnimationLooping,
         PlayAnimationOnceAndWait,
-        Visibility,
+        Visibility, // isVisible
         SetEntityLocationXYZI,
         SetEntityLocationXYI,
         SetEntityLocationXYZ,
