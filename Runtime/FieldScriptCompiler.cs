@@ -47,11 +47,11 @@ namespace RPGFramework.Field
                         bw.Write((ushort)FieldScriptOpCode.Return);
                         break;
 
-                    case "TRIGGER_GATEWAY":
+                    case "JUMP_TO_MAP":
                         byte[] fieldIdBytes = FieldProvider.ToBytes(parts[1]);
                         int    spawnId      = int.Parse(parts[2], CultureInfo.InvariantCulture);
 
-                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
+                        bw.Write((ushort)FieldScriptOpCode.JumpToAnotherMap);
                         bw.Write(fieldIdBytes);
                         bw.Write(spawnId);
                         break;

@@ -283,12 +283,12 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.SetBattleModeOptions, SetBattleModeOptionsOpcodeHandler },
                            // { FieldScriptOpCode.LoadResultOfLastBattle, LoadResultOfLastBattleOpcodeHandler },
                            // { FieldScriptOpCode.SetBattleEncounterTable, SetBattleEncounterTableOpcodeHandler },
-                           // { FieldScriptOpCode.JumpToAnotherMap, JumpToAnotherMapOpcodeHandler },
+                           { FieldScriptOpCode.JumpToAnotherMap, JumpToAnotherMapOpcodeHandler },
                            // { FieldScriptOpCode.GetLastFieldMap, GetLastFieldMapOpcodeHandler },
                            // { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
                            // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
                            // { FieldScriptOpCode.SetBattleModeOptionsAgain, SetBattleModeOptionsAgainOpcodeHandler },
-                           { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
+                           // { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
                            // { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
 
                            // Assignment and Mathematics
@@ -655,7 +655,7 @@ namespace RPGFramework.Field
             // noop
         }
 
-        private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte[] fieldIdBytes = ReadFieldNameBytes(ctx);
             int    spawnId      = ReadInt(ctx);

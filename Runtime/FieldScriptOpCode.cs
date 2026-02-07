@@ -29,12 +29,12 @@
         SetBattleModeOptions,
         LoadResultOfLastBattle,
         SetBattleEncounterTable,
-        JumpToAnotherMap,
+        JumpToAnotherMap, // string targetFieldId, int spawnIndex
         GetLastFieldMap,
         StartBattle,
         RandomEncounters,
         SetBattleModeOptionsAgain,
-        GatewayTriggerActivation, // string targetFieldId, int spawnIndex
+        GatewayTriggerActivation,
         GameOver,
 
         // Assignment and Mathematics
