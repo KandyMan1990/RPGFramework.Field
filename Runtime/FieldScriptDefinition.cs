@@ -13,18 +13,18 @@ namespace RPGFramework.Field
 
         public List<ScriptEntry> Scripts;
         
-        public FieldCompiledScript GetScript(string scriptName)
+        public FieldCompiledScript GetScript(FieldScriptType scriptType)
         {
             for (int i = 0; i < Scripts.Count; i++)
             {
                 ScriptEntry s = Scripts[i];
-                if (s.Name == scriptName)
+                if (s.ScriptType == scriptType)
                 {
                     return s.CompiledScript;
                 }
             }
 
-            throw new Exception($"Script '{scriptName}' not found on {EntityName}");
+            throw new Exception($"Script '{scriptType}' not found on {EntityName}");
         }
     }
 }

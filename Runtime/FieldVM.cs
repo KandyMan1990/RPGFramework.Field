@@ -59,6 +59,11 @@ namespace RPGFramework.Field
             return m_Contexts.ContainsKey((entityId, scriptId));
         }
 
+        internal void RequestScriptImmediately(int entityId, int scriptId)
+        {
+            m_Entities[entityId].RequestScript(scriptId);
+        }
+
         internal void Execute(int entityId, int scriptId, FieldEntityRuntime entity)
         {
             (int entityId, int scriptId) key = (entityId, scriptId);

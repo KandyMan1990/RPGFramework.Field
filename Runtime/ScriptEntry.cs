@@ -5,7 +5,7 @@ namespace RPGFramework.Field
     [Serializable]
     public sealed class ScriptEntry
     {
-        public string              Name;     // "Init", "Main", "Talk", "OnTouch", etc.
+        public FieldScriptType     ScriptType;
         public FieldCompiledScript CompiledScript;
     }
 }

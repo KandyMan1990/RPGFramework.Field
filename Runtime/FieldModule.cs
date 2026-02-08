@@ -25,10 +25,11 @@ namespace RPGFramework.Field
         private readonly IFieldRegistry     m_FieldRegistry;
         private readonly IFieldPresentation m_FieldPresentation;
 
-        private InputAdapter                 m_InputAdapter;
-        private FieldContext                 m_FieldContext;
-        private SpawnPoint                   m_SpawnPoint;
-        private Dictionary<int, FieldEntity> m_EntityGameObjects;
+        private InputAdapter                         m_InputAdapter;
+        private FieldContext                         m_FieldContext;
+        private SpawnPoint                           m_SpawnPoint;
+        private Dictionary<int, FieldEntity>         m_EntityGameObjects;
+        private Dictionary<int, FieldGatewayTrigger> m_EntityGatewayTriggers;
 
         private IFieldModuleArgs m_FieldTransitionArgs;
         private bool             m_FieldTransitionRequested = false;
@@ -130,7 +131,8 @@ namespace RPGFramework.Field
 
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
 
-            m_EntityGameObjects = new Dictionary<int, FieldEntity>(entitiesInGameObject.Length);
+            m_EntityGameObjects     = new Dictionary<int, FieldEntity>(entitiesInGameObject.Length);
+            m_EntityGatewayTriggers = new Dictionary<int, FieldGatewayTrigger>();
 
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
 
@@ -139,6 +141,15 @@ namespace RPGFramework.Field
             foreach (FieldEntity entity in entitiesInGameObject)
             {
                 m_EntityGameObjects.Add(entity.EntityId, entity);
+                FieldGatewayTrigger gatewayTrigger = entity.GetComponentInChildren<FieldGatewayTrigger>();
+
+                if (gatewayTrigger != null)
+                {
+                    m_EntityGatewayTriggers.Add(entity.EntityId, gatewayTrigger);
+                    gatewayTrigger.OnTriggered += OnGatewayTriggered;
+                }
+
+                // TODO: ensure entity has a FieldScriptType.Init script as its first script
                 FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptId);
 
                 entities.Add(fieldEntityRuntime);
@@ -180,6 +191,11 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusic            -= RequestMusic;
             m_FieldContext.VM.RequestFieldTransition  -= SetFieldModuleArgs;
 
+            foreach (KeyValuePair<int, FieldGatewayTrigger> entityGatewayTrigger in m_EntityGatewayTriggers)
+            {
+                entityGatewayTrigger.Value.OnTriggered -= OnGatewayTriggered;
+            }
+
             m_FieldContext = null;
 
             m_FieldPresentation.Unload();
@@ -207,6 +223,11 @@ namespace RPGFramework.Field
         private void RequestSetEntityVisible(int entityId, bool visible)
         {
             m_EntityGameObjects[entityId].SetVisible(visible);
+        }
+
+        private void OnGatewayTriggered(int entityId, int scriptId)
+        {
+            m_FieldContext.VM.RequestScriptImmediately(entityId, scriptId);
         }
     }
 }

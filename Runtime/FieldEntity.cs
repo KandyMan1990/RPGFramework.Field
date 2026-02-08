@@ -5,7 +5,6 @@ namespace RPGFramework.Field
     public sealed class FieldEntity : MonoBehaviour
     {
         public FieldScriptDefinition ScriptDefinition;
-        public string                InitialScriptName;
 
         [Tooltip("Root entity always exists.  VisibleObject is the renderable representation controlled by the VISIBILITY op code.  Can be left empty")]
         [SerializeField]
