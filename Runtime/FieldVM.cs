@@ -14,6 +14,7 @@ namespace RPGFramework.Field
         internal event Action<int>                RequestSfx;
         internal event Action<FieldEntityRuntime> RequestSetPlayerEntity;
         internal event Action<int, bool>          RequestSetEntityVisible;
+        internal event Action<bool>               RequestSetGatewayTriggersActive;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -293,7 +294,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
                            // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
                            // { FieldScriptOpCode.SetBattleModeOptionsAgain, SetBattleModeOptionsAgainOpcodeHandler },
-                           // { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
+                           { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
                            // { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
 
                            // Assignment and Mathematics
@@ -669,6 +670,12 @@ namespace RPGFramework.Field
 
             IFieldModuleArgs args = new FieldModuleArgs(fieldId, spawnId);
             RequestFieldTransition?.Invoke(args);
+        }
+
+        private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            bool enabled = ReadBool(ctx);
+            RequestSetGatewayTriggersActive?.Invoke(enabled);
         }
 
         private void InitAsCharacterOpcodeHandler(ScriptExecutionContext ctx)

@@ -164,11 +164,12 @@ namespace RPGFramework.Field
 
             m_FieldContext = new FieldContext(vm, entities);
 
-            vm.RequestFieldTransition  += SetFieldModuleArgs;
-            vm.RequestMusic            += RequestMusic;
-            vm.RequestSfx              += RequestSfx;
-            vm.RequestSetPlayerEntity  += RequestSetPlayerEntity;
-            vm.RequestSetEntityVisible += RequestSetEntityVisible;
+            vm.RequestFieldTransition          += SetFieldModuleArgs;
+            vm.RequestMusic                    += RequestMusic;
+            vm.RequestSfx                      += RequestSfx;
+            vm.RequestSetPlayerEntity          += RequestSetPlayerEntity;
+            vm.RequestSetEntityVisible         += RequestSetEntityVisible;
+            vm.RequestSetGatewayTriggersActive += RequestSetGatewayTriggersActive;
 
             UpdateManager.RegisterUpdatable(this);
 
@@ -185,11 +186,12 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
-            m_FieldContext.VM.RequestSetEntityVisible -= RequestSetEntityVisible;
-            m_FieldContext.VM.RequestSetPlayerEntity  -= RequestSetPlayerEntity;
-            m_FieldContext.VM.RequestSfx              -= RequestSfx;
-            m_FieldContext.VM.RequestMusic            -= RequestMusic;
-            m_FieldContext.VM.RequestFieldTransition  -= SetFieldModuleArgs;
+            m_FieldContext.VM.RequestSetGatewayTriggersActive -= RequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetEntityVisible         -= RequestSetEntityVisible;
+            m_FieldContext.VM.RequestSetPlayerEntity          -= RequestSetPlayerEntity;
+            m_FieldContext.VM.RequestSfx                      -= RequestSfx;
+            m_FieldContext.VM.RequestMusic                    -= RequestMusic;
+            m_FieldContext.VM.RequestFieldTransition          -= SetFieldModuleArgs;
 
             foreach (KeyValuePair<int, FieldGatewayTrigger> entityGatewayTrigger in m_EntityGatewayTriggers)
             {
@@ -228,6 +230,14 @@ namespace RPGFramework.Field
         private void OnGatewayTriggered(int entityId, int scriptId)
         {
             m_FieldContext.VM.RequestScriptImmediately(entityId, scriptId);
+        }
+
+        private void RequestSetGatewayTriggersActive(bool active)
+        {
+            foreach (FieldGatewayTrigger fieldGatewayTrigger in m_EntityGatewayTriggers.Values)
+            {
+                fieldGatewayTrigger.SetActive(active);
+            }
         }
     }
 }

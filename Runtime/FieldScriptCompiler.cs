@@ -67,6 +67,13 @@ namespace RPGFramework.Field
                         bw.Write(visibility);
                         break;
 
+                    case "GATEWAY_TRIGGER_ACTIVATION":
+                        bool gatewayTriggerActivation = bool.Parse(parts[1]);
+
+                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
+                        bw.Write(gatewayTriggerActivation);
+                        break;
+
                     default:
                         throw new Exception($"Unknown opcode '{parts[0]}'");
                 }
@@ -75,6 +82,5 @@ namespace RPGFramework.Field
             return ms.ToArray();
         }
     }
-
 }
 #endif
