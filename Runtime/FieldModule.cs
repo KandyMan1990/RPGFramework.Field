@@ -25,11 +25,13 @@ namespace RPGFramework.Field
         private readonly IFieldRegistry     m_FieldRegistry;
         private readonly IFieldPresentation m_FieldPresentation;
 
-        private InputAdapter                         m_InputAdapter;
-        private FieldContext                         m_FieldContext;
-        private SpawnPoint                           m_SpawnPoint;
-        private Dictionary<int, FieldEntity>         m_EntityGameObjects;
-        private Dictionary<int, FieldGatewayTrigger> m_EntityGatewayTriggers;
+        private InputAdapter                             m_InputAdapter;
+        private FieldContext                             m_FieldContext;
+        private SpawnPoint                               m_SpawnPoint;
+        private Dictionary<int, FieldEntity>             m_EntityGameObjects;
+        private Dictionary<int, FieldGatewayTrigger>     m_EntityGatewayTriggers;
+        private Dictionary<int, FieldInteractionTrigger> m_EntityInteractionTriggers;
+        private int                                      m_CurrentInteractionTriggerId;
 
         private IFieldModuleArgs m_FieldTransitionArgs;
         private bool             m_FieldTransitionRequested = false;
@@ -80,12 +82,22 @@ namespace RPGFramework.Field
 
         bool IInputContext.Handle(ControlSlot slot)
         {
-            if (slot == ControlSlot.Tertiary)
+            switch (slot)
             {
-                Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
-                IMenuModuleArgs args = new MenuModuleArgs(type);
+                case ControlSlot.Primary:
+                    if (m_CurrentInteractionTriggerId > -1 && CanInteract(m_CurrentInteractionTriggerId))
+                    {
+                        m_EntityInteractionTriggers[m_CurrentInteractionTriggerId].TryInteract();
+                    }
+                    break;
+                case ControlSlot.Tertiary:
+                {
+                    Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
+                    IMenuModuleArgs args = new MenuModuleArgs(type);
 
-                m_CoreModule.LoadModuleAsync<IMenuModule>(args).FireAndForget();
+                    m_CoreModule.LoadModuleAsync<IMenuModule>(args).FireAndForget();
+                    break;
+                }
             }
 
             return true;
@@ -131,8 +143,9 @@ namespace RPGFramework.Field
 
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
 
-            m_EntityGameObjects     = new Dictionary<int, FieldEntity>(entitiesInGameObject.Length);
-            m_EntityGatewayTriggers = new Dictionary<int, FieldGatewayTrigger>();
+            m_EntityGameObjects         = new Dictionary<int, FieldEntity>(entitiesInGameObject.Length);
+            m_EntityGatewayTriggers     = new Dictionary<int, FieldGatewayTrigger>();
+            m_EntityInteractionTriggers = new Dictionary<int, FieldInteractionTrigger>();
 
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
 
@@ -149,6 +162,16 @@ namespace RPGFramework.Field
                     gatewayTrigger.OnTriggered += OnGatewayTriggered;
                 }
 
+                FieldInteractionTrigger interactionTrigger = entity.GetComponentInChildren<FieldInteractionTrigger>();
+
+                if (interactionTrigger != null)
+                {
+                    m_EntityInteractionTriggers.Add(entity.EntityId, interactionTrigger);
+                    interactionTrigger.OnInteracted     += OnInteractionTriggered;
+                    interactionTrigger.OnTriggerEntered += OnInteractionTriggerEntered;
+                    interactionTrigger.OnTriggerExited  += OnInteractionTriggerExited;
+                }
+
                 // TODO: ensure entity has a FieldScriptType.Init script as its first script
                 FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptId);
 
@@ -163,6 +186,8 @@ namespace RPGFramework.Field
             }
 
             m_FieldContext = new FieldContext(vm, entities);
+
+            m_CurrentInteractionTriggerId = -1;
 
             vm.RequestFieldTransition          += SetFieldModuleArgs;
             vm.RequestMusic                    += RequestMusic;
@@ -192,6 +217,13 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSfx                      -= RequestSfx;
             m_FieldContext.VM.RequestMusic                    -= RequestMusic;
             m_FieldContext.VM.RequestFieldTransition          -= SetFieldModuleArgs;
+
+            foreach (KeyValuePair<int, FieldInteractionTrigger> entityInteractionTrigger in m_EntityInteractionTriggers)
+            {
+                entityInteractionTrigger.Value.OnTriggerExited  -= OnInteractionTriggerExited;
+                entityInteractionTrigger.Value.OnTriggerEntered -= OnInteractionTriggerEntered;
+                entityInteractionTrigger.Value.OnInteracted     -= OnInteractionTriggered;
+            }
 
             foreach (KeyValuePair<int, FieldGatewayTrigger> entityGatewayTrigger in m_EntityGatewayTriggers)
             {
@@ -230,6 +262,30 @@ namespace RPGFramework.Field
         private void OnGatewayTriggered(int entityId, int scriptId)
         {
             m_FieldContext.VM.RequestScriptImmediately(entityId, scriptId);
+        }
+
+        private void OnInteractionTriggered(int entityId, int scriptId)
+        {
+            m_FieldContext.VM.RequestScriptImmediately(entityId, scriptId);
+        }
+
+        private void OnInteractionTriggerEntered(int entityId)
+        {
+            m_CurrentInteractionTriggerId = entityId;
+        }
+
+        private void OnInteractionTriggerExited(int entityId)
+        {
+            if (m_CurrentInteractionTriggerId == entityId)
+            {
+                m_CurrentInteractionTriggerId = -1;
+            }
+        }
+
+        private bool CanInteract(int entityId)
+        {
+            // is player facing the m_CurrentInteractionTriggerId entity?
+            return true;
         }
 
         private void RequestSetGatewayTriggersActive(bool active)

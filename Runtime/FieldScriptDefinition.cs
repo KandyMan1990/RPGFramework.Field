@@ -7,12 +7,10 @@ namespace RPGFramework.Field
     [CreateAssetMenu(menuName = "RPG Framework/Field/Script Definition", fileName = "FieldScriptDefinition")]
     public sealed class FieldScriptDefinition : ScriptableObject
     {
-        public string EntityName;
-
-        public int EntityId;
-
+        public string            EntityName;
+        public int               EntityId;
         public List<ScriptEntry> Scripts;
-        
+
         public FieldCompiledScript GetScript(FieldScriptType scriptType)
         {
             for (int i = 0; i < Scripts.Count; i++)
