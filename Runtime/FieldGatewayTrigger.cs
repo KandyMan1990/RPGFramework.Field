@@ -10,14 +10,26 @@ namespace RPGFramework.Field
 
         private FieldEntity m_Entity;
         private bool        m_IsActive;
+        private int         m_EntityId;
 
         private void Awake()
         {
             m_Entity   = GetComponentInParent<FieldEntity>();
             m_IsActive = true;
+            m_EntityId = m_Entity.EntityId;
         }
 
         private void OnTriggerEnter(Collider other)
+        {
+            TriggerLogic();
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            TriggerLogic();
+        }
+
+        private void TriggerLogic()
         {
             if (!m_IsActive)
             {
@@ -25,7 +37,7 @@ namespace RPGFramework.Field
             }
 
             FieldCompiledScript compiledScript = m_Entity.ScriptDefinition.GetScript(FieldScriptType.OnCollision);
-            OnTriggered?.Invoke(m_Entity.EntityId, compiledScript.ScriptId);
+            OnTriggered?.Invoke(m_EntityId, compiledScript.ScriptId);
         }
 
         public void SetActive(bool active)
