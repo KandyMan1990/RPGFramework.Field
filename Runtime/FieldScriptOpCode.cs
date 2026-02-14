@@ -34,7 +34,7 @@
         StartBattle,
         RandomEncounters,
         SetBattleModeOptionsAgain,
-        GatewayTriggerActivation,
+        GatewayTriggerActivation, // bool active
         GameOver,
 
         // Assignment and Mathematics
@@ -143,11 +143,11 @@
         CollisionDetection,
         GetPartyMemberDirection,
         GetPartyMemberPosition,
-        Interactibility,
-        InitAsCharacter,
+        InteractionTriggerActivation, // bool isActive
+        InitAsCharacter,              //
         PlayAnimationLooping,
         PlayAnimationOnceAndWait,
-        Visibility, // isVisible
+        Visibility, // bool isVisible
         SetEntityLocationXYZI,
         SetEntityLocationXYI,
         SetEntityLocationXYZ,
@@ -178,14 +178,12 @@
         ClimbLadder,
         TransposeObjectVisualizationOnly,
         WaitForTranspose,
-        SetInteractibilityRadius,
+        SetInteractabilityRadius,
         SetCollisionRadius,
         Collidability,
         LineTriggerInitialization,
         LineTriggerActivation,
         SetLine,
-        SetInteractibilityRadiusAgain,
-        SetCollisionRadiusAgain,
         FixFacingForward,
         SetAnimationID,
         StopAnimation,

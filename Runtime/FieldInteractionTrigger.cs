@@ -48,6 +48,8 @@ namespace RPGFramework.Field
                 return;
             }
 
+            // TODO: if not player, return
+
             OnTriggerEntered?.Invoke(m_EntityId);
         }
 
@@ -67,6 +69,8 @@ namespace RPGFramework.Field
             {
                 return;
             }
+            
+            // TODO: this probably needs to take in some arguments, probably the player entity, to check if it can interact or not
 
             FieldCompiledScript compiledScript = m_Entity.ScriptDefinition.GetScript(FieldScriptType.OnInteraction);
 

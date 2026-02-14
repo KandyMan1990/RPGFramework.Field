@@ -189,12 +189,13 @@ namespace RPGFramework.Field
 
             m_CurrentInteractionTriggerId = -1;
 
-            vm.RequestFieldTransition          += SetFieldModuleArgs;
-            vm.RequestMusic                    += RequestMusic;
-            vm.RequestSfx                      += RequestSfx;
-            vm.RequestSetPlayerEntity          += RequestSetPlayerEntity;
-            vm.RequestSetEntityVisible         += RequestSetEntityVisible;
-            vm.RequestSetGatewayTriggersActive += RequestSetGatewayTriggersActive;
+            vm.RequestFieldTransition             += SetFieldModuleArgs;
+            vm.RequestMusic                       += RequestMusic;
+            vm.RequestSfx                         += RequestSfx;
+            vm.RequestSetPlayerEntity             += RequestSetPlayerEntity;
+            vm.RequestSetEntityVisible            += RequestSetEntityVisible;
+            vm.RequestSetGatewayTriggersActive    += RequestSetGatewayTriggersActive;
+            vm.RequestSetInteractionTriggerActive += RequestSetInteractionTriggerActive;
 
             UpdateManager.RegisterUpdatable(this);
 
@@ -211,12 +212,13 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
-            m_FieldContext.VM.RequestSetGatewayTriggersActive -= RequestSetGatewayTriggersActive;
-            m_FieldContext.VM.RequestSetEntityVisible         -= RequestSetEntityVisible;
-            m_FieldContext.VM.RequestSetPlayerEntity          -= RequestSetPlayerEntity;
-            m_FieldContext.VM.RequestSfx                      -= RequestSfx;
-            m_FieldContext.VM.RequestMusic                    -= RequestMusic;
-            m_FieldContext.VM.RequestFieldTransition          -= SetFieldModuleArgs;
+            m_FieldContext.VM.RequestSetInteractionTriggerActive -= RequestSetInteractionTriggerActive;
+            m_FieldContext.VM.RequestSetGatewayTriggersActive    -= RequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetEntityVisible            -= RequestSetEntityVisible;
+            m_FieldContext.VM.RequestSetPlayerEntity             -= RequestSetPlayerEntity;
+            m_FieldContext.VM.RequestSfx                         -= RequestSfx;
+            m_FieldContext.VM.RequestMusic                       -= RequestMusic;
+            m_FieldContext.VM.RequestFieldTransition             -= SetFieldModuleArgs;
 
             foreach (KeyValuePair<int, FieldInteractionTrigger> entityInteractionTrigger in m_EntityInteractionTriggers)
             {
@@ -294,6 +296,11 @@ namespace RPGFramework.Field
             {
                 fieldGatewayTrigger.SetActive(active);
             }
+        }
+
+        private void RequestSetInteractionTriggerActive(int entityId, bool active)
+        {
+            m_EntityInteractionTriggers[entityId].SetActive(active);
         }
     }
 }

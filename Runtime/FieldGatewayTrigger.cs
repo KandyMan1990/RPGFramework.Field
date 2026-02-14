@@ -36,6 +36,8 @@ namespace RPGFramework.Field
                 return;
             }
 
+            // TODO: if not player, return
+
             FieldCompiledScript compiledScript = m_Entity.ScriptDefinition.GetScript(FieldScriptType.OnCollision);
             OnTriggered?.Invoke(m_EntityId, compiledScript.ScriptId);
         }

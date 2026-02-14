@@ -15,6 +15,7 @@ namespace RPGFramework.Field
         internal event Action<FieldEntityRuntime> RequestSetPlayerEntity;
         internal event Action<int, bool>          RequestSetEntityVisible;
         internal event Action<bool>               RequestSetGatewayTriggersActive;
+        internal event Action<int, bool>          RequestSetInteractionTriggerActive;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -403,7 +404,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.CollisionDetection, CollisionDetectionOpcodeHandler },
                            // { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
                            // { FieldScriptOpCode.GetPartyMemberPosition, GetPartyMemberPositionOpcodeHandler },
-                           // { FieldScriptOpCode.Interactibility, InteractibilityOpcodeHandler },
+                           { FieldScriptOpCode.InteractionTriggerActivation, InteractabilityOpcodeHandler },
                            { FieldScriptOpCode.InitAsCharacter, InitAsCharacterOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
@@ -438,14 +439,12 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.ClimbLadder, ClimbLadderOpcodeHandler },
                            // { FieldScriptOpCode.TransposeObjectVisualizationOnly, TransposeObjectVisualizationOnlyOpcodeHandler },
                            // { FieldScriptOpCode.WaitForTranspose, WaitForTransposeOpcodeHandler },
-                           // { FieldScriptOpCode.SetInteractibilityRadius, SetInteractibilityRadiusOpcodeHandler },
+                           // { FieldScriptOpCode.SetInteractabilityRadius, SetInteractibilityRadiusOpcodeHandler },
                            // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
                            // { FieldScriptOpCode.Collidability, CollidabilityOpcodeHandler },
                            // { FieldScriptOpCode.LineTriggerInitialization, LineTriggerInitializationOpcodeHandler },
                            // { FieldScriptOpCode.LineTriggerActivation, LineTriggerActivationOpcodeHandler },
                            // { FieldScriptOpCode.SetLine, SetLineOpcodeHandler },
-                           // { FieldScriptOpCode.SetInteractibilityRadiusAgain, SetInteractibilityRadiusAgainOpcodeHandler },
-                           // { FieldScriptOpCode.SetCollisionRadiusAgain, SetCollisionRadiusAgainOpcodeHandler },
                            // { FieldScriptOpCode.FixFacingForward, FixFacingForwardOpcodeHandler },
                            // { FieldScriptOpCode.SetAnimationID, SetAnimationIDOpcodeHandler },
                            // { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
@@ -676,6 +675,12 @@ namespace RPGFramework.Field
         {
             bool enabled = ReadBool(ctx);
             RequestSetGatewayTriggersActive?.Invoke(enabled);
+        }
+
+        private void InteractabilityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            bool enabled = ReadBool(ctx);
+            RequestSetInteractionTriggerActive?.Invoke(ctx.EntityId, enabled);
         }
 
         private void InitAsCharacterOpcodeHandler(ScriptExecutionContext ctx)

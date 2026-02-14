@@ -24,27 +24,17 @@ namespace RPGFramework.Field
 
                 switch (parts[0])
                 {
-                    case "PLAY_MUSIC":
-                        bw.Write((ushort)FieldScriptOpCode.PlayMusic);
-                        bw.Write(int.Parse(parts[1]));
-                        break;
-
-                    case "PLAY_SOUND":
-                        bw.Write((ushort)FieldScriptOpCode.PlaySound);
-                        bw.Write(int.Parse(parts[1]));
-                        break;
-
-                    case "WAIT_SECONDS":
-                        bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
-                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
+                    case "RETURN":
+                        bw.Write((ushort)FieldScriptOpCode.Return);
                         break;
 
                     case "YIELD":
                         bw.Write((ushort)FieldScriptOpCode.Yield);
                         break;
 
-                    case "RETURN":
-                        bw.Write((ushort)FieldScriptOpCode.Return);
+                    case "WAIT_SECONDS":
+                        bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
+                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
                     case "JUMP_TO_MAP":
@@ -54,6 +44,20 @@ namespace RPGFramework.Field
                         bw.Write((ushort)FieldScriptOpCode.JumpToAnotherMap);
                         bw.Write(fieldIdBytes);
                         bw.Write(spawnId);
+                        break;
+
+                    case "GATEWAY_TRIGGER_ACTIVATION":
+                        bool gatewayTriggerActivation = bool.Parse(parts[1]);
+
+                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
+                        bw.Write(gatewayTriggerActivation);
+                        break;
+                    
+                    case "INTERACTION_TRIGGER_ACTIVATION":
+                        bool interactionTriggerActivation = bool.Parse(parts[1]);
+                        
+                        bw.Write((ushort)FieldScriptOpCode.InteractionTriggerActivation);
+                        bw.Write(interactionTriggerActivation);
                         break;
 
                     case "INIT_CHARACTER":
@@ -67,11 +71,14 @@ namespace RPGFramework.Field
                         bw.Write(visibility);
                         break;
 
-                    case "GATEWAY_TRIGGER_ACTIVATION":
-                        bool gatewayTriggerActivation = bool.Parse(parts[1]);
+                    case "PLAY_MUSIC":
+                        bw.Write((ushort)FieldScriptOpCode.PlayMusic);
+                        bw.Write(int.Parse(parts[1]));
+                        break;
 
-                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
-                        bw.Write(gatewayTriggerActivation);
+                    case "PLAY_SOUND":
+                        bw.Write((ushort)FieldScriptOpCode.PlaySound);
+                        bw.Write(int.Parse(parts[1]));
                         break;
 
                     default:
