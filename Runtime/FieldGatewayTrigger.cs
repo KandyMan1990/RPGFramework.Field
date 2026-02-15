@@ -6,6 +6,8 @@ namespace RPGFramework.Field
     [RequireComponent(typeof(BoxCollider))]
     public sealed class FieldGatewayTrigger : MonoBehaviour
     {
+        private const string PLAYER_TAG = "Player";
+
         public event Action<int, int> OnTriggered;
 
         private FieldEntity m_Entity;
@@ -21,22 +23,26 @@ namespace RPGFramework.Field
 
         private void OnTriggerEnter(Collider other)
         {
-            TriggerLogic();
+            TriggerLogic(other);
         }
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            TriggerLogic();
+            TriggerLogic(other);
         }
 
-        private void TriggerLogic()
+        private void TriggerLogic(Component other)
         {
             if (!m_IsActive)
             {
                 return;
             }
 
-            // TODO: if not player, return
+            // TODO: don't want to rely on tag, need to know player entity ID
+            if (!other.CompareTag(PLAYER_TAG))
+            {
+                return;
+            }
 
             FieldCompiledScript compiledScript = m_Entity.ScriptDefinition.GetScript(FieldScriptType.OnCollision);
             OnTriggered?.Invoke(m_EntityId, compiledScript.ScriptId);

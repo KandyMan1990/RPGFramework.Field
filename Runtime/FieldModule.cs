@@ -25,6 +25,8 @@ namespace RPGFramework.Field
         private readonly IFieldRegistry     m_FieldRegistry;
         private readonly IFieldPresentation m_FieldPresentation;
 
+        private Vector3 m_MovementUp = Vector3.up;
+
         private InputAdapter                             m_InputAdapter;
         private FieldContext                             m_FieldContext;
         private SpawnPoint                               m_SpawnPoint;
@@ -59,6 +61,9 @@ namespace RPGFramework.Field
         {
             m_InputAdapter = Object.FindFirstObjectByType<InputAdapter>();
             m_DIResolver.InjectInto(m_InputAdapter);
+
+            FieldModuleMonoBehaviour fieldModuleMb = Object.FindFirstObjectByType<FieldModuleMonoBehaviour>();
+            m_MovementUp = fieldModuleMb.Up;
 
             IFieldModuleArgs fieldArgs = (IFieldModuleArgs)args;
 
@@ -196,6 +201,7 @@ namespace RPGFramework.Field
             vm.RequestSetEntityVisible            += RequestSetEntityVisible;
             vm.RequestSetGatewayTriggersActive    += RequestSetGatewayTriggersActive;
             vm.RequestSetInteractionTriggerActive += RequestSetInteractionTriggerActive;
+            vm.RequestSetInteractionRange         += RequestSetInteractionRange;
 
             UpdateManager.RegisterUpdatable(this);
 
@@ -212,6 +218,7 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestSetInteractionRange         -= RequestSetInteractionRange;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= RequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= RequestSetGatewayTriggersActive;
             m_FieldContext.VM.RequestSetEntityVisible            -= RequestSetEntityVisible;
@@ -273,6 +280,17 @@ namespace RPGFramework.Field
 
         private void OnInteractionTriggerEntered(int entityId)
         {
+            /*
+                If two triggers overlap:
+                    Last one entered wins
+                    No distance check
+                    No nearest priority
+                Better future system:
+                    Track a HashSet<int> m_ActiveInteractionTriggers
+                    On button press:
+                        Choose closest valid entity
+                        Then run facing checks etc
+             */
             m_CurrentInteractionTriggerId = entityId;
         }
 
@@ -286,8 +304,45 @@ namespace RPGFramework.Field
 
         private bool CanInteract(int entityId)
         {
-            // is player facing the m_CurrentInteractionTriggerId entity?
+            if (!IsPlayerFacingEntity(entityId))
+                return false;
+
+            // if (!IsInteractable(entityId)) return false;
+            // if (IsLocked()) return false;
+
             return true;
+        }
+
+        private bool IsPlayerFacingEntity(int entityId)
+        {
+            FieldEntity player = m_EntityGameObjects[m_FieldContext.PlayerEntity.EntityId];
+            FieldEntity entity = m_EntityGameObjects[entityId];
+
+            Transform playerTransform = player.transform;
+
+            Vector3 playerPos = playerTransform.position;
+            Vector3 entityPos = entity.transform.position;
+
+            Vector3 toEntity = entityPos - playerPos;
+            toEntity = Vector3.ProjectOnPlane(toEntity, m_MovementUp);
+
+            if (toEntity.sqrMagnitude < 0.0001f)
+            {
+                return true;
+            }
+
+            toEntity.Normalize();
+
+            Vector3 forward = playerTransform.forward;
+            forward = Vector3.ProjectOnPlane(forward, m_MovementUp);
+            forward.Normalize();
+
+            float dot = Vector3.Dot(forward, toEntity);
+
+            float maxAngle  = m_EntityInteractionTriggers[entityId].InteractionAngle;
+            float threshold = Mathf.Cos(maxAngle * Mathf.Deg2Rad);
+
+            return dot >= threshold;
         }
 
         private void RequestSetGatewayTriggersActive(bool active)
@@ -301,6 +356,11 @@ namespace RPGFramework.Field
         private void RequestSetInteractionTriggerActive(int entityId, bool active)
         {
             m_EntityInteractionTriggers[entityId].SetActive(active);
+        }
+
+        private void RequestSetInteractionRange(int entityId, float range)
+        {
+            m_EntityInteractionTriggers[entityId].SetInteractionRange(range);
         }
     }
 }

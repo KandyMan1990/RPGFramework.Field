@@ -178,7 +178,7 @@
         ClimbLadder,
         TransposeObjectVisualizationOnly,
         WaitForTranspose,
-        SetInteractabilityRadius,
+        SetInteractionRange, // float size
         SetCollisionRadius,
         Collidability,
         LineTriggerInitialization,

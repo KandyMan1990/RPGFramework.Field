@@ -70,6 +70,13 @@ namespace RPGFramework.Field
                         bw.Write((ushort)FieldScriptOpCode.Visibility);
                         bw.Write(visibility);
                         break;
+                    
+                    case "SET_INTERACTION_RANGE":
+                        float interactionTriggerSize = float.Parse(parts[1], CultureInfo.InvariantCulture);
+                        
+                        bw.Write((ushort)FieldScriptOpCode.SetInteractionRange);
+                        bw.Write(interactionTriggerSize);
+                        break;
 
                     case "PLAY_MUSIC":
                         bw.Write((ushort)FieldScriptOpCode.PlayMusic);

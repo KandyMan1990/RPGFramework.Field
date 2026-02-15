@@ -16,6 +16,7 @@ namespace RPGFramework.Field
         internal event Action<int, bool>          RequestSetEntityVisible;
         internal event Action<bool>               RequestSetGatewayTriggersActive;
         internal event Action<int, bool>          RequestSetInteractionTriggerActive;
+        internal event Action<int, float>         RequestSetInteractionRange;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -439,7 +440,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.ClimbLadder, ClimbLadderOpcodeHandler },
                            // { FieldScriptOpCode.TransposeObjectVisualizationOnly, TransposeObjectVisualizationOnlyOpcodeHandler },
                            // { FieldScriptOpCode.WaitForTranspose, WaitForTransposeOpcodeHandler },
-                           // { FieldScriptOpCode.SetInteractabilityRadius, SetInteractibilityRadiusOpcodeHandler },
+                           { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
                            // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
                            // { FieldScriptOpCode.Collidability, CollidabilityOpcodeHandler },
                            // { FieldScriptOpCode.LineTriggerInitialization, LineTriggerInitializationOpcodeHandler },
@@ -692,6 +693,12 @@ namespace RPGFramework.Field
         {
             bool isVisible = ReadBool(ctx);
             RequestSetEntityVisible?.Invoke(ctx.EntityId, isVisible);
+        }
+
+        private void SetInteractionRangeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            float radius = ReadFloat(ctx);
+            RequestSetInteractionRange?.Invoke(ctx.EntityId, radius);
         }
 
         private void PlayMusicOpcodeHandler(ScriptExecutionContext ctx)
