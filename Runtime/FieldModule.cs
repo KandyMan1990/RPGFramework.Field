@@ -25,7 +25,7 @@ namespace RPGFramework.Field
         private readonly IFieldRegistry     m_FieldRegistry;
         private readonly IFieldPresentation m_FieldPresentation;
 
-        private Vector3 m_MovementUp = Vector3.up;
+        private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
 
         private InputAdapter                             m_InputAdapter;
         private FieldContext                             m_FieldContext;
@@ -62,8 +62,7 @@ namespace RPGFramework.Field
             m_InputAdapter = Object.FindFirstObjectByType<InputAdapter>();
             m_DIResolver.InjectInto(m_InputAdapter);
 
-            FieldModuleMonoBehaviour fieldModuleMb = Object.FindFirstObjectByType<FieldModuleMonoBehaviour>();
-            m_MovementUp = fieldModuleMb.Up;
+            m_FieldModuleMonoBehaviour = Object.FindFirstObjectByType<FieldModuleMonoBehaviour>();
 
             IFieldModuleArgs fieldArgs = (IFieldModuleArgs)args;
 
@@ -305,10 +304,17 @@ namespace RPGFramework.Field
         private bool CanInteract(int entityId)
         {
             if (!IsPlayerFacingEntity(entityId))
+            {
                 return false;
+            }
+
+            if (!IsEntityFacingPlayer(entityId))
+            {
+                return false;
+            }
 
             // if (!IsInteractable(entityId)) return false;
-            // if (IsLocked()) return false;
+            // if (IsInputLocked()) return false;
 
             return true;
         }
@@ -322,9 +328,27 @@ namespace RPGFramework.Field
 
             Vector3 playerPos = playerTransform.position;
             Vector3 entityPos = entity.transform.position;
+            
+            return IsFacing(playerPos, playerTransform.forward, entityPos, m_FieldModuleMonoBehaviour.PlayerInteractionAngle);
+        }
 
-            Vector3 toEntity = entityPos - playerPos;
-            toEntity = Vector3.ProjectOnPlane(toEntity, m_MovementUp);
+        private bool IsEntityFacingPlayer(int entityId)
+        {
+            FieldEntity player = m_EntityGameObjects[m_FieldContext.PlayerEntity.EntityId];
+            FieldEntity entity = m_EntityGameObjects[entityId];
+
+            Transform entityTransform = entity.transform;
+
+            Vector3 playerPos = player.transform.position;
+            Vector3 entityPos = entityTransform.position;
+
+            return IsFacing(entityPos, entityTransform.forward, playerPos, m_EntityInteractionTriggers[entityId].InteractionAngle);
+        }
+
+        private bool IsFacing(Vector3 fromPosition, Vector3 fromForward, Vector3 toPosition, float maxAngle)
+        {
+            Vector3 toEntity = toPosition - fromPosition;
+            toEntity = Vector3.ProjectOnPlane(toEntity, m_FieldModuleMonoBehaviour.Up);
 
             if (toEntity.sqrMagnitude < 0.0001f)
             {
@@ -333,14 +357,13 @@ namespace RPGFramework.Field
 
             toEntity.Normalize();
 
-            Vector3 forward = playerTransform.forward;
-            forward = Vector3.ProjectOnPlane(forward, m_MovementUp);
+            Vector3 forward = Vector3.ProjectOnPlane(fromForward, m_FieldModuleMonoBehaviour.Up);
             forward.Normalize();
 
             float dot = Vector3.Dot(forward, toEntity);
 
-            float maxAngle  = m_EntityInteractionTriggers[entityId].InteractionAngle;
-            float threshold = Mathf.Cos(maxAngle * Mathf.Deg2Rad);
+            float halfAngle = maxAngle * 0.5f;
+            float threshold = Mathf.Cos(halfAngle * Mathf.Deg2Rad);
 
             return dot >= threshold;
         }
