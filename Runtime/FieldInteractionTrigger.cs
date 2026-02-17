@@ -14,9 +14,9 @@ namespace RPGFramework.Field
 
         public float InteractionAngle => m_InteractionAngle;
 
-        // TODO: show this in the editor via gizmo
         [SerializeField]
-        private float m_InteractionAngle = 60f;
+        [Range(0f, 360f)]
+        private float m_InteractionAngle = 360f;
 
         private Collider    m_Collider;
         private FieldEntity m_Entity;
@@ -170,5 +170,36 @@ namespace RPGFramework.Field
         {
             m_ResizeAction(range);
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            // TODO: this doesn't scale with adjusting the collider radius/size
+            const float distance = 0.5f;
+            Vector3     forward  = transform.forward;
+            Vector3     position = transform.position;
+
+            UnityEditor.Handles.color = new Color(0, 1, 0, 0.25f);
+            UnityEditor.Handles.DrawSolidArc(position,
+                                             Vector3.up,
+                                             Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * forward,
+                                             m_InteractionAngle,
+                                             distance);
+
+            UnityEditor.Handles.color = Color.green;
+            UnityEditor.Handles.DrawWireArc(position,
+                                            Vector3.up,
+                                            Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * forward,
+                                            m_InteractionAngle,
+                                            distance);
+            
+            Vector3 leftBoundary  = Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * forward;
+            Vector3 rightBoundary = Quaternion.Euler(0, m_InteractionAngle  / 2, 0) * forward;
+
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(position, position + leftBoundary  * distance);
+            Gizmos.DrawLine(position, position + rightBoundary * distance);
+        }
+#endif
     }
 }
