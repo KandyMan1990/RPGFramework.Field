@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field
 {
-    public class FieldModule : IFieldModule, IInputContext, IUpdatable
+    public class FieldModule : IFieldModule, IUpdatable
     {
         private readonly ICoreModule        m_CoreModule;
         private readonly IDIResolver        m_DIResolver;
@@ -26,6 +26,7 @@ namespace RPGFramework.Field
         private readonly IFieldPresentation m_FieldPresentation;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
+        private IInputContext            m_CurrentInputContext;
 
         private InputAdapter                             m_InputAdapter;
         private FieldContext                             m_FieldContext;
@@ -73,6 +74,8 @@ namespace RPGFramework.Field
         {
             await UnloadCurrentFieldAsync();
 
+            m_InputRouter.Clear();
+
             m_CoreModule.ResetModule<IFieldModule, FieldModule>();
         }
 
@@ -82,33 +85,6 @@ namespace RPGFramework.Field
             IMenuModuleArgs args = new MenuModuleArgs(type);
 
             return m_CoreModule.LoadModuleAsync<IMenuModule>(args);
-        }
-
-        bool IInputContext.Handle(ControlSlot slot)
-        {
-            switch (slot)
-            {
-                case ControlSlot.Primary:
-                    // TODO: if input is locked do nothing
-                    // TODO: handle if we're in a dialogue
-                    FieldInteractionTrigger best = GetBestInteractionTrigger();
-
-                    if (best != null)
-                    {
-                        best.TryInteract();
-                    }
-                    break;
-                case ControlSlot.Tertiary:
-                {
-                    Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
-                    IMenuModuleArgs args = new MenuModuleArgs(type);
-
-                    m_CoreModule.LoadModuleAsync<IMenuModule>(args).FireAndForget();
-                    break;
-                }
-            }
-
-            return true;
         }
 
         void IUpdatable.Update()
@@ -207,7 +183,8 @@ namespace RPGFramework.Field
 
             UpdateManager.RegisterUpdatable(this);
 
-            m_InputRouter.Push(this);
+            m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu);
+            m_InputRouter.Push(m_CurrentInputContext);
 
             m_InputAdapter.Enable();
         }
@@ -216,7 +193,7 @@ namespace RPGFramework.Field
         {
             m_InputAdapter.Disable();
 
-            m_InputRouter.Pop(this);
+            m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
@@ -248,6 +225,14 @@ namespace RPGFramework.Field
             m_FieldPresentation.Unload();
 
             return Task.CompletedTask;
+        }
+
+        private void OpenConfigMenu()
+        {
+            Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
+            IMenuModuleArgs args = new MenuModuleArgs(type);
+
+            m_CoreModule.LoadModuleAsync<IMenuModule>(args).FireAndForget();
         }
 
         private void RequestMusic(int id)
