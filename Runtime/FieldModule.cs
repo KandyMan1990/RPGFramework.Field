@@ -33,7 +33,7 @@ namespace RPGFramework.Field
         private Dictionary<int, FieldEntity>             m_EntityGameObjects;
         private Dictionary<int, FieldGatewayTrigger>     m_EntityGatewayTriggers;
         private Dictionary<int, FieldInteractionTrigger> m_EntityInteractionTriggers;
-        private int                                      m_CurrentInteractionTriggerId;
+        private HashSet<int>                             m_ActiveInteractionTriggerIds;
 
         private IFieldModuleArgs m_FieldTransitionArgs;
         private bool             m_FieldTransitionRequested = false;
@@ -89,9 +89,13 @@ namespace RPGFramework.Field
             switch (slot)
             {
                 case ControlSlot.Primary:
-                    if (m_CurrentInteractionTriggerId > -1 && CanInteract(m_CurrentInteractionTriggerId))
+                    // TODO: if input is locked do nothing
+                    // TODO: handle if we're in a dialogue
+                    FieldInteractionTrigger best = GetBestInteractionTrigger();
+
+                    if (best != null)
                     {
-                        m_EntityInteractionTriggers[m_CurrentInteractionTriggerId].TryInteract();
+                        best.TryInteract();
                     }
                     break;
                 case ControlSlot.Tertiary:
@@ -189,9 +193,8 @@ namespace RPGFramework.Field
                 }
             }
 
-            m_FieldContext = new FieldContext(vm, entities);
-
-            m_CurrentInteractionTriggerId = -1;
+            m_FieldContext                = new FieldContext(vm, entities);
+            m_ActiveInteractionTriggerIds = new HashSet<int>();
 
             vm.RequestFieldTransition             += SetFieldModuleArgs;
             vm.RequestMusic                       += RequestMusic;
@@ -225,6 +228,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSfx                         -= RequestSfx;
             m_FieldContext.VM.RequestMusic                       -= RequestMusic;
             m_FieldContext.VM.RequestFieldTransition             -= SetFieldModuleArgs;
+
+            m_ActiveInteractionTriggerIds.Clear();
 
             foreach (KeyValuePair<int, FieldInteractionTrigger> entityInteractionTrigger in m_EntityInteractionTriggers)
             {
@@ -279,44 +284,12 @@ namespace RPGFramework.Field
 
         private void OnInteractionTriggerEntered(int entityId)
         {
-            /*
-                If two triggers overlap:
-                    Last one entered wins
-                    No distance check
-                    No nearest priority
-                Better future system:
-                    Track a HashSet<int> m_ActiveInteractionTriggers
-                    On button press:
-                        Choose closest valid entity
-                        Then run facing checks etc
-             */
-            m_CurrentInteractionTriggerId = entityId;
+            m_ActiveInteractionTriggerIds.Add(entityId);
         }
 
         private void OnInteractionTriggerExited(int entityId)
         {
-            if (m_CurrentInteractionTriggerId == entityId)
-            {
-                m_CurrentInteractionTriggerId = -1;
-            }
-        }
-
-        private bool CanInteract(int entityId)
-        {
-            if (!IsPlayerFacingEntity(entityId))
-            {
-                return false;
-            }
-
-            if (!IsEntityFacingPlayer(entityId))
-            {
-                return false;
-            }
-
-            // if (!IsInteractable(entityId)) return false;
-            // if (IsInputLocked()) return false;
-
-            return true;
+            m_ActiveInteractionTriggerIds.Remove(entityId);
         }
 
         private bool IsPlayerFacingEntity(int entityId)
@@ -328,7 +301,7 @@ namespace RPGFramework.Field
 
             Vector3 playerPos = playerTransform.position;
             Vector3 entityPos = entity.transform.position;
-            
+
             return IsFacing(playerPos, playerTransform.forward, entityPos, m_FieldModuleMonoBehaviour.PlayerInteractionAngle);
         }
 
@@ -366,6 +339,61 @@ namespace RPGFramework.Field
             float threshold = Mathf.Cos(halfAngle * Mathf.Deg2Rad);
 
             return dot >= threshold;
+        }
+        private FieldInteractionTrigger GetBestInteractionTrigger()
+        {
+            if (m_ActiveInteractionTriggerIds.Count == 0)
+            {
+                return null;
+            }
+
+            FieldEntity player          = m_EntityGameObjects[m_FieldContext.PlayerEntity.EntityId];
+            Transform   playerTransform = player.transform;
+
+            Vector3 playerPos     = playerTransform.position;
+            Vector3 playerForward = Vector3.ProjectOnPlane(playerTransform.forward, m_FieldModuleMonoBehaviour.Up);
+            playerForward = playerForward.normalized;
+
+            FieldInteractionTrigger best      = null;
+            float                   bestScore = float.MinValue;
+
+            foreach (int entityId in m_ActiveInteractionTriggerIds)
+            {
+                FieldInteractionTrigger entity = m_EntityInteractionTriggers[entityId];
+
+                if (!IsPlayerFacingEntity(entityId))
+                {
+                    continue;
+                }
+
+                if (!IsEntityFacingPlayer(entityId))
+                {
+                    continue;
+                }
+
+                Vector3 toEntity = entity.transform.position - playerPos;
+                toEntity = Vector3.ProjectOnPlane(toEntity, m_FieldModuleMonoBehaviour.Up);
+
+                float distance = toEntity.magnitude;
+                if (distance < 0.0001f)
+                {
+                    continue;
+                }
+
+                Vector3 dir = toEntity.normalized;
+
+                float dot = Vector3.Dot(playerForward, dir);
+
+                float score = (dot * 2f) - distance;
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best      = entity;
+                }
+            }
+
+            return best;
         }
 
         private void RequestSetGatewayTriggersActive(bool active)
