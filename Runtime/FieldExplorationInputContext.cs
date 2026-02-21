@@ -1,5 +1,6 @@
 ﻿using System;
 using RPGFramework.Core.Input;
+using UnityEngine;
 
 namespace RPGFramework.Field
 {
@@ -7,11 +8,15 @@ namespace RPGFramework.Field
     {
         private readonly Func<FieldInteractionTrigger> m_GetBestInteractionTrigger;
         private readonly Action                        m_OpenConfigMenu;
+        private readonly Action<Vector2>               m_OnMove;
 
-        public FieldExplorationInputContext(Func<FieldInteractionTrigger> getBestInteractionTrigger, Action openConfigMenu)
+        public FieldExplorationInputContext(Func<FieldInteractionTrigger> getBestInteractionTrigger,
+                                            Action                        openConfigMenu,
+                                            Action<Vector2>               onMove)
         {
             m_GetBestInteractionTrigger = getBestInteractionTrigger;
             m_OpenConfigMenu            = openConfigMenu;
+            m_OnMove                    = onMove;
         }
 
         bool IInputContext.Handle(ControlSlot slot)
@@ -34,6 +39,11 @@ namespace RPGFramework.Field
             }
 
             return true;
+        }
+
+        void IInputContext.HandleMove(Vector2 move)
+        {
+            m_OnMove(move);
         }
     }
 }

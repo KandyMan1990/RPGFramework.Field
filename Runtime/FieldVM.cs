@@ -17,6 +17,7 @@ namespace RPGFramework.Field
         internal event Action<bool>               RequestSetGatewayTriggersActive;
         internal event Action<int, bool>          RequestSetInteractionTriggerActive;
         internal event Action<int, float>         RequestSetInteractionRange;
+        internal event Action<int, bool>          RequestInputLock;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -284,6 +285,7 @@ namespace RPGFramework.Field
                            { FieldScriptOpCode.DoNothing, DoNothingOpcodeHandler },
                            // { FieldScriptOpCode.IfCharacterIsInParty, IfCharacterIsInPartyOpcodeHandler },
                            // { FieldScriptOpCode.IfCharacterIsAvailable, IfCharacterIsAvailableOpcodeHandler },
+                           { FieldScriptOpCode.LockInput, LockInputOpcodeHandler },
 
                            // System and Module Control
                            // { FieldScriptOpCode.SpecialOp, SpecialOpOpcodeHandler },
@@ -659,6 +661,12 @@ namespace RPGFramework.Field
         private static void DoNothingOpcodeHandler(ScriptExecutionContext ctx)
         {
             // noop
+        }
+
+        private void LockInputOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            bool inputLocked = ReadBool(ctx);
+            RequestInputLock?.Invoke(ctx.EntityId, inputLocked);
         }
 
         private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)

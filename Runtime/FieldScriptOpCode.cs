@@ -7,9 +7,6 @@
         RunAnotherEntityScriptUnlessBusy,        // byte targetEntityId, byte targetScriptId
         RunAnotherEntityScriptWaitUntilStarted,  // byte targetEntityId, byte targetScriptId
         RunAnotherEntityScriptWaitUntilFinished, // byte targetEntityId, byte targetScriptId
-        RunPartyMemberScriptUnlessBusy,
-        RunPartyMemberScriptWaitUntilStarted,
-        RunPartyMemberScriptWaitUntilFinished,
         ReturnToAnotherScript, // byte targetScriptId
         Goto,                  // int offset
         CompareTwoByteValues,
@@ -22,6 +19,7 @@
         DoNothing, //
         IfCharacterIsInParty,
         IfCharacterIsAvailable,
+        LockInput, // bool locked
 
         // System and Module Control
         SpecialOp,

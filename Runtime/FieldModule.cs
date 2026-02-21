@@ -27,6 +27,7 @@ namespace RPGFramework.Field
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
+        private Camera                   m_Camera;
 
         private InputAdapter                             m_InputAdapter;
         private FieldContext                             m_FieldContext;
@@ -38,6 +39,8 @@ namespace RPGFramework.Field
 
         private IFieldModuleArgs m_FieldTransitionArgs;
         private bool             m_FieldTransitionRequested = false;
+
+        private IMovementDriver m_PlayerMovementDriver;
 
         public FieldModule(ICoreModule        coreModule,
                            IDIResolver        diResolver,
@@ -180,10 +183,13 @@ namespace RPGFramework.Field
             vm.RequestSetGatewayTriggersActive    += RequestSetGatewayTriggersActive;
             vm.RequestSetInteractionTriggerActive += RequestSetInteractionTriggerActive;
             vm.RequestSetInteractionRange         += RequestSetInteractionRange;
+            vm.RequestInputLock                   += RequestInputLock;
+
+            m_Camera = Object.FindFirstObjectByType<Camera>();
 
             UpdateManager.RegisterUpdatable(this);
 
-            m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu);
+            m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
             m_InputRouter.Push(m_CurrentInputContext);
 
             m_InputAdapter.Enable();
@@ -197,6 +203,7 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestInputLock                   -= RequestInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= RequestSetInteractionRange;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= RequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= RequestSetGatewayTriggersActive;
@@ -227,14 +234,6 @@ namespace RPGFramework.Field
             return Task.CompletedTask;
         }
 
-        private void OpenConfigMenu()
-        {
-            Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
-            IMenuModuleArgs args = new MenuModuleArgs(type);
-
-            m_CoreModule.LoadModuleAsync<IMenuModule>(args).FireAndForget();
-        }
-
         private void RequestMusic(int id)
         {
             m_MusicPlayer.Play(id).FireAndForget();
@@ -247,9 +246,19 @@ namespace RPGFramework.Field
 
         private void RequestSetPlayerEntity(FieldEntityRuntime entity)
         {
+            if (m_PlayerMovementDriver != null)
+            {
+                Component currentDriver = (Component)m_PlayerMovementDriver;
+                Object.Destroy(currentDriver);
+            }
+
             m_FieldContext.SetPlayerEntity(entity);
 
-            m_EntityGameObjects[entity.EntityId].transform.SetPositionAndRotation(m_SpawnPoint.Position, m_SpawnPoint.Rotation);
+            FieldEntity newPlayerEntity = m_EntityGameObjects[entity.EntityId];
+
+            newPlayerEntity.transform.SetPositionAndRotation(m_SpawnPoint.Position, m_SpawnPoint.Rotation);
+
+            m_PlayerMovementDriver = MovementDriverFactory.Create(newPlayerEntity.gameObject, 3f);
         }
 
         private void RequestSetEntityVisible(int entityId, bool visible)
@@ -325,6 +334,7 @@ namespace RPGFramework.Field
 
             return dot >= threshold;
         }
+
         private FieldInteractionTrigger GetBestInteractionTrigger()
         {
             if (m_ActiveInteractionTriggerIds.Count == 0)
@@ -381,6 +391,33 @@ namespace RPGFramework.Field
             return best;
         }
 
+        private void OpenConfigMenu()
+        {
+            Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
+            IMenuModuleArgs args = new MenuModuleArgs(type);
+
+            m_CoreModule.LoadModuleAsync<IMenuModule>(args).FireAndForget();
+        }
+
+        private void OnMove(Vector2 move)
+        {
+            Transform cameraTransform = m_Camera.transform;
+
+            Vector3 up = m_FieldModuleMonoBehaviour.Up;
+
+            Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, up).normalized;
+            Vector3 right   = Vector3.ProjectOnPlane(cameraTransform.right,   up).normalized;
+
+            Vector3 worldMove = forward * move.y + right * move.x;
+
+            MovePlayer(worldMove);
+        }
+
+        private void MovePlayer(Vector3 worldMove)
+        {
+            m_PlayerMovementDriver.SetMoveInput(worldMove);
+        }
+
         private void RequestSetGatewayTriggersActive(bool active)
         {
             foreach (FieldGatewayTrigger fieldGatewayTrigger in m_EntityGatewayTriggers.Values)
@@ -397,6 +434,26 @@ namespace RPGFramework.Field
         private void RequestSetInteractionRange(int entityId, float range)
         {
             m_EntityInteractionTriggers[entityId].SetInteractionRange(range);
+        }
+
+        private void RequestInputLock(int entityId, bool lockInput)
+        {
+            if (lockInput)
+            {
+                m_CurrentInputContext = new BlockAllInputContext();
+                m_InputRouter.Push(m_CurrentInputContext);
+            }
+            else
+            {
+                BlockAllInputContext currentInputContext = m_CurrentInputContext as BlockAllInputContext;
+                if (currentInputContext == null)
+                {
+                    Debug.LogError($"{nameof(FieldModule)}::{nameof(RequestInputLock)} cannot pop {nameof(BlockAllInputContext)}, current input context is {m_CurrentInputContext.GetType()}");
+                    return;
+                }
+
+                m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
+            }
         }
     }
 }

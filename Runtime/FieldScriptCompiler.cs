@@ -36,6 +36,13 @@ namespace RPGFramework.Field
                         bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
                         bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
+                    
+                    case "LOCK_INPUT":
+                        bool lockInput = bool.Parse(parts[1]);
+
+                        bw.Write((ushort)FieldScriptOpCode.LockInput);
+                        bw.Write(lockInput);
+                        break;
 
                     case "JUMP_TO_MAP":
                         byte[] fieldIdBytes = FieldProvider.ToBytes(parts[1]);
