@@ -19,7 +19,6 @@
         DoNothing, //
         IfCharacterIsInParty,
         IfCharacterIsAvailable,
-        LockInput, // bool locked
 
         // System and Module Control
         SpecialOp,
@@ -135,7 +134,7 @@
         WaitForGraphicsOp,
         MoveToPartyMember,
         SlipAgainstWalls,
-        PlayerMovability,
+        LockInput, // bool locked
         FaceCharacter,
         TurnToPartyMember,
         CollisionDetection,

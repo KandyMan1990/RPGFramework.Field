@@ -285,7 +285,6 @@ namespace RPGFramework.Field
                            { FieldScriptOpCode.DoNothing, DoNothingOpcodeHandler },
                            // { FieldScriptOpCode.IfCharacterIsInParty, IfCharacterIsInPartyOpcodeHandler },
                            // { FieldScriptOpCode.IfCharacterIsAvailable, IfCharacterIsAvailableOpcodeHandler },
-                           { FieldScriptOpCode.LockInput, LockInputOpcodeHandler },
 
                            // System and Module Control
                            // { FieldScriptOpCode.SpecialOp, SpecialOpOpcodeHandler },
@@ -401,7 +400,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.WaitForGraphicsOp, WaitForGraphicsOpOpcodeHandler },
                            // { FieldScriptOpCode.MoveToPartyMember, MoveToPartyMemberOpcodeHandler },
                            // { FieldScriptOpCode.SlipAgainstWalls, SlipAgainstWallsOpcodeHandler },
-                           // { FieldScriptOpCode.PlayerMovability, PlayerMovabilityOpcodeHandler },
+                           { FieldScriptOpCode.LockInput, LockInputOpcodeHandler },
                            // { FieldScriptOpCode.FaceCharacter, FaceCharacterOpcodeHandler },
                            // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
                            // { FieldScriptOpCode.CollisionDetection, CollisionDetectionOpcodeHandler },
