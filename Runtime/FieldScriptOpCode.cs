@@ -136,7 +136,6 @@
         MoveToPartyMember,
         SlipAgainstWalls,
         LockInput, // bool locked
-        FaceCharacter,
         TurnToPartyMember,
         CollisionDetection,
         GetPartyMemberDirection,
@@ -147,19 +146,19 @@
         PlayAnimationOnceAndWait,
         Visibility,        // bool isVisible
         SetEntityPosition, // float x, float y, float z
-        MoveEntityToXYWalkAnimation,
-        MoveEntityToXYNoAnimation,
-        MoveEntityToAnotherEntity,
-        TurnEntityToAnotherEntity,
-        WaitForAnimation,
-        MoveFieldObject,
+        MoveEntityToXYWalkAnimation, // moves an entity using walk animation (if available) to x,y,z at speed set by SetMovementSpeed
+        MoveEntityToXYNoAnimation, // as above but doesn't animate or rotate
+        MoveEntityToAnotherEntity, // navigates to another entity stopping once it reaches its collision
+        TurnEntityToAnotherEntity, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), byte number of steps in rotation (calls RotateModel with smooth)
+        WaitForAnimation, // waits for the animation to complete that has been previously played using any of the animation opcodes.
+        MoveFieldObject, // MoveEntityToXYNoAnimation but rotates
         PlayAnimationAsync,
         PlayAnimationOnceAsync,
         PlayPartialAnimation,
         PlayPartialAnimationAgain,
         SetMovementSpeed,
-        SetFacingDirection,
-        RotateModel,
+        SetFacingDirection, // instantaneously turns the entity to the direction specified
+        RotateModel, // Vector3 rotation, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), byte number of steps in rotation, byte rotationType (1 linear, 2 smooth)
         SetDirectionToFaceEntity,
         GetEntityDirection,
         PlayAnimationStopOnLastFrameWait,
@@ -181,7 +180,6 @@
         FixFacingForward,
         SetAnimationID,
         StopAnimation,
-        WaitForTurn,
 
         // Background and Palette
         SetBackgroundDepth,
