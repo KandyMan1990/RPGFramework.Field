@@ -18,6 +18,7 @@ namespace RPGFramework.Field
         internal event Action<int, bool>          RequestSetInteractionTriggerActive;
         internal event Action<int, float>         RequestSetInteractionRange;
         internal event Action<int, bool>          RequestInputLock;
+        internal event Action<int, Vector3>       RequestSetEntityPosition;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -275,6 +276,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilFinished, RunPartyMemberScriptWaitUntilFinishedOpcodeHandler },
                            { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
                            { FieldScriptOpCode.Goto, GotoOpcodeHandler },
+                           { FieldScriptOpCode.GotoDirectly, GotoDirectlyOpcodeHandler },
                            { FieldScriptOpCode.CompareTwoByteValues, CompareTwoByteValuesOpcodeHandler },
                            { FieldScriptOpCode.CompareTwoIntValues, CompareTwoIntValuesOpcodeHandler },
                            { FieldScriptOpCode.Yield, YieldOpcodeHandler },
@@ -411,9 +413,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
                            { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
-                           // { FieldScriptOpCode.SetEntityLocationXYZI, SetEntityLocationXYZIOpcodeHandler },
-                           // { FieldScriptOpCode.SetEntityLocationXYI, SetEntityLocationXYIOpcodeHandler },
-                           // { FieldScriptOpCode.SetEntityLocationXYZ, SetEntityLocationXYZOpcodeHandler },
+                           { FieldScriptOpCode.SetEntityPosition, SetEntityPositionOpcodeHandler },
                            // { FieldScriptOpCode.MoveEntityToXYWalkAnimation, MoveEntityToXYWalkAnimationOpcodeHandler },
                            // { FieldScriptOpCode.MoveEntityToXYNoAnimation, MoveEntityToXYNoAnimationOpcodeHandler },
                            // { FieldScriptOpCode.MoveEntityToAnotherEntity, MoveEntityToAnotherEntityOpcodeHandler },
@@ -429,15 +429,13 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.RotateModel, RotateModelOpcodeHandler },
                            // { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
                            // { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
-                           // { FieldScriptOpCode.GetEntityLocationXY, GetEntityLocationXYOpcodeHandler },
-                           // { FieldScriptOpCode.GetEntityDirectionI, GetEntityDirectionIOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationToDo, PlayAnimationToDoOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationToDoAgain, PlayAnimationToDoAgainOpcodeHandler },
                            // { FieldScriptOpCode.SetAnimationSpeed, SetAnimationSpeedOpcodeHandler },
                            // { FieldScriptOpCode.SetEntityAsControllableCharacter, SetEntityAsControllableCharacterOpcodeHandler },
                            // { FieldScriptOpCode.MakeEntityJump, MakeEntityJumpOpcodeHandler },
-                           // { FieldScriptOpCode.GetEntityPositionXYZI, GetEntityPositionXYZIOpcodeHandler },
+                           // { FieldScriptOpCode.GetEntityPosition, GetEntityPositionXYZIOpcodeHandler },
                            // { FieldScriptOpCode.ClimbLadder, ClimbLadderOpcodeHandler },
                            // { FieldScriptOpCode.TransposeObjectVisualizationOnly, TransposeObjectVisualizationOnlyOpcodeHandler },
                            // { FieldScriptOpCode.WaitForTranspose, WaitForTransposeOpcodeHandler },
@@ -562,6 +560,13 @@ namespace RPGFramework.Field
             int offset = ReadInt(ctx);
 
             ctx.InstructionPointer += offset;
+        }
+
+        private void GotoDirectlyOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            int offset = ReadInt(ctx);
+
+            ctx.InstructionPointer = offset;
         }
 
         private void CompareTwoByteValuesOpcodeHandler(ScriptExecutionContext ctx)
@@ -700,6 +705,15 @@ namespace RPGFramework.Field
         {
             bool isVisible = ReadBool(ctx);
             RequestSetEntityVisible?.Invoke(ctx.EntityId, isVisible);
+        }
+
+        private void SetEntityPositionOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            float x = ReadFloat(ctx);
+            float y = ReadFloat(ctx);
+            float z = ReadFloat(ctx);
+
+            RequestSetEntityPosition?.Invoke(ctx.EntityId, new Vector3(x, y, z));
         }
 
         private void SetInteractionRangeOpcodeHandler(ScriptExecutionContext ctx)

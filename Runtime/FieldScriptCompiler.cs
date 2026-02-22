@@ -27,6 +27,16 @@ namespace RPGFramework.Field
                     case "RETURN":
                         bw.Write((ushort)FieldScriptOpCode.Return);
                         break;
+                    
+                    case "GOTO":
+                        bw.Write((ushort)FieldScriptOpCode.Goto);
+                        bw.Write(int.Parse(parts[1]));
+                        break;
+                    
+                    case "GOTO_DIRECTLY":
+                        bw.Write((ushort)FieldScriptOpCode.GotoDirectly);
+                        bw.Write(int.Parse(parts[1]));
+                        break;
 
                     case "YIELD":
                         bw.Write((ushort)FieldScriptOpCode.Yield);
@@ -76,6 +86,13 @@ namespace RPGFramework.Field
 
                         bw.Write((ushort)FieldScriptOpCode.Visibility);
                         bw.Write(visibility);
+                        break;
+                    
+                    case "SET_ENTITY_POSITION":
+                        bw.Write((ushort)FieldScriptOpCode.SetEntityPosition);
+                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
+                        bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
+                        bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
                         break;
                     
                     case "SET_INTERACTION_RANGE":

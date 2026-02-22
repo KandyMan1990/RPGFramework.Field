@@ -7,8 +7,9 @@
         RunAnotherEntityScriptUnlessBusy,        // byte targetEntityId, byte targetScriptId
         RunAnotherEntityScriptWaitUntilStarted,  // byte targetEntityId, byte targetScriptId
         RunAnotherEntityScriptWaitUntilFinished, // byte targetEntityId, byte targetScriptId
-        ReturnToAnotherScript, // byte targetScriptId
-        Goto,                  // int offset
+        ReturnToAnotherScript,                   // byte targetScriptId
+        Goto,                                    // int offset
+        GotoDirectly,                            // int index
         CompareTwoByteValues,
         CompareTwoIntValues,
         Yield,       //
@@ -144,10 +145,8 @@
         InitAsCharacter,              //
         PlayAnimationLooping,
         PlayAnimationOnceAndWait,
-        Visibility, // bool isVisible
-        SetEntityLocationXYZI,
-        SetEntityLocationXYI,
-        SetEntityLocationXYZ,
+        Visibility,        // bool isVisible
+        SetEntityPosition, // float x, float y, float z
         MoveEntityToXYWalkAnimation,
         MoveEntityToXYNoAnimation,
         MoveEntityToAnotherEntity,
@@ -163,15 +162,13 @@
         RotateModel,
         SetDirectionToFaceEntity,
         GetEntityDirection,
-        GetEntityLocationXY,
-        GetEntityDirectionI,
         PlayAnimationStopOnLastFrameWait,
         PlayAnimationToDo,
         PlayAnimationToDoAgain,
         SetAnimationSpeed,
         SetEntityAsControllableCharacter,
         MakeEntityJump,
-        GetEntityPositionXYZI,
+        GetEntityPosition,
         ClimbLadder,
         TransposeObjectVisualizationOnly,
         WaitForTranspose,
