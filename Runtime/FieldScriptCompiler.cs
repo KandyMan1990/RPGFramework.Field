@@ -28,7 +28,7 @@ namespace RPGFramework.Field
                         bw.Write((ushort)FieldScriptOpCode.Return);
                         break;
                     
-                    case "GOTO":
+                    case "GOTO_JUMP":
                         bw.Write((ushort)FieldScriptOpCode.Goto);
                         bw.Write(int.Parse(parts[1]));
                         break;
@@ -90,6 +90,13 @@ namespace RPGFramework.Field
                     
                     case "SET_ENTITY_POSITION":
                         bw.Write((ushort)FieldScriptOpCode.SetEntityPosition);
+                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
+                        bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
+                        bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
+                        break;
+                    
+                    case "SET_ENTITY_ROTATION":
+                        bw.Write((ushort)FieldScriptOpCode.SetEntityRotation);
                         bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
                         bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
                         bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));

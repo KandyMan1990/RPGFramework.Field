@@ -19,6 +19,7 @@ namespace RPGFramework.Field
         internal event Action<int, float>         RequestSetInteractionRange;
         internal event Action<int, bool>          RequestInputLock;
         internal event Action<int, Vector3>       RequestSetEntityPosition;
+        internal event Action<int, Quaternion>       RequestSetEntityRotation;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -425,7 +426,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.PlayPartialAnimation, PlayPartialAnimationOpcodeHandler },
                            // { FieldScriptOpCode.PlayPartialAnimationAgain, PlayPartialAnimationAgainOpcodeHandler },
                            // { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
-                           // { FieldScriptOpCode.SetFacingDirection, SetFacingDirectionOpcodeHandler },
+                           { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
                            // { FieldScriptOpCode.RotateModel, RotateModelOpcodeHandler },
                            // { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
                            // { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
@@ -714,6 +715,15 @@ namespace RPGFramework.Field
             float z = ReadFloat(ctx);
 
             RequestSetEntityPosition?.Invoke(ctx.EntityId, new Vector3(x, y, z));
+        }
+
+        private void SetEntityRotationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            float x = ReadFloat(ctx);
+            float y = ReadFloat(ctx);
+            float z = ReadFloat(ctx);
+
+            RequestSetEntityRotation?.Invoke(ctx.EntityId, Quaternion.Euler(x, y, z));
         }
 
         private void SetInteractionRangeOpcodeHandler(ScriptExecutionContext ctx)

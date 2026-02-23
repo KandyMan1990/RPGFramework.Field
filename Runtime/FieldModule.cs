@@ -185,6 +185,7 @@ namespace RPGFramework.Field
             vm.RequestSetInteractionRange         += RequestSetInteractionRange;
             vm.RequestInputLock                   += RequestInputLock;
             vm.RequestSetEntityPosition           += RequestSetEntityPosition;
+            vm.RequestSetEntityRotation           += RequestSetEntityRotation;
 
             m_Camera = Object.FindFirstObjectByType<Camera>();
 
@@ -204,6 +205,7 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestSetEntityRotation           -= RequestSetEntityRotation;
             m_FieldContext.VM.RequestSetEntityPosition           -= RequestSetEntityPosition;
             m_FieldContext.VM.RequestInputLock                   -= RequestInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= RequestSetInteractionRange;
@@ -461,6 +463,11 @@ namespace RPGFramework.Field
         private void RequestSetEntityPosition(int entityId, Vector3 position)
         {
             m_EntityGameObjects[entityId].transform.position = position;
+        }
+
+        private void RequestSetEntityRotation(int entityId, Quaternion rotation)
+        {
+            m_EntityGameObjects[entityId].transform.rotation = rotation;
         }
     }
 }

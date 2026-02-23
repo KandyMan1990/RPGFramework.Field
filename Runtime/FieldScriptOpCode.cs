@@ -157,7 +157,7 @@
         PlayPartialAnimation,
         PlayPartialAnimationAgain,
         SetMovementSpeed,
-        SetFacingDirection, // instantaneously turns the entity to the direction specified
+        SetEntityRotation, // float x, float y, float z
         RotateModel, // Vector3 rotation, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), byte number of steps in rotation, byte rotationType (1 linear, 2 smooth)
         SetDirectionToFaceEntity,
         GetEntityDirection,
