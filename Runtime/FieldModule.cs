@@ -7,6 +7,7 @@ using RPGFramework.Core.Input;
 using RPGFramework.Core.PlayerLoop;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.DI;
+using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
 using RPGFramework.Menu.SharedTypes;
 using UnityEngine;
@@ -40,7 +41,8 @@ namespace RPGFramework.Field
         private IFieldModuleArgs m_FieldTransitionArgs;
         private bool             m_FieldTransitionRequested = false;
 
-        private IMovementDriver m_PlayerMovementDriver;
+        private IMovementDriver                  m_PlayerMovementDriver;
+        private Dictionary<int, IMovementDriver> m_EntityMovementDrivers;
 
         public FieldModule(ICoreModule        coreModule,
                            IDIResolver        diResolver,
@@ -133,6 +135,7 @@ namespace RPGFramework.Field
             m_EntityGameObjects         = new Dictionary<int, FieldEntity>(entitiesInGameObject.Length);
             m_EntityGatewayTriggers     = new Dictionary<int, FieldGatewayTrigger>();
             m_EntityInteractionTriggers = new Dictionary<int, FieldInteractionTrigger>();
+            m_EntityMovementDrivers     = new Dictionary<int, IMovementDriver>();
 
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
 
@@ -186,6 +189,7 @@ namespace RPGFramework.Field
             vm.RequestInputLock                   += RequestInputLock;
             vm.RequestSetEntityPosition           += RequestSetEntityPosition;
             vm.RequestSetEntityRotation           += RequestSetEntityRotation;
+            vm.RequestSetEntityRotationAsync      += RequestSetEntityRotationAsync;
 
             m_Camera = Object.FindFirstObjectByType<Camera>();
 
@@ -205,6 +209,7 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestSetEntityRotationAsync      -= RequestSetEntityRotationAsync;
             m_FieldContext.VM.RequestSetEntityRotation           -= RequestSetEntityRotation;
             m_FieldContext.VM.RequestSetEntityPosition           -= RequestSetEntityPosition;
             m_FieldContext.VM.RequestInputLock                   -= RequestInputLock;
@@ -462,12 +467,32 @@ namespace RPGFramework.Field
 
         private void RequestSetEntityPosition(int entityId, Vector3 position)
         {
+            // TODO: move to IMovementDriver
             m_EntityGameObjects[entityId].transform.position = position;
         }
 
         private void RequestSetEntityRotation(int entityId, Quaternion rotation)
         {
-            m_EntityGameObjects[entityId].transform.rotation = rotation;
+            if (!m_EntityMovementDrivers.TryGetValue(entityId, out IMovementDriver movementDriver))
+            {
+                FieldEntity entity = m_EntityGameObjects[entityId];
+                movementDriver = MovementDriverFactory.Create(entity.gameObject, 3f);
+                m_EntityMovementDrivers.Add(entityId, movementDriver);
+            }
+
+            movementDriver.SetRotation(rotation);
+        }
+
+        private Task RequestSetEntityRotationAsync(int entityId, SetEntityRotationAsyncArgs args)
+        {
+            if (!m_EntityMovementDrivers.TryGetValue(entityId, out IMovementDriver movementDriver))
+            {
+                FieldEntity entity = m_EntityGameObjects[entityId];
+                movementDriver = MovementDriverFactory.Create(entity.gameObject, 3f);
+                m_EntityMovementDrivers.Add(entityId, movementDriver);
+            }
+
+            return movementDriver.SetRotationAsync(args);
         }
     }
 }

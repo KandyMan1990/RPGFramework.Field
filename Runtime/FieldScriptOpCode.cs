@@ -149,7 +149,7 @@
         MoveEntityToXYWalkAnimation, // moves an entity using walk animation (if available) to x,y,z at speed set by SetMovementSpeed
         MoveEntityToXYNoAnimation, // as above but doesn't animate or rotate
         MoveEntityToAnotherEntity, // navigates to another entity stopping once it reaches its collision
-        TurnEntityToAnotherEntity, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), byte number of steps in rotation (calls RotateModel with smooth)
+        TurnEntityToAnotherEntity, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), byte number of steps in rotation (calls SetEntityRotationAsync with smooth)
         WaitForAnimation, // waits for the animation to complete that has been previously played using any of the animation opcodes.
         MoveFieldObject, // MoveEntityToXYNoAnimation but rotates
         PlayAnimationAsync,
@@ -158,7 +158,7 @@
         PlayPartialAnimationAgain,
         SetMovementSpeed,
         SetEntityRotation, // float x, float y, float z
-        RotateModel, // Vector3 rotation, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), byte number of steps in rotation, byte rotationType (1 linear, 2 smooth)
+        SetEntityRotationAsync, // float x, float y, float z, byte direction, float duration, byte rotationType (0 linear, 1 smooth)
         SetDirectionToFaceEntity,
         GetEntityDirection,
         PlayAnimationStopOnLastFrameWait,

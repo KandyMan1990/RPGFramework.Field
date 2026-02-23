@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
 using UnityEngine;
 
@@ -9,17 +10,18 @@ namespace RPGFramework.Field
 {
     internal sealed class FieldVM
     {
-        internal event Action<IFieldModuleArgs>   RequestFieldTransition;
-        internal event Action<int>                RequestMusic;
-        internal event Action<int>                RequestSfx;
-        internal event Action<FieldEntityRuntime> RequestSetPlayerEntity;
-        internal event Action<int, bool>          RequestSetEntityVisible;
-        internal event Action<bool>               RequestSetGatewayTriggersActive;
-        internal event Action<int, bool>          RequestSetInteractionTriggerActive;
-        internal event Action<int, float>         RequestSetInteractionRange;
-        internal event Action<int, bool>          RequestInputLock;
-        internal event Action<int, Vector3>       RequestSetEntityPosition;
-        internal event Action<int, Quaternion>       RequestSetEntityRotation;
+        internal event Action<IFieldModuleArgs>                    RequestFieldTransition;
+        internal event Action<int>                                 RequestMusic;
+        internal event Action<int>                                 RequestSfx;
+        internal event Action<FieldEntityRuntime>                  RequestSetPlayerEntity;
+        internal event Action<int, bool>                           RequestSetEntityVisible;
+        internal event Action<bool>                                RequestSetGatewayTriggersActive;
+        internal event Action<int, bool>                           RequestSetInteractionTriggerActive;
+        internal event Action<int, float>                          RequestSetInteractionRange;
+        internal event Action<int, bool>                           RequestInputLock;
+        internal event Action<int, Vector3>                        RequestSetEntityPosition;
+        internal event Action<int, Quaternion>                     RequestSetEntityRotation;
+        internal event Func<int, SetEntityRotationAsyncArgs, Task> RequestSetEntityRotationAsync;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -427,7 +429,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.PlayPartialAnimationAgain, PlayPartialAnimationAgainOpcodeHandler },
                            // { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
                            { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
-                           // { FieldScriptOpCode.RotateModel, RotateModelOpcodeHandler },
+                           { FieldScriptOpCode.SetEntityRotationAsync, SetEntityRotationAsyncOpcodeHandler },
                            // { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
                            // { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
@@ -710,20 +712,31 @@ namespace RPGFramework.Field
 
         private void SetEntityPositionOpcodeHandler(ScriptExecutionContext ctx)
         {
-            float x = ReadFloat(ctx);
-            float y = ReadFloat(ctx);
-            float z = ReadFloat(ctx);
+            Vector3 position = new Vector3(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
 
-            RequestSetEntityPosition?.Invoke(ctx.EntityId, new Vector3(x, y, z));
+            RequestSetEntityPosition?.Invoke(ctx.EntityId, position);
         }
 
         private void SetEntityRotationOpcodeHandler(ScriptExecutionContext ctx)
         {
-            float x = ReadFloat(ctx);
-            float y = ReadFloat(ctx);
-            float z = ReadFloat(ctx);
+            Quaternion rotation = Quaternion.Euler(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
 
-            RequestSetEntityRotation?.Invoke(ctx.EntityId, Quaternion.Euler(x, y, z));
+            RequestSetEntityRotation?.Invoke(ctx.EntityId, rotation);
+        }
+
+        private void SetEntityRotationAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            Quaternion            rotation     = Quaternion.Euler(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
+            RotationDirection     direction    = Enum.Parse<RotationDirection>(ReadByte(ctx).ToString());
+            float                 duration     = ReadFloat(ctx);
+            RotationInterpolation rotationType = Enum.Parse<RotationInterpolation>(ReadByte(ctx).ToString());
+
+            SetEntityRotationAsyncArgs args = new SetEntityRotationAsyncArgs(rotation, direction, duration, rotationType);
+
+            if (RequestSetEntityRotationAsync != null)
+            {
+                ctx.Block(RequestSetEntityRotationAsync(ctx.EntityId, args));
+            }
         }
 
         private void SetInteractionRangeOpcodeHandler(ScriptExecutionContext ctx)

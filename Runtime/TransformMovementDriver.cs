@@ -1,11 +1,16 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using RPGFramework.Field.FieldVmArgs;
+using RPGFramework.Field.Utils;
+using Unity.Mathematics;
+using UnityEngine;
 
 namespace RPGFramework.Field
 {
     public sealed class TransformMovementDriver : MonoBehaviour, IMovementDriver
     {
-        private Transform m_Transform;
-        private float     m_Speed;
+        private Transform       m_Transform;
+        private float           m_Speed;
+        private IMovementDriver m_This;
 
         private Vector3 m_MoveInput;
 
@@ -13,14 +18,15 @@ namespace RPGFramework.Field
         {
             m_Transform = entityTransform;
             m_Speed     = speed;
+            m_This      = this;
         }
 
-        public void SetMoveInput(Vector3 worldMove)
+        void IMovementDriver.SetMoveInput(Vector3 worldMove)
         {
             m_MoveInput = worldMove;
         }
 
-        public void Tick(float deltaTime)
+        void IMovementDriver.Tick(float deltaTime)
         {
             if (m_MoveInput.sqrMagnitude < 0.0001f)
             {
@@ -33,9 +39,36 @@ namespace RPGFramework.Field
             m_Transform.forward  =  direction;
         }
 
+        void IMovementDriver.SetRotation(Quaternion rotation)
+        {
+            transform.rotation = rotation;
+        }
+
+        async Task IMovementDriver.SetRotationAsync(SetEntityRotationAsyncArgs args)
+        {
+            Quaternion start  = m_Transform.rotation;
+            Quaternion target = RotationUtility.AdjustDirection(start, args.Rotation, args.RotationDirection);
+
+            float elapsed = 0f;
+
+            while (elapsed < args.Duration)
+            {
+                elapsed += Time.deltaTime;
+
+                float t = math.clamp(elapsed / args.Duration, 0f, 1f);
+                t = RotationUtility.ApplyInterpolation(t, args.RotationType);
+
+                m_Transform.rotation = Quaternion.Slerp(start, target, t);
+
+                await Awaitable.NextFrameAsync();
+            }
+
+            m_Transform.rotation = target;
+        }
+
         private void Update()
         {
-            Tick(Time.deltaTime);
+            m_This.Tick(Time.deltaTime);
         }
     }
 }

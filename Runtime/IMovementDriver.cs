@@ -1,10 +1,14 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using RPGFramework.Field.FieldVmArgs;
+using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    public interface IMovementDriver
+    internal interface IMovementDriver
     {
-        void SetMoveInput(Vector3 worldMove);
-        void Tick(float           deltaTime);
+        void SetMoveInput(Vector3                        worldMove);
+        void Tick(float                                  deltaTime);
+        void SetRotation(Quaternion                      rotation);
+        Task SetRotationAsync(SetEntityRotationAsyncArgs args);
     }
 }

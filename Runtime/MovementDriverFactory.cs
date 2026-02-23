@@ -3,9 +3,9 @@ using UnityEngine.Tilemaps;
 
 namespace RPGFramework.Field
 {
-    public static class MovementDriverFactory
+    internal static class MovementDriverFactory
     {
-        public static IMovementDriver Create(GameObject gameObject, float speed)
+        internal static IMovementDriver Create(GameObject gameObject, float speed)
         {
             if (gameObject.TryGetComponent(out Rigidbody rb))
             {
