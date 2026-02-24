@@ -111,6 +111,11 @@ namespace RPGFramework.Field
                         bw.Write(float.Parse(parts[5], CultureInfo.InvariantCulture));
                         bw.Write(byte.Parse(parts[6], CultureInfo.InvariantCulture));
                         break;
+                    
+                    case "SET_DIRECTION_TO_FACE_ENTITY":
+                        bw.Write((ushort)FieldScriptOpCode.SetDirectionToFaceEntity);
+                        bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
+                        break;
 
                     case "SET_INTERACTION_RANGE":
                         float interactionTriggerSize = float.Parse(parts[1], CultureInfo.InvariantCulture);

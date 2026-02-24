@@ -158,8 +158,8 @@
         PlayPartialAnimationAgain,
         SetMovementSpeed,
         SetEntityRotation, // float x, float y, float z
-        SetEntityRotationAsync, // float x, float y, float z, byte direction, float duration, byte rotationType (0 linear, 1 smooth)
-        SetDirectionToFaceEntity,
+        SetEntityRotationAsync, // float x, float y, float z, byte direction (0 clockwise, 1 counterclockwise, 2 closest), float duration, byte rotationType (0 linear, 1 smooth)
+        SetDirectionToFaceEntity, // byte targetEntityId
         GetEntityDirection,
         PlayAnimationStopOnLastFrameWait,
         PlayAnimationToDo,

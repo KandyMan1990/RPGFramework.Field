@@ -190,6 +190,7 @@ namespace RPGFramework.Field
             vm.RequestSetEntityPosition           += RequestSetEntityPosition;
             vm.RequestSetEntityRotation           += RequestSetEntityRotation;
             vm.RequestSetEntityRotationAsync      += RequestSetEntityRotationAsync;
+            vm.RequestSetEntityToFaceEntity       += RequestSetEntityToFaceEntity;
 
             m_Camera = Object.FindFirstObjectByType<Camera>();
 
@@ -209,6 +210,7 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestSetEntityToFaceEntity       -= RequestSetEntityToFaceEntity;
             m_FieldContext.VM.RequestSetEntityRotationAsync      -= RequestSetEntityRotationAsync;
             m_FieldContext.VM.RequestSetEntityRotation           -= RequestSetEntityRotation;
             m_FieldContext.VM.RequestSetEntityPosition           -= RequestSetEntityPosition;
@@ -493,6 +495,21 @@ namespace RPGFramework.Field
             }
 
             return movementDriver.SetRotationAsync(args);
+        }
+
+        private void RequestSetEntityToFaceEntity(int entityId, int targetEntityId)
+        {
+            Vector3 direction = m_EntityGameObjects[targetEntityId].transform.position - m_EntityGameObjects[entityId].transform.position;
+            direction = Vector3.ProjectOnPlane(direction, m_FieldModuleMonoBehaviour.Up);
+
+            if (direction.sqrMagnitude < 0.0001f)
+            {
+                return;
+            }
+
+            Quaternion rotation = Quaternion.LookRotation(direction, m_FieldModuleMonoBehaviour.Up);
+
+            RequestSetEntityRotation(entityId, rotation);
         }
     }
 }

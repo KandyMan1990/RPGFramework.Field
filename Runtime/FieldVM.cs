@@ -22,6 +22,7 @@ namespace RPGFramework.Field
         internal event Action<int, Vector3>                        RequestSetEntityPosition;
         internal event Action<int, Quaternion>                     RequestSetEntityRotation;
         internal event Func<int, SetEntityRotationAsyncArgs, Task> RequestSetEntityRotationAsync;
+        internal event Action<int, int>                            RequestSetEntityToFaceEntity;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -430,7 +431,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
                            { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
                            { FieldScriptOpCode.SetEntityRotationAsync, SetEntityRotationAsyncOpcodeHandler },
-                           // { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
+                           { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
                            // { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
                            // { FieldScriptOpCode.PlayAnimationToDo, PlayAnimationToDoOpcodeHandler },
@@ -737,6 +738,13 @@ namespace RPGFramework.Field
             {
                 ctx.Block(RequestSetEntityRotationAsync(ctx.EntityId, args));
             }
+        }
+
+        private void SetDirectionToFaceEntityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            byte targetEntityId = ReadByte(ctx);
+            
+            RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, targetEntityId);
         }
 
         private void SetInteractionRangeOpcodeHandler(ScriptExecutionContext ctx)
