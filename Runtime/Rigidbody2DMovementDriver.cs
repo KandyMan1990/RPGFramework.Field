@@ -37,6 +37,11 @@ namespace RPGFramework.Field
             m_Rigidbody.MovePosition(m_Rigidbody.position + velocity * deltaTime);
         }
 
+        void IMovementDriver.SetPosition(Vector3 position)
+        {
+            m_Rigidbody.MovePosition(position);
+        }
+
         void IMovementDriver.SetRotation(Quaternion rotation)
         {
             m_Rigidbody.MoveRotation(rotation);

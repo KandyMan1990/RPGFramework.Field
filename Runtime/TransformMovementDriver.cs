@@ -39,6 +39,11 @@ namespace RPGFramework.Field
             m_Transform.forward  =  direction;
         }
 
+        void IMovementDriver.SetPosition(Vector3 position)
+        {
+            m_Transform.position = position;
+        }
+
         void IMovementDriver.SetRotation(Quaternion rotation)
         {
             transform.rotation = rotation;

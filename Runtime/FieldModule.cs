@@ -469,8 +469,14 @@ namespace RPGFramework.Field
 
         private void RequestSetEntityPosition(int entityId, Vector3 position)
         {
-            // TODO: move to IMovementDriver
-            m_EntityGameObjects[entityId].transform.position = position;
+            if (!m_EntityMovementDrivers.TryGetValue(entityId, out IMovementDriver movementDriver))
+            {
+                FieldEntity entity = m_EntityGameObjects[entityId];
+                movementDriver = MovementDriverFactory.Create(entity.gameObject, 3f);
+                m_EntityMovementDrivers.Add(entityId, movementDriver);
+            }
+
+            movementDriver.SetPosition(position);
         }
 
         private void RequestSetEntityRotation(int entityId, Quaternion rotation)
