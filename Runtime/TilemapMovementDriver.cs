@@ -10,15 +10,17 @@ namespace RPGFramework.Field
     {
         private Transform       m_Transform;
         private Tilemap         m_Tilemap;
+        private float           m_Speed;
         private IMovementDriver m_This;
 
         private Vector3 m_Target;
         private bool    m_Moving;
 
-        public void Init(Transform entityTransform, Tilemap tilemap)
+        public void Init(Transform entityTransform, Tilemap tilemap, float speed)
         {
             m_Transform = entityTransform;
             m_Tilemap   = tilemap;
+            m_Speed     = speed;
             m_This      = this;
         }
 
@@ -49,6 +51,11 @@ namespace RPGFramework.Field
             m_Moving = true;
         }
 
+        void IMovementDriver.SetMoveSpeed(float speed)
+        {
+            m_Speed = speed;
+        }
+
         void IMovementDriver.Tick(float deltaTime)
         {
             if (!m_Moving)
@@ -56,8 +63,13 @@ namespace RPGFramework.Field
                 return;
             }
 
-            m_Transform.position = Vector3.MoveTowards(m_Transform.position, m_Target, 6f * deltaTime);
-            m_Transform.forward  = (m_Target - m_Transform.position).normalized;
+            m_Transform.position = Vector3.MoveTowards(m_Transform.position, m_Target, m_Speed * deltaTime);
+
+            Vector3 dir = m_Target - m_Transform.position;
+            if (dir.sqrMagnitude > 0.0001f)
+            {
+                m_Transform.forward = dir.normalized;
+            }
 
             if (Vector3.Distance(m_Transform.position, m_Target) < 0.001f)
             {
@@ -104,6 +116,13 @@ namespace RPGFramework.Field
 
         private static Vector3Int Quantize(Vector3 move)
         {
+            if (move.sqrMagnitude < 0.0001f)
+            {
+                return Vector3Int.zero;
+            }
+
+            move.Normalize();
+
             if (Mathf.Abs(move.x) > Mathf.Abs(move.z))
             {
                 return move.x > 0 ? Vector3Int.right : Vector3Int.left;

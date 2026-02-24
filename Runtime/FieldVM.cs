@@ -23,6 +23,7 @@ namespace RPGFramework.Field
         internal event Action<int, Quaternion>                     RequestSetEntityRotation;
         internal event Func<int, SetEntityRotationAsyncArgs, Task> RequestSetEntityRotationAsync;
         internal event Action<int, int>                            RequestSetEntityToFaceEntity;
+        internal event Action<int, float>                          RequestSetEntityMovementSpeed;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -428,7 +429,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.PlayAnimationOnceAsync, PlayAnimationOnceAsyncOpcodeHandler },
                            // { FieldScriptOpCode.PlayPartialAnimation, PlayPartialAnimationOpcodeHandler },
                            // { FieldScriptOpCode.PlayPartialAnimationAgain, PlayPartialAnimationAgainOpcodeHandler },
-                           // { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
+                           { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
                            { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
                            { FieldScriptOpCode.SetEntityRotationAsync, SetEntityRotationAsyncOpcodeHandler },
                            { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
@@ -716,6 +717,13 @@ namespace RPGFramework.Field
             Vector3 position = new Vector3(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
 
             RequestSetEntityPosition?.Invoke(ctx.EntityId, position);
+        }
+
+        private void SetMovementSpeedOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            float movementSpeed = ReadFloat(ctx);
+            
+            RequestSetEntityMovementSpeed?.Invoke(ctx.EntityId, movementSpeed);
         }
 
         private void SetEntityRotationOpcodeHandler(ScriptExecutionContext ctx)

@@ -94,6 +94,11 @@ namespace RPGFramework.Field
                         bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
                         bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
                         break;
+                    
+                    case "SET_MOVEMENT_SPEED":
+                        bw.Write((ushort)FieldScriptOpCode.SetMovementSpeed);
+                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
+                        break;
 
                     case "SET_ENTITY_ROTATION":
                         bw.Write((ushort)FieldScriptOpCode.SetEntityRotation);

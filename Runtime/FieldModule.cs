@@ -191,6 +191,7 @@ namespace RPGFramework.Field
             vm.RequestSetEntityRotation           += RequestSetEntityRotation;
             vm.RequestSetEntityRotationAsync      += RequestSetEntityRotationAsync;
             vm.RequestSetEntityToFaceEntity       += RequestSetEntityToFaceEntity;
+            vm.RequestSetEntityMovementSpeed      += RequestSetEntityMovementSpeed;
 
             m_Camera = Object.FindFirstObjectByType<Camera>();
 
@@ -210,6 +211,7 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestSetEntityMovementSpeed      -= RequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= RequestSetEntityToFaceEntity;
             m_FieldContext.VM.RequestSetEntityRotationAsync      -= RequestSetEntityRotationAsync;
             m_FieldContext.VM.RequestSetEntityRotation           -= RequestSetEntityRotation;
@@ -516,6 +518,18 @@ namespace RPGFramework.Field
             Quaternion rotation = Quaternion.LookRotation(direction, m_FieldModuleMonoBehaviour.Up);
 
             RequestSetEntityRotation(entityId, rotation);
+        }
+
+        private void RequestSetEntityMovementSpeed(int entityId, float movementSpeed)
+        {
+            if (!m_EntityMovementDrivers.TryGetValue(entityId, out IMovementDriver movementDriver))
+            {
+                FieldEntity entity = m_EntityGameObjects[entityId];
+                movementDriver = MovementDriverFactory.Create(entity.gameObject, 3f);
+                m_EntityMovementDrivers.Add(entityId, movementDriver);
+            }
+
+            movementDriver.SetMoveSpeed(movementSpeed);
         }
     }
 }

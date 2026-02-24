@@ -27,7 +27,7 @@ namespace RPGFramework.Field
             if (tilemap != null)
             {
                 TilemapMovementDriver driver = gameObject.AddComponent<TilemapMovementDriver>();
-                driver.Init(gameObject.transform, tilemap);
+                driver.Init(gameObject.transform, tilemap, speed);
 
                 return driver;
             }

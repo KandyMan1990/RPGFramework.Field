@@ -26,6 +26,11 @@ namespace RPGFramework.Field
             m_MoveInput = worldMove;
         }
 
+        void IMovementDriver.SetMoveSpeed(float speed)
+        {
+            m_Speed = speed;
+        }
+
         void IMovementDriver.Tick(float deltaTime)
         {
             if (m_MoveInput.sqrMagnitude < 0.0001f)
