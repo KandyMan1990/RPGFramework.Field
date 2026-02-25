@@ -8,7 +8,7 @@
         RunAnotherEntityScriptWaitUntilStarted,  // byte targetEntityId, byte targetScriptId
         RunAnotherEntityScriptWaitUntilFinished, // byte targetEntityId, byte targetScriptId
         ReturnToAnotherScript,                   // byte targetScriptId
-        Goto,                                    // int offset
+        GotoJump,                                // int offset
         GotoDirectly,                            // int index
         CompareTwoByteValues,
         CompareTwoIntValues,
@@ -90,7 +90,7 @@
         SetMapNameInMenu,
         AskPlayerToMakeAChoice,
         MenuOperations,
-        MainMenuAccessibility,
+        MainMenuAccessibility, // bool enabled
         CreateWindow,
         SetWindowPosition,
         SetWindowModes,

@@ -29,7 +29,7 @@ namespace RPGFramework.Field
                         break;
 
                     case "GOTO_JUMP":
-                        bw.Write((ushort)FieldScriptOpCode.Goto);
+                        bw.Write((ushort)FieldScriptOpCode.GotoJump);
                         bw.Write(int.Parse(parts[1]));
                         break;
 
@@ -47,13 +47,6 @@ namespace RPGFramework.Field
                         bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
-                    case "LOCK_INPUT":
-                        bool lockInput = bool.Parse(parts[1]);
-
-                        bw.Write((ushort)FieldScriptOpCode.LockInput);
-                        bw.Write(lockInput);
-                        break;
-
                     case "JUMP_TO_MAP":
                         byte[] fieldIdBytes = FieldProvider.ToBytes(parts[1]);
                         int    spawnId      = int.Parse(parts[2], CultureInfo.InvariantCulture);
@@ -68,6 +61,18 @@ namespace RPGFramework.Field
 
                         bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
                         bw.Write(gatewayTriggerActivation);
+                        break;
+
+                    case "MAIN_MENU_ACCESSIBILITY":
+                        bw.Write((ushort)FieldScriptOpCode.MainMenuAccessibility);
+                        bw.Write(bool.Parse(parts[1]));
+                        break;
+
+                    case "LOCK_INPUT":
+                        bool lockInput = bool.Parse(parts[1]);
+
+                        bw.Write((ushort)FieldScriptOpCode.LockInput);
+                        bw.Write(lockInput);
                         break;
 
                     case "INTERACTION_TRIGGER_ACTIVATION":
@@ -94,7 +99,7 @@ namespace RPGFramework.Field
                         bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
                         bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
                         break;
-                    
+
                     case "SET_MOVEMENT_SPEED":
                         bw.Write((ushort)FieldScriptOpCode.SetMovementSpeed);
                         bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
@@ -116,7 +121,7 @@ namespace RPGFramework.Field
                         bw.Write(float.Parse(parts[5], CultureInfo.InvariantCulture));
                         bw.Write(byte.Parse(parts[6], CultureInfo.InvariantCulture));
                         break;
-                    
+
                     case "SET_DIRECTION_TO_FACE_ENTITY":
                         bw.Write((ushort)FieldScriptOpCode.SetDirectionToFaceEntity);
                         bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));

@@ -24,6 +24,7 @@ namespace RPGFramework.Field
         internal event Func<int, SetEntityRotationAsyncArgs, Task> RequestSetEntityRotationAsync;
         internal event Action<int, int>                            RequestSetEntityToFaceEntity;
         internal event Action<int, float>                          RequestSetEntityMovementSpeed;
+        internal event Action<bool>                                RequestSetMainMenuAccessibility;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -280,7 +281,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilStarted, RunPartyMemberScriptWaitUntilStartedOpcodeHandler },
                            // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilFinished, RunPartyMemberScriptWaitUntilFinishedOpcodeHandler },
                            { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
-                           { FieldScriptOpCode.Goto, GotoOpcodeHandler },
+                           { FieldScriptOpCode.GotoJump, GotoOpcodeHandler },
                            { FieldScriptOpCode.GotoDirectly, GotoDirectlyOpcodeHandler },
                            { FieldScriptOpCode.CompareTwoByteValues, CompareTwoByteValuesOpcodeHandler },
                            { FieldScriptOpCode.CompareTwoIntValues, CompareTwoIntValuesOpcodeHandler },
@@ -362,7 +363,7 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
                            // { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
                            // { FieldScriptOpCode.MenuOperations, MenuOperationsOpcodeHandler },
-                           // { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
+                           { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
                            // { FieldScriptOpCode.CreateWindow, CreateWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowPosition, SetWindowPositionOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowModes, SetWindowModesOpcodeHandler },
@@ -536,6 +537,7 @@ namespace RPGFramework.Field
             byte targetScriptId = ReadByte(ctx);
 
             m_Entities[targetEntityId].RequestScript(targetScriptId);
+
             ctx.Block(WaitForScriptStartAsync(targetEntityId, targetScriptId));
         }
 
@@ -552,8 +554,7 @@ namespace RPGFramework.Field
         private void ReturnToAnotherScriptOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte targetScriptId = ReadByte(ctx);
-
-            int entityId = ctx.EntityId;
+            int  entityId       = ctx.EntityId;
 
             ClearEntityContexts(entityId);
 
@@ -563,14 +564,12 @@ namespace RPGFramework.Field
         private void GotoOpcodeHandler(ScriptExecutionContext ctx)
         {
             int offset = ReadInt(ctx);
-
             ctx.InstructionPointer += offset;
         }
 
         private void GotoDirectlyOpcodeHandler(ScriptExecutionContext ctx)
         {
             int offset = ReadInt(ctx);
-
             ctx.InstructionPointer = offset;
         }
 
@@ -672,6 +671,12 @@ namespace RPGFramework.Field
             // noop
         }
 
+        private void MainMenuAccessibilityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            bool enabled = ReadBool(ctx);
+            RequestSetMainMenuAccessibility?.Invoke(enabled);
+        }
+
         private void LockInputOpcodeHandler(ScriptExecutionContext ctx)
         {
             bool inputLocked = ReadBool(ctx);
@@ -715,21 +720,18 @@ namespace RPGFramework.Field
         private void SetEntityPositionOpcodeHandler(ScriptExecutionContext ctx)
         {
             Vector3 position = new Vector3(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
-
             RequestSetEntityPosition?.Invoke(ctx.EntityId, position);
         }
 
         private void SetMovementSpeedOpcodeHandler(ScriptExecutionContext ctx)
         {
             float movementSpeed = ReadFloat(ctx);
-            
             RequestSetEntityMovementSpeed?.Invoke(ctx.EntityId, movementSpeed);
         }
 
         private void SetEntityRotationOpcodeHandler(ScriptExecutionContext ctx)
         {
             Quaternion rotation = Quaternion.Euler(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
-
             RequestSetEntityRotation?.Invoke(ctx.EntityId, rotation);
         }
 
@@ -751,7 +753,6 @@ namespace RPGFramework.Field
         private void SetDirectionToFaceEntityOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte targetEntityId = ReadByte(ctx);
-            
             RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, targetEntityId);
         }
 

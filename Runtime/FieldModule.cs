@@ -44,6 +44,8 @@ namespace RPGFramework.Field
         private IMovementDriver                  m_PlayerMovementDriver;
         private Dictionary<int, IMovementDriver> m_EntityMovementDrivers;
 
+        private bool m_MainMenuAccessible;
+
         public FieldModule(ICoreModule        coreModule,
                            IDIResolver        diResolver,
                            IInputRouter       inputRouter,
@@ -192,10 +194,13 @@ namespace RPGFramework.Field
             vm.RequestSetEntityRotationAsync      += RequestSetEntityRotationAsync;
             vm.RequestSetEntityToFaceEntity       += RequestSetEntityToFaceEntity;
             vm.RequestSetEntityMovementSpeed      += RequestSetEntityMovementSpeed;
+            vm.RequestSetMainMenuAccessibility    += RequestSetMainMenuAccessibility;
 
             m_Camera = Object.FindFirstObjectByType<Camera>();
 
             UpdateManager.RegisterUpdatable(this);
+
+            m_MainMenuAccessible = true;
 
             m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
             m_InputRouter.Push(m_CurrentInputContext);
@@ -211,6 +216,7 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestSetMainMenuAccessibility    -= RequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= RequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= RequestSetEntityToFaceEntity;
             m_FieldContext.VM.RequestSetEntityRotationAsync      -= RequestSetEntityRotationAsync;
@@ -404,8 +410,14 @@ namespace RPGFramework.Field
             return best;
         }
 
+        // TODO: when we have the main menu/party menu, it should load that instead
         private void OpenConfigMenu()
         {
+            if (!m_MainMenuAccessible)
+            {
+                return;
+            }
+
             Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
             IMenuModuleArgs args = new MenuModuleArgs(type);
 
@@ -530,6 +542,11 @@ namespace RPGFramework.Field
             }
 
             movementDriver.SetMoveSpeed(movementSpeed);
+        }
+
+        private void RequestSetMainMenuAccessibility(bool enabled)
+        {
+            m_MainMenuAccessible = enabled;
         }
     }
 }
