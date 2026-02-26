@@ -48,12 +48,21 @@ namespace RPGFramework.Field
                         break;
 
                     case "JUMP_TO_MAP":
-                        byte[] fieldIdBytes = FieldProvider.ToBytes(parts[1]);
-                        int    spawnId      = int.Parse(parts[2], CultureInfo.InvariantCulture);
+                        byte[] fieldIdBytes  = FieldProvider.ToBytes(parts[1]);
+                        int    spawnId       = int.Parse(parts[2], CultureInfo.InvariantCulture);
+                        int    locSheetCount = parts.Length - 3;
 
                         bw.Write((ushort)FieldScriptOpCode.JumpToAnotherMap);
                         bw.Write(fieldIdBytes);
                         bw.Write(spawnId);
+                        bw.Write(locSheetCount);
+
+                        for (int i = 3; i < parts.Length; i++)
+                        {
+                            byte[] locSheetBytes = FieldProvider.ToBytes(parts[i]);
+                            bw.Write(locSheetBytes);
+                        }
+
                         break;
 
                     case "GATEWAY_TRIGGER_ACTIVATION":

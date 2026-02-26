@@ -9,6 +9,7 @@ using RPGFramework.Core.SharedTypes;
 using RPGFramework.DI;
 using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
+using RPGFramework.Localisation;
 using RPGFramework.Menu.SharedTypes;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -17,14 +18,16 @@ namespace RPGFramework.Field
 {
     public class FieldModule : IFieldModule, IUpdatable
     {
-        private readonly ICoreModule        m_CoreModule;
-        private readonly IDIResolver        m_DIResolver;
-        private readonly IInputRouter       m_InputRouter;
-        private readonly IMenuTypeProvider  m_MenuTypeProvider;
-        private readonly IMusicPlayer       m_MusicPlayer;
-        private readonly ISfxPlayer         m_SfxPlayer;
-        private readonly IFieldRegistry     m_FieldRegistry;
-        private readonly IFieldPresentation m_FieldPresentation;
+        private readonly ICoreModule          m_CoreModule;
+        private readonly IDIResolver          m_DIResolver;
+        private readonly IInputRouter         m_InputRouter;
+        private readonly IMenuTypeProvider    m_MenuTypeProvider;
+        private readonly IMusicPlayer         m_MusicPlayer;
+        private readonly ISfxPlayer           m_SfxPlayer;
+        private readonly IFieldRegistry       m_FieldRegistry;
+        private readonly IFieldPresentation   m_FieldPresentation;
+        private readonly ILocalisationService m_LocalisationService;
+        private readonly IFieldModule         m_This;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
@@ -39,6 +42,7 @@ namespace RPGFramework.Field
         private HashSet<int>                             m_ActiveInteractionTriggerIds;
 
         private IFieldModuleArgs m_FieldTransitionArgs;
+        private IFieldModuleArgs m_PreviousFieldTransitionArgs;
         private bool             m_FieldTransitionRequested = false;
 
         private IMovementDriver                  m_PlayerMovementDriver;
@@ -46,23 +50,26 @@ namespace RPGFramework.Field
 
         private bool m_MainMenuAccessible;
 
-        public FieldModule(ICoreModule        coreModule,
-                           IDIResolver        diResolver,
-                           IInputRouter       inputRouter,
-                           IMenuTypeProvider  menuTypeProvider,
-                           IMusicPlayer       musicPlayer,
-                           ISfxPlayer         sfxPlayer,
-                           IFieldRegistry     fieldRegistry,
-                           IFieldPresentation fieldPresentation)
+        public FieldModule(ICoreModule          coreModule,
+                           IDIResolver          diResolver,
+                           IInputRouter         inputRouter,
+                           IMenuTypeProvider    menuTypeProvider,
+                           IMusicPlayer         musicPlayer,
+                           ISfxPlayer           sfxPlayer,
+                           IFieldRegistry       fieldRegistry,
+                           IFieldPresentation   fieldPresentation,
+                           ILocalisationService localisationService)
         {
-            m_CoreModule        = coreModule;
-            m_DIResolver        = diResolver;
-            m_InputRouter       = inputRouter;
-            m_MenuTypeProvider  = menuTypeProvider;
-            m_MusicPlayer       = musicPlayer;
-            m_SfxPlayer         = sfxPlayer;
-            m_FieldRegistry     = fieldRegistry;
-            m_FieldPresentation = fieldPresentation;
+            m_CoreModule          = coreModule;
+            m_DIResolver          = diResolver;
+            m_InputRouter         = inputRouter;
+            m_MenuTypeProvider    = menuTypeProvider;
+            m_MusicPlayer         = musicPlayer;
+            m_SfxPlayer           = sfxPlayer;
+            m_FieldRegistry       = fieldRegistry;
+            m_FieldPresentation   = fieldPresentation;
+            m_LocalisationService = localisationService;
+            m_This                = this;
         }
 
         async Task IModule.OnEnterAsync(IModuleArgs args)
@@ -72,13 +79,15 @@ namespace RPGFramework.Field
 
             m_FieldModuleMonoBehaviour = Object.FindFirstObjectByType<FieldModuleMonoBehaviour>();
 
-            IFieldModuleArgs fieldArgs = (IFieldModuleArgs)args;
+            m_FieldTransitionArgs = (IFieldModuleArgs)args;
 
-            await LoadNewFieldAsync(fieldArgs);
+            await LoadNewFieldAsync();
         }
 
         async Task IModule.OnExitAsync()
         {
+            m_PreviousFieldTransitionArgs = m_FieldTransitionArgs;
+
             await UnloadCurrentFieldAsync();
 
             m_InputRouter.Clear();
@@ -109,8 +118,9 @@ namespace RPGFramework.Field
 
         private void SetFieldModuleArgs(IFieldModuleArgs args)
         {
-            m_FieldTransitionArgs      = args;
-            m_FieldTransitionRequested = true;
+            m_PreviousFieldTransitionArgs = m_FieldTransitionArgs;
+            m_FieldTransitionArgs         = args;
+            m_FieldTransitionRequested    = true;
         }
 
         private async Task TriggerFieldTransitionAsync()
@@ -118,17 +128,19 @@ namespace RPGFramework.Field
             m_FieldTransitionRequested = false;
 
             await UnloadCurrentFieldAsync();
-            await LoadNewFieldAsync(m_FieldTransitionArgs);
+            await LoadNewFieldAsync();
         }
 
-        private async Task LoadNewFieldAsync(IFieldModuleArgs args)
+        private async Task LoadNewFieldAsync()
         {
-            FieldDefinition fieldDefinition = m_FieldRegistry.LoadField(args.GetFieldId);
+            FieldDefinition fieldDefinition = m_FieldRegistry.LoadField(m_FieldTransitionArgs.GetFieldId);
+
+            await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldTransitionArgs.LocalisationSheetsToLoad);
 
             GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(fieldDefinition);
             SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
 
-            m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == args.GetSpawnId);
+            m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == m_FieldTransitionArgs.GetSpawnId);
 
             FieldVM vm = new FieldVM();
 
@@ -249,6 +261,8 @@ namespace RPGFramework.Field
             m_FieldContext = null;
 
             m_FieldPresentation.Unload();
+
+            m_LocalisationService.UnloadLocalisationData(m_PreviousFieldTransitionArgs.LocalisationSheetsToLoad);
 
             return Task.CompletedTask;
         }
@@ -418,10 +432,9 @@ namespace RPGFramework.Field
                 return;
             }
 
-            Type            type = m_MenuTypeProvider.GetType(MenuType.Config);
-            IMenuModuleArgs args = new MenuModuleArgs(type);
+            byte type = (byte)MenuType.Config;
 
-            m_CoreModule.LoadModuleAsync<IMenuModule>(args).FireAndForget();
+            m_This.LoadMenuModuleAsync(type).FireAndForget();
         }
 
         private void OnMove(Vector2 move)

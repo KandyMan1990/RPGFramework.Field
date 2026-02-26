@@ -211,7 +211,7 @@ namespace RPGFramework.Field
             return br.ReadSingle();
         }
 
-        private byte[] ReadFieldNameBytes(ScriptExecutionContext ctx)
+        private byte[] ReadFieldStringBytes(ScriptExecutionContext ctx)
         {
             FieldScript script = m_Scripts[ctx.ScriptId];
 
@@ -685,12 +685,20 @@ namespace RPGFramework.Field
 
         private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte[] fieldIdBytes = ReadFieldNameBytes(ctx);
-            int    spawnId      = ReadInt(ctx);
+            byte[] fieldIdBytes  = ReadFieldStringBytes(ctx);
+            int    spawnId       = ReadInt(ctx);
+            int    locSheetCount = ReadInt(ctx);
 
-            string fieldId = FieldProvider.FromBytes(fieldIdBytes);
+            string   fieldId   = FieldProvider.FromBytes(fieldIdBytes);
+            string[] locSheets = new string[locSheetCount];
 
-            IFieldModuleArgs args = new FieldModuleArgs(fieldId, spawnId);
+            for (int i = 0; i < locSheetCount; i++)
+            {
+                byte[] stringBytes = ReadFieldStringBytes(ctx);
+                locSheets[i] = FieldProvider.FromBytes(stringBytes);
+            }
+
+            IFieldModuleArgs args = new FieldModuleArgs(fieldId, spawnId, locSheets);
             RequestFieldTransition?.Invoke(args);
         }
 
