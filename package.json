@@ -7,7 +7,8 @@
     "com.rpgframework.core": "0.1.1",
     "com.rpgframework.di": "0.1.0",
     "com.rpgframework.audio": "0.5.2",
-    "com.rpgframework.localisation": "0.1.0"
+    "com.rpgframework.localisation": "0.1.0",
+    "com.rpgframework.hashing": "1.0.0"
   },
   "unity": "6000.0",
   "keywords": [

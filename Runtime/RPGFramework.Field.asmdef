@@ -9,7 +9,8 @@
         "RPGFramework.Field.SharedTypes",
         "RPGFramework.Localisation",
         "RPGFramework.Menu.SharedTypes",
-        "Unity.Mathematics"
+        "Unity.Mathematics",
+        "RPGFramework.Hashing"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
