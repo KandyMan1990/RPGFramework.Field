@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
 using RPGFramework.Core;
+using RPGFramework.Core.DialogueWindow;
 using RPGFramework.Core.Input;
 using RPGFramework.Core.PlayerLoop;
 using RPGFramework.Core.SharedTypes;
@@ -12,26 +13,29 @@ using RPGFramework.Field.SharedTypes;
 using RPGFramework.Localisation;
 using RPGFramework.Menu.SharedTypes;
 using UnityEngine;
+using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field
 {
     public class FieldModule : IFieldModule, IUpdatable
     {
-        private readonly ICoreModule          m_CoreModule;
-        private readonly IDIResolver          m_DIResolver;
-        private readonly IInputRouter         m_InputRouter;
-        private readonly IMenuTypeProvider    m_MenuTypeProvider;
-        private readonly IMusicPlayer         m_MusicPlayer;
-        private readonly ISfxPlayer           m_SfxPlayer;
-        private readonly IFieldRegistry       m_FieldRegistry;
-        private readonly IFieldPresentation   m_FieldPresentation;
-        private readonly ILocalisationService m_LocalisationService;
-        private readonly IFieldModule         m_This;
+        private readonly ICoreModule                        m_CoreModule;
+        private readonly IDIResolver                        m_DIResolver;
+        private readonly IInputRouter                       m_InputRouter;
+        private readonly IMenuTypeProvider                  m_MenuTypeProvider;
+        private readonly IMusicPlayer                       m_MusicPlayer;
+        private readonly ISfxPlayer                         m_SfxPlayer;
+        private readonly IFieldRegistry                     m_FieldRegistry;
+        private readonly IFieldPresentation                 m_FieldPresentation;
+        private readonly ILocalisationService               m_LocalisationService;
+        private readonly IFieldModule                       m_This;
+        private readonly Dictionary<ulong, IDialogueWindow> m_DialogueWindows;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
         private Camera                   m_Camera;
+        private VisualElement            m_RootElement;
 
         private InputAdapter                             m_InputAdapter;
         private FieldContext                             m_FieldContext;
@@ -69,6 +73,7 @@ namespace RPGFramework.Field
             m_FieldRegistry       = fieldRegistry;
             m_FieldPresentation   = fieldPresentation;
             m_LocalisationService = localisationService;
+            m_DialogueWindows     = new Dictionary<ulong, IDialogueWindow>(8);
             m_This                = this;
         }
 
@@ -78,6 +83,9 @@ namespace RPGFramework.Field
             m_DIResolver.InjectInto(m_InputAdapter);
 
             m_FieldModuleMonoBehaviour = Object.FindFirstObjectByType<FieldModuleMonoBehaviour>();
+
+            UIDocument uiDoc = Object.FindFirstObjectByType<UIDocument>();
+            m_RootElement = uiDoc.rootVisualElement.Q("Root");
 
             m_FieldTransitionArgs = (IFieldModuleArgs)args;
 
@@ -207,6 +215,8 @@ namespace RPGFramework.Field
             vm.RequestSetEntityToFaceEntity       += RequestSetEntityToFaceEntity;
             vm.RequestSetEntityMovementSpeed      += RequestSetEntityMovementSpeed;
             vm.RequestSetMainMenuAccessibility    += RequestSetMainMenuAccessibility;
+            vm.RequestCreateDialogueWindow        += RequestCreateDialogueWindow;
+            vm.RequestShowWindowWithText          += RequestShowWindowWithTextAsync;
 
             m_Camera = Object.FindFirstObjectByType<Camera>();
 
@@ -228,6 +238,8 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestShowWindowWithText          -= RequestShowWindowWithTextAsync;
+            m_FieldContext.VM.RequestCreateDialogueWindow        -= RequestCreateDialogueWindow;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    -= RequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= RequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= RequestSetEntityToFaceEntity;
@@ -474,10 +486,11 @@ namespace RPGFramework.Field
             m_EntityInteractionTriggers[entityId].SetInteractionRange(range);
         }
 
-        private void RequestInputLock(int entityId, bool lockInput)
+        private void RequestInputLock(bool lockInput)
         {
             if (lockInput)
             {
+                MovePlayer(Vector3.zero);
                 m_CurrentInputContext = new BlockAllInputContext();
                 m_InputRouter.Push(m_CurrentInputContext);
             }
@@ -560,6 +573,53 @@ namespace RPGFramework.Field
         private void RequestSetMainMenuAccessibility(bool enabled)
         {
             m_MainMenuAccessible = enabled;
+        }
+
+        private void RequestCreateDialogueWindow(DialogueWindowArgs args)
+        {
+            IDialogueWindow window = m_DIResolver.Resolve<IDialogueWindowWithText>();
+            window.Init(m_RootElement, args.DialogueId);
+            window.SetRect(args.Rect);
+
+            m_DialogueWindows.Add(args.DialogueId, window);
+        }
+
+        private async Task RequestShowWindowWithTextAsync(ulong id, bool blockMovement)
+        {
+            if (blockMovement)
+            {
+                RequestInputLock(true);
+            }
+
+            IDialogueWindow dialogueWindow = m_DialogueWindows[id];
+            string          text           = m_LocalisationService.Get(id);
+
+            await dialogueWindow.AnimateWindowOpenAsync();
+
+            DialogueInputContext fieldDialogueInputContext = new DialogueInputContext();
+
+            m_CurrentInputContext = fieldDialogueInputContext;
+            m_InputRouter.Push(m_CurrentInputContext);
+
+            await dialogueWindow.RunAsync(text, fieldDialogueInputContext);
+
+            await RequestCloseDialogueWindowAsync(id);
+
+            m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
+
+            if (blockMovement)
+            {
+                RequestInputLock(false);
+            }
+        }
+
+        private async Task RequestCloseDialogueWindowAsync(ulong id)
+        {
+            m_DialogueWindows.Remove(id, out IDialogueWindow dialogueWindow);
+
+            await dialogueWindow.AnimateWindowClosedAsync();
+
+            dialogueWindow.Destroy();
         }
     }
 }

@@ -18,13 +18,15 @@ namespace RPGFramework.Field
         internal event Action<bool>                                RequestSetGatewayTriggersActive;
         internal event Action<int, bool>                           RequestSetInteractionTriggerActive;
         internal event Action<int, float>                          RequestSetInteractionRange;
-        internal event Action<int, bool>                           RequestInputLock;
+        internal event Action<bool>                                RequestInputLock;
         internal event Action<int, Vector3>                        RequestSetEntityPosition;
         internal event Action<int, Quaternion>                     RequestSetEntityRotation;
         internal event Func<int, SetEntityRotationAsyncArgs, Task> RequestSetEntityRotationAsync;
         internal event Action<int, int>                            RequestSetEntityToFaceEntity;
         internal event Action<int, float>                          RequestSetEntityMovementSpeed;
         internal event Action<bool>                                RequestSetMainMenuAccessibility;
+        internal event Action<DialogueWindowArgs>                  RequestCreateDialogueWindow;
+        internal event Func<ulong, bool, Task>                     RequestShowWindowWithText;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -211,6 +213,19 @@ namespace RPGFramework.Field
             return br.ReadSingle();
         }
 
+        private ulong ReadUlong(ScriptExecutionContext ctx)
+        {
+            FieldScript script = m_Scripts[ctx.ScriptId];
+
+            using MemoryStream ms = new MemoryStream(script.Bytecode);
+            using BinaryReader br = new BinaryReader(ms);
+
+            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
+
+            ctx.InstructionPointer += sizeof(ulong);
+            return br.ReadUInt64();
+        }
+
         private byte[] ReadFieldStringBytes(ScriptExecutionContext ctx)
         {
             FieldScript script = m_Scripts[ctx.ScriptId];
@@ -357,18 +372,17 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.CreateSpecialWindow, CreateSpecialWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetNumberInWindow, SetNumberInWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetTimeInWindow, SetTimeInWindowOpcodeHandler },
-                           // { FieldScriptOpCode.ShowWindowWithText, ShowWindowWithTextOpcodeHandler },
+                           { FieldScriptOpCode.ShowWindowWithText, ShowWindowWithTextOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowTextValue, SetWindowTextValueOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowTextValue16Bit, SetWindowTextValue16BitOpcodeHandler },
                            // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
                            // { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
                            // { FieldScriptOpCode.MenuOperations, MenuOperationsOpcodeHandler },
                            { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
-                           // { FieldScriptOpCode.CreateWindow, CreateWindowOpcodeHandler },
+                           { FieldScriptOpCode.CreateWindow, CreateWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowPosition, SetWindowPositionOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowModes, SetWindowModesOpcodeHandler },
                            // { FieldScriptOpCode.ResetWindow, ResetWindowOpcodeHandler },
-                           // { FieldScriptOpCode.CloseWindowAgain, CloseWindowAgainOpcodeHandler },
                            // { FieldScriptOpCode.SetNumberOfRowsInWindow, SetNumberOfRowsInWindowOpcodeHandler },
 
                            // Party and Inventory
@@ -671,16 +685,38 @@ namespace RPGFramework.Field
             // noop
         }
 
+        private void ShowWindowWithTextOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ulong dialogueId    = ReadUlong(ctx);
+            bool  blockMovement = ReadBool(ctx);
+
+            if (RequestShowWindowWithText != null)
+            {
+                ctx.Block(RequestShowWindowWithText(dialogueId, blockMovement));
+            }
+        }
+
         private void MainMenuAccessibilityOpcodeHandler(ScriptExecutionContext ctx)
         {
             bool enabled = ReadBool(ctx);
             RequestSetMainMenuAccessibility?.Invoke(enabled);
         }
 
+        private void CreateWindowOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ulong   dialogueId = ReadUlong(ctx);
+            int     x          = ReadInt(ctx);
+            int     y          = ReadInt(ctx);
+            int     width      = ReadInt(ctx);
+            int     height     = ReadInt(ctx);
+            RectInt rect       = new RectInt(x, y, width, height);
+            RequestCreateDialogueWindow?.Invoke(new DialogueWindowArgs(dialogueId, rect));
+        }
+
         private void LockInputOpcodeHandler(ScriptExecutionContext ctx)
         {
             bool inputLocked = ReadBool(ctx);
-            RequestInputLock?.Invoke(ctx.EntityId, inputLocked);
+            RequestInputLock?.Invoke(inputLocked);
         }
 
         private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)

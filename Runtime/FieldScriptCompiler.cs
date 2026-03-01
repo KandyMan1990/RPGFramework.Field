@@ -2,6 +2,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using RPGFramework.Hashing;
 
 namespace RPGFramework.Field
 {
@@ -62,7 +63,6 @@ namespace RPGFramework.Field
                             byte[] locSheetBytes = FieldProvider.ToBytes(parts[i]);
                             bw.Write(locSheetBytes);
                         }
-
                         break;
 
                     case "GATEWAY_TRIGGER_ACTIVATION":
@@ -72,9 +72,24 @@ namespace RPGFramework.Field
                         bw.Write(gatewayTriggerActivation);
                         break;
 
+                    case "SHOW_WINDOW_WITH_TEXT":
+                        bw.Write((ushort)FieldScriptOpCode.ShowWindowWithText);
+                        bw.Write(Fnv1a64.Hash(parts[1]));
+                        bw.Write(bool.Parse(parts[2]));
+                        break;
+
                     case "MAIN_MENU_ACCESSIBILITY":
                         bw.Write((ushort)FieldScriptOpCode.MainMenuAccessibility);
                         bw.Write(bool.Parse(parts[1]));
+                        break;
+
+                    case "CREATE_WINDOW":
+                        bw.Write((ushort)FieldScriptOpCode.CreateWindow);
+                        bw.Write(Fnv1a64.Hash(parts[1]));
+                        bw.Write(int.Parse(parts[2], CultureInfo.InvariantCulture));
+                        bw.Write(int.Parse(parts[3], CultureInfo.InvariantCulture));
+                        bw.Write(int.Parse(parts[4], CultureInfo.InvariantCulture));
+                        bw.Write(int.Parse(parts[5], CultureInfo.InvariantCulture));
                         break;
 
                     case "LOCK_INPUT":
