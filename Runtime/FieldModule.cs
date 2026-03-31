@@ -79,12 +79,12 @@ namespace RPGFramework.Field
 
         async Task IModule.OnEnterAsync(IModuleArgs args)
         {
-            m_InputAdapter = Object.FindFirstObjectByType<InputAdapter>();
+            m_InputAdapter = Object.FindAnyObjectByType<InputAdapter>();
             m_DIResolver.InjectInto(m_InputAdapter);
 
-            m_FieldModuleMonoBehaviour = Object.FindFirstObjectByType<FieldModuleMonoBehaviour>();
+            m_FieldModuleMonoBehaviour = Object.FindAnyObjectByType<FieldModuleMonoBehaviour>();
 
-            UIDocument uiDoc = Object.FindFirstObjectByType<UIDocument>();
+            UIDocument uiDoc = Object.FindAnyObjectByType<UIDocument>();
             m_RootElement = uiDoc.rootVisualElement.Q("Root");
 
             m_FieldTransitionArgs = (IFieldModuleArgs)args;
@@ -218,7 +218,7 @@ namespace RPGFramework.Field
             vm.RequestCreateDialogueWindow        += RequestCreateDialogueWindow;
             vm.RequestShowWindowWithText          += RequestShowWindowWithTextAsync;
 
-            m_Camera = Object.FindFirstObjectByType<Camera>();
+            m_Camera = Object.FindAnyObjectByType<Camera>();
 
             UpdateManager.RegisterUpdatable(this);
 

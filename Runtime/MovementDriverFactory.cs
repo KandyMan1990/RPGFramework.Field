@@ -23,7 +23,7 @@ namespace RPGFramework.Field
                 return rigidbody2DMovementDriver;
             }
 
-            Tilemap tilemap = Object.FindFirstObjectByType<Tilemap>();
+            Tilemap tilemap = Object.FindAnyObjectByType<Tilemap>();
             if (tilemap != null)
             {
                 TilemapMovementDriver driver = gameObject.AddComponent<TilemapMovementDriver>();
