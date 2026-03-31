@@ -72,8 +72,8 @@ namespace RPGFramework.Field
                         bw.Write(gatewayTriggerActivation);
                         break;
 
-                    case "SHOW_WINDOW_WITH_TEXT":
-                        bw.Write((ushort)FieldScriptOpCode.ShowWindowWithText);
+                    case "SHOW_DIALOGUE_WINDOW_WITH_TEXT":
+                        bw.Write((ushort)FieldScriptOpCode.ShowDialogueWindowWithText);
                         bw.Write(Fnv1a64.Hash(parts[1]));
                         bw.Write(bool.Parse(parts[2]));
                         break;
@@ -83,8 +83,8 @@ namespace RPGFramework.Field
                         bw.Write(bool.Parse(parts[1]));
                         break;
 
-                    case "CREATE_WINDOW":
-                        bw.Write((ushort)FieldScriptOpCode.CreateWindow);
+                    case "CREATE_DIALOGUE_WINDOW_WITH_TEXT":
+                        bw.Write((ushort)FieldScriptOpCode.CreateDialogueWindowWithText);
                         bw.Write(Fnv1a64.Hash(parts[1]));
                         bw.Write(int.Parse(parts[2], CultureInfo.InvariantCulture));
                         bw.Write(int.Parse(parts[3], CultureInfo.InvariantCulture));

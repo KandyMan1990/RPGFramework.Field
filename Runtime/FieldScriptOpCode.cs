@@ -84,14 +84,14 @@
         CreateSpecialWindow,
         SetNumberInWindow,
         SetTimeInWindow,
-        ShowWindowWithText, // ulong dialogueId, bool blockMovement
+        ShowDialogueWindowWithText, // ulong dialogueId, bool blockMovement
         SetWindowTextValue,
         SetWindowTextValue16Bit,
         SetMapNameInMenu,
         AskPlayerToMakeAChoice,
         MenuOperations,
         MainMenuAccessibility, // bool enabled
-        CreateWindow, // ulong dialogueId, int x, int y, int width, int height
+        CreateDialogueWindowWithText, // ulong dialogueId, int x, int y, int width, int height
         SetWindowPosition,
         SetWindowModes,
         ResetWindow,

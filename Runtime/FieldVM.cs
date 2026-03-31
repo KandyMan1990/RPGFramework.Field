@@ -25,8 +25,8 @@ namespace RPGFramework.Field
         internal event Action<int, int>                            RequestSetEntityToFaceEntity;
         internal event Action<int, float>                          RequestSetEntityMovementSpeed;
         internal event Action<bool>                                RequestSetMainMenuAccessibility;
-        internal event Action<DialogueWindowArgs>                  RequestCreateDialogueWindow;
-        internal event Func<ulong, bool, Task>                     RequestShowWindowWithText;
+        internal event Action<DialogueWindowArgs>                  RequestCreateDialogueWindowWithText;
+        internal event Func<ulong, bool, Task>                     RequestShowDialogueWindowWithText;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -102,8 +102,6 @@ namespace RPGFramework.Field
                 FieldScriptOpCode opcode = FetchOpcode(ctx);
 
                 OpcodeHandler opcodeHandler = m_OpcodeHandlers[opcode];
-                // uncomment when testing new handlers
-                // Debug.Log($"Opcode: {opcode}, InstructionPointer: {ctx.InstructionPointer}");
                 opcodeHandler(ctx);
 
                 if (opcode == FieldScriptOpCode.Return)
@@ -372,14 +370,14 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.CreateSpecialWindow, CreateSpecialWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetNumberInWindow, SetNumberInWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetTimeInWindow, SetTimeInWindowOpcodeHandler },
-                           { FieldScriptOpCode.ShowWindowWithText, ShowWindowWithTextOpcodeHandler },
+                           { FieldScriptOpCode.ShowDialogueWindowWithText, ShowDialogueWindowWithTextOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowTextValue, SetWindowTextValueOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowTextValue16Bit, SetWindowTextValue16BitOpcodeHandler },
                            // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
                            // { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
                            // { FieldScriptOpCode.MenuOperations, MenuOperationsOpcodeHandler },
                            { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
-                           { FieldScriptOpCode.CreateWindow, CreateWindowOpcodeHandler },
+                           { FieldScriptOpCode.CreateDialogueWindowWithText, CreateDialogueWindowWithTextOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowPosition, SetWindowPositionOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowModes, SetWindowModesOpcodeHandler },
                            // { FieldScriptOpCode.ResetWindow, ResetWindowOpcodeHandler },
@@ -685,14 +683,14 @@ namespace RPGFramework.Field
             // noop
         }
 
-        private void ShowWindowWithTextOpcodeHandler(ScriptExecutionContext ctx)
+        private void ShowDialogueWindowWithTextOpcodeHandler(ScriptExecutionContext ctx)
         {
             ulong dialogueId    = ReadUlong(ctx);
             bool  blockMovement = ReadBool(ctx);
 
-            if (RequestShowWindowWithText != null)
+            if (RequestShowDialogueWindowWithText != null)
             {
-                ctx.Block(RequestShowWindowWithText(dialogueId, blockMovement));
+                ctx.Block(RequestShowDialogueWindowWithText(dialogueId, blockMovement));
             }
         }
 
@@ -702,7 +700,7 @@ namespace RPGFramework.Field
             RequestSetMainMenuAccessibility?.Invoke(enabled);
         }
 
-        private void CreateWindowOpcodeHandler(ScriptExecutionContext ctx)
+        private void CreateDialogueWindowWithTextOpcodeHandler(ScriptExecutionContext ctx)
         {
             ulong   dialogueId = ReadUlong(ctx);
             int     x          = ReadInt(ctx);
@@ -710,7 +708,7 @@ namespace RPGFramework.Field
             int     width      = ReadInt(ctx);
             int     height     = ReadInt(ctx);
             RectInt rect       = new RectInt(x, y, width, height);
-            RequestCreateDialogueWindow?.Invoke(new DialogueWindowArgs(dialogueId, rect));
+            RequestCreateDialogueWindowWithText?.Invoke(new DialogueWindowArgs(dialogueId, rect));
         }
 
         private void LockInputOpcodeHandler(ScriptExecutionContext ctx)
