@@ -31,12 +31,12 @@ namespace RPGFramework.Field
 
                     case "GOTO_JUMP":
                         bw.Write((ushort)FieldScriptOpCode.GotoJump);
-                        bw.Write(int.Parse(parts[1]));
+                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
                     case "GOTO_DIRECTLY":
                         bw.Write((ushort)FieldScriptOpCode.GotoDirectly);
-                        bw.Write(int.Parse(parts[1]));
+                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
                     case "YIELD":
@@ -72,10 +72,25 @@ namespace RPGFramework.Field
                         bw.Write(gatewayTriggerActivation);
                         break;
 
-                    case "SHOW_DIALOGUE_WINDOW_WITH_TEXT":
-                        bw.Write((ushort)FieldScriptOpCode.ShowDialogueWindowWithText);
+                    case "SHOW_DIALOGUE_WINDOW":
+                        bw.Write((ushort)FieldScriptOpCode.ShowDialogueWindow);
                         bw.Write(Fnv1a64.Hash(parts[1]));
                         bw.Write(bool.Parse(parts[2]));
+                        break;
+
+                    case "ASK_PLAYER_TO_MAKE_A_CHOICE":
+                        bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
+                        bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
+                        bw.Write(byte.Parse(parts[2], CultureInfo.InvariantCulture));
+                        bw.Write(Fnv1a64.Hash(parts[3]));
+
+                        byte count = (byte)(parts.Length - 4);
+                        bw.Write(count);
+
+                        for (int i = 4; i < parts.Length; i++)
+                        {
+                            bw.Write(Fnv1a64.Hash(parts[i]));
+                        }
                         break;
 
                     case "MAIN_MENU_ACCESSIBILITY":
@@ -83,8 +98,8 @@ namespace RPGFramework.Field
                         bw.Write(bool.Parse(parts[1]));
                         break;
 
-                    case "CREATE_DIALOGUE_WINDOW_WITH_TEXT":
-                        bw.Write((ushort)FieldScriptOpCode.CreateDialogueWindowWithText);
+                    case "CREATE_DIALOGUE_WINDOW":
+                        bw.Write((ushort)FieldScriptOpCode.CreateDialogueWindow);
                         bw.Write(Fnv1a64.Hash(parts[1]));
                         bw.Write(int.Parse(parts[2], CultureInfo.InvariantCulture));
                         bw.Write(int.Parse(parts[3], CultureInfo.InvariantCulture));
@@ -160,12 +175,12 @@ namespace RPGFramework.Field
 
                     case "PLAY_MUSIC":
                         bw.Write((ushort)FieldScriptOpCode.PlayMusic);
-                        bw.Write(int.Parse(parts[1]));
+                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
                     case "PLAY_SOUND":
                         bw.Write((ushort)FieldScriptOpCode.PlaySound);
-                        bw.Write(int.Parse(parts[1]));
+                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
                     default:

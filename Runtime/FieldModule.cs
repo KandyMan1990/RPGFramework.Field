@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
 using RPGFramework.Core;
-using RPGFramework.Core.DialogueWindow;
+using RPGFramework.Core.Dialogue;
+using RPGFramework.Core.Dialogue.Flows;
 using RPGFramework.Core.Input;
 using RPGFramework.Core.PlayerLoop;
 using RPGFramework.Core.SharedTypes;
@@ -200,23 +201,24 @@ namespace RPGFramework.Field
             m_FieldContext                = new FieldContext(vm, entities);
             m_ActiveInteractionTriggerIds = new HashSet<int>();
 
-            vm.RequestFieldTransition              += SetFieldModuleArgs;
-            vm.RequestMusic                        += RequestMusic;
-            vm.RequestSfx                          += RequestSfx;
-            vm.RequestSetPlayerEntity              += RequestSetPlayerEntity;
-            vm.RequestSetEntityVisible             += RequestSetEntityVisible;
-            vm.RequestSetGatewayTriggersActive     += RequestSetGatewayTriggersActive;
-            vm.RequestSetInteractionTriggerActive  += RequestSetInteractionTriggerActive;
-            vm.RequestSetInteractionRange          += RequestSetInteractionRange;
-            vm.RequestInputLock                    += RequestInputLock;
-            vm.RequestSetEntityPosition            += RequestSetEntityPosition;
-            vm.RequestSetEntityRotation            += RequestSetEntityRotation;
-            vm.RequestSetEntityRotationAsync       += RequestSetEntityRotationAsync;
-            vm.RequestSetEntityToFaceEntity        += RequestSetEntityToFaceEntity;
-            vm.RequestSetEntityMovementSpeed       += RequestSetEntityMovementSpeed;
-            vm.RequestSetMainMenuAccessibility     += RequestSetMainMenuAccessibility;
-            vm.RequestCreateDialogueWindowWithText += RequestCreateDialogueWindowWithText;
-            vm.RequestShowDialogueWindowWithText   += RequestShowDialogueWindowWithTextAsync;
+            vm.RequestFieldTransition             += SetFieldModuleArgs;
+            vm.RequestMusic                       += RequestMusic;
+            vm.RequestSfx                         += RequestSfx;
+            vm.RequestSetPlayerEntity             += RequestSetPlayerEntity;
+            vm.RequestSetEntityVisible            += RequestSetEntityVisible;
+            vm.RequestSetGatewayTriggersActive    += RequestSetGatewayTriggersActive;
+            vm.RequestSetInteractionTriggerActive += RequestSetInteractionTriggerActive;
+            vm.RequestSetInteractionRange         += RequestSetInteractionRange;
+            vm.RequestInputLock                   += RequestInputLock;
+            vm.RequestSetEntityPosition           += RequestSetEntityPosition;
+            vm.RequestSetEntityRotation           += RequestSetEntityRotation;
+            vm.RequestSetEntityRotationAsync      += RequestSetEntityRotationAsync;
+            vm.RequestSetEntityToFaceEntity       += RequestSetEntityToFaceEntity;
+            vm.RequestSetEntityMovementSpeed      += RequestSetEntityMovementSpeed;
+            vm.RequestSetMainMenuAccessibility    += RequestSetMainMenuAccessibility;
+            vm.RequestCreateDialogueWindow        += RequestCreateDialogueWindow;
+            vm.RequestShowDialogueWindow          += RequestShowDialogueWindowAsync;
+            vm.RequestAskPlayerToMakeAChoice      += RequestAskPlayerToMakeAChoiceAsync;
 
             m_Camera = Object.FindAnyObjectByType<Camera>();
 
@@ -238,23 +240,24 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
-            m_FieldContext.VM.RequestShowDialogueWindowWithText   -= RequestShowDialogueWindowWithTextAsync;
-            m_FieldContext.VM.RequestCreateDialogueWindowWithText -= RequestCreateDialogueWindowWithText;
-            m_FieldContext.VM.RequestSetMainMenuAccessibility     -= RequestSetMainMenuAccessibility;
-            m_FieldContext.VM.RequestSetEntityMovementSpeed       -= RequestSetEntityMovementSpeed;
-            m_FieldContext.VM.RequestSetEntityToFaceEntity        -= RequestSetEntityToFaceEntity;
-            m_FieldContext.VM.RequestSetEntityRotationAsync       -= RequestSetEntityRotationAsync;
-            m_FieldContext.VM.RequestSetEntityRotation            -= RequestSetEntityRotation;
-            m_FieldContext.VM.RequestSetEntityPosition            -= RequestSetEntityPosition;
-            m_FieldContext.VM.RequestInputLock                    -= RequestInputLock;
-            m_FieldContext.VM.RequestSetInteractionRange          -= RequestSetInteractionRange;
-            m_FieldContext.VM.RequestSetInteractionTriggerActive  -= RequestSetInteractionTriggerActive;
-            m_FieldContext.VM.RequestSetGatewayTriggersActive     -= RequestSetGatewayTriggersActive;
-            m_FieldContext.VM.RequestSetEntityVisible             -= RequestSetEntityVisible;
-            m_FieldContext.VM.RequestSetPlayerEntity              -= RequestSetPlayerEntity;
-            m_FieldContext.VM.RequestSfx                          -= RequestSfx;
-            m_FieldContext.VM.RequestMusic                        -= RequestMusic;
-            m_FieldContext.VM.RequestFieldTransition              -= SetFieldModuleArgs;
+            m_FieldContext.VM.RequestAskPlayerToMakeAChoice      -= RequestAskPlayerToMakeAChoiceAsync;
+            m_FieldContext.VM.RequestShowDialogueWindow          -= RequestShowDialogueWindowAsync;
+            m_FieldContext.VM.RequestCreateDialogueWindow        -= RequestCreateDialogueWindow;
+            m_FieldContext.VM.RequestSetMainMenuAccessibility    -= RequestSetMainMenuAccessibility;
+            m_FieldContext.VM.RequestSetEntityMovementSpeed      -= RequestSetEntityMovementSpeed;
+            m_FieldContext.VM.RequestSetEntityToFaceEntity       -= RequestSetEntityToFaceEntity;
+            m_FieldContext.VM.RequestSetEntityRotationAsync      -= RequestSetEntityRotationAsync;
+            m_FieldContext.VM.RequestSetEntityRotation           -= RequestSetEntityRotation;
+            m_FieldContext.VM.RequestSetEntityPosition           -= RequestSetEntityPosition;
+            m_FieldContext.VM.RequestInputLock                   -= RequestInputLock;
+            m_FieldContext.VM.RequestSetInteractionRange         -= RequestSetInteractionRange;
+            m_FieldContext.VM.RequestSetInteractionTriggerActive -= RequestSetInteractionTriggerActive;
+            m_FieldContext.VM.RequestSetGatewayTriggersActive    -= RequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetEntityVisible            -= RequestSetEntityVisible;
+            m_FieldContext.VM.RequestSetPlayerEntity             -= RequestSetPlayerEntity;
+            m_FieldContext.VM.RequestSfx                         -= RequestSfx;
+            m_FieldContext.VM.RequestMusic                       -= RequestMusic;
+            m_FieldContext.VM.RequestFieldTransition             -= SetFieldModuleArgs;
 
             m_ActiveInteractionTriggerIds.Clear();
 
@@ -575,16 +578,16 @@ namespace RPGFramework.Field
             m_MainMenuAccessible = enabled;
         }
 
-        private void RequestCreateDialogueWindowWithText(DialogueWindowArgs args)
+        private void RequestCreateDialogueWindow(DialogueWindowArgs args)
         {
-            IDialogueWindow window = m_DIResolver.Resolve<IDialogueWindowWithText>();
-            window.Init(m_RootElement, args.DialogueId);
+            IDialogueWindow window = m_DIResolver.Resolve<IDialogueWindow>();
+            window.Init(m_RootElement);
             window.SetRect(args.Rect);
 
             m_DialogueWindows.Add(args.DialogueId, window);
         }
 
-        private async Task RequestShowDialogueWindowWithTextAsync(ulong id, bool blockMovement)
+        private async Task RequestShowDialogueWindowAsync(ulong id, bool blockMovement)
         {
             if (blockMovement)
             {
@@ -601,7 +604,9 @@ namespace RPGFramework.Field
             m_CurrentInputContext = fieldDialogueInputContext;
             m_InputRouter.Push(m_CurrentInputContext);
 
-            await dialogueWindow.RunAsync(text, fieldDialogueInputContext);
+            IDialogueFlow dialogueFlow = new TextDialogueFlow();
+
+            await dialogueWindow.RunAsync(dialogueFlow, new[] { text }, fieldDialogueInputContext);
 
             await RequestCloseDialogueWindowAsync(id);
 
@@ -611,6 +616,42 @@ namespace RPGFramework.Field
             {
                 RequestInputLock(false);
             }
+        }
+
+        private async Task RequestAskPlayerToMakeAChoiceAsync(byte bank, byte addressToStoreChoice, ulong dialogueId, ulong[] answerIds)
+        {
+            RequestInputLock(true);
+
+            IDialogueWindow dialogueWindow = m_DialogueWindows[dialogueId];
+
+            await dialogueWindow.AnimateWindowOpenAsync();
+
+            DialogueInputContext fieldDialogueInputContext = new DialogueInputContext();
+
+            m_CurrentInputContext = fieldDialogueInputContext;
+            m_InputRouter.Push(m_CurrentInputContext);
+
+            string[] dialogues = new string[answerIds.Length + 1];
+            dialogues[0] = m_LocalisationService.Get(dialogueId);
+
+            for (int i = 1; i < dialogues.Length; i++)
+            {
+                dialogues[i] = m_LocalisationService.Get(answerIds[i - 1]);
+            }
+
+            IDialogueFlow dialogueFlow = new ChoiceDialogueFlow();
+
+            await dialogueWindow.RunAsync(dialogueFlow, dialogues, fieldDialogueInputContext);
+
+            int selectedChoice = dialogueWindow.GetSelectedChoice();
+            Debug.Log($"Index chosen: {selectedChoice}");
+            Debug.Log("TODO: store [selectedChoice] into [bank] at [addressToStoreChoice]");
+
+            await RequestCloseDialogueWindowAsync(dialogueId);
+
+            m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
+
+            RequestInputLock(false);
         }
 
         private async Task RequestCloseDialogueWindowAsync(ulong id)

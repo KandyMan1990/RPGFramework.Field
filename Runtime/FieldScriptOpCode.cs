@@ -84,14 +84,14 @@
         CreateSpecialWindow,
         SetNumberInWindow,
         SetTimeInWindow,
-        ShowDialogueWindowWithText, // ulong dialogueId, bool blockMovement
+        ShowDialogueWindow, // ulong dialogueId, bool blockMovement
         SetWindowTextValue,
         SetWindowTextValue16Bit,
         SetMapNameInMenu,
-        AskPlayerToMakeAChoice,
+        AskPlayerToMakeAChoice, // byte bank, byte addressToStoreChoice, ulong dialogueId, byte answerCount, ulong[] answerIds
         MenuOperations,
         MainMenuAccessibility, // bool enabled
-        CreateDialogueWindowWithText, // ulong dialogueId, int x, int y, int width, int height
+        CreateDialogueWindow,  // ulong dialogueId, int x, int y, int width, int height
         SetWindowPosition,
         SetWindowModes,
         ResetWindow,
@@ -143,14 +143,14 @@
         InitAsCharacter,              //
         PlayAnimationLooping,
         PlayAnimationOnceAndWait,
-        Visibility,        // bool isVisible
-        SetEntityPosition, // float x, float y, float z
+        Visibility,                  // bool isVisible
+        SetEntityPosition,           // float x, float y, float z
         MoveEntityToXYWalkAnimation, // moves an entity using walk animation (if available) to x,y,z at speed set by SetMovementSpeed
-        MoveEntityToXYNoAnimation, // as above but doesn't animate or rotate
-        MoveEntityToAnotherEntity, // navigates to another entity stopping once it reaches its collision
-        TurnEntityToAnotherEntity, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SetEntityRotationAsync with smooth)
-        WaitForAnimation, // waits for the animation to complete that has been previously played using any of the animation opcodes.
-        MoveFieldObject, // MoveEntityToXYNoAnimation but rotates
+        MoveEntityToXYNoAnimation,   // as above but doesn't animate or rotate
+        MoveEntityToAnotherEntity,   // navigates to another entity stopping once it reaches its collision
+        TurnEntityToAnotherEntity,   // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SetEntityRotationAsync with smooth)
+        WaitForAnimation,            // waits for the animation to complete that has been previously played using any of the animation opcodes.
+        MoveFieldObject,             // MoveEntityToXYNoAnimation but rotates
         PlayAnimationAsync,
         PlayAnimationOnceAsync,
         PlayPartialAnimation,

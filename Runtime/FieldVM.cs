@@ -25,8 +25,9 @@ namespace RPGFramework.Field
         internal event Action<int, int>                            RequestSetEntityToFaceEntity;
         internal event Action<int, float>                          RequestSetEntityMovementSpeed;
         internal event Action<bool>                                RequestSetMainMenuAccessibility;
-        internal event Action<DialogueWindowArgs>                  RequestCreateDialogueWindowWithText;
-        internal event Func<ulong, bool, Task>                     RequestShowDialogueWindowWithText;
+        internal event Action<DialogueWindowArgs>                  RequestCreateDialogueWindow;
+        internal event Func<ulong, bool, Task>                     RequestShowDialogueWindow;
+        internal event Func<byte, byte, ulong, ulong[], Task>      RequestAskPlayerToMakeAChoice;
 
         internal byte[] FieldVars;
         internal byte[] GlobalVars;
@@ -290,9 +291,6 @@ namespace RPGFramework.Field
                            { FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy, RunAnotherEntityScriptUnlessBusyOpcodeHandler },
                            { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted, RunAnotherEntityScriptWaitUntilStartedOpcodeHandler },
                            { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished, RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler },
-                           // { FieldScriptOpCode.RunPartyMemberScriptUnlessBusy, RunPartyMemberScriptUnlessBusyOpcodeHandler },
-                           // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilStarted, RunPartyMemberScriptWaitUntilStartedOpcodeHandler },
-                           // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilFinished, RunPartyMemberScriptWaitUntilFinishedOpcodeHandler },
                            { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
                            { FieldScriptOpCode.GotoJump, GotoOpcodeHandler },
                            { FieldScriptOpCode.GotoDirectly, GotoDirectlyOpcodeHandler },
@@ -370,14 +368,14 @@ namespace RPGFramework.Field
                            // { FieldScriptOpCode.CreateSpecialWindow, CreateSpecialWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetNumberInWindow, SetNumberInWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetTimeInWindow, SetTimeInWindowOpcodeHandler },
-                           { FieldScriptOpCode.ShowDialogueWindowWithText, ShowDialogueWindowWithTextOpcodeHandler },
+                           { FieldScriptOpCode.ShowDialogueWindow, ShowDialogueWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowTextValue, SetWindowTextValueOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowTextValue16Bit, SetWindowTextValue16BitOpcodeHandler },
                            // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
-                           // { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
+                           { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
                            // { FieldScriptOpCode.MenuOperations, MenuOperationsOpcodeHandler },
                            { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
-                           { FieldScriptOpCode.CreateDialogueWindowWithText, CreateDialogueWindowWithTextOpcodeHandler },
+                           { FieldScriptOpCode.CreateDialogueWindow, CreateDialogueWindowOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowPosition, SetWindowPositionOpcodeHandler },
                            // { FieldScriptOpCode.SetWindowModes, SetWindowModesOpcodeHandler },
                            // { FieldScriptOpCode.ResetWindow, ResetWindowOpcodeHandler },
@@ -683,14 +681,33 @@ namespace RPGFramework.Field
             // noop
         }
 
-        private void ShowDialogueWindowWithTextOpcodeHandler(ScriptExecutionContext ctx)
+        private void ShowDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
         {
             ulong dialogueId    = ReadUlong(ctx);
             bool  blockMovement = ReadBool(ctx);
 
-            if (RequestShowDialogueWindowWithText != null)
+            if (RequestShowDialogueWindow != null)
             {
-                ctx.Block(RequestShowDialogueWindowWithText(dialogueId, blockMovement));
+                ctx.Block(RequestShowDialogueWindow(dialogueId, blockMovement));
+            }
+        }
+
+        private void AskPlayerToMakeAChoiceOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            byte    bank                 = ReadByte(ctx);
+            byte    addressToStoreChoice = ReadByte(ctx);
+            ulong   dialogueId           = ReadUlong(ctx);
+            byte    answerCount          = ReadByte(ctx);
+            ulong[] answerIds            = new ulong[answerCount];
+
+            for (int i = 0; i < answerCount; i++)
+            {
+                answerIds[i] = ReadUlong(ctx);
+            }
+
+            if (RequestAskPlayerToMakeAChoice != null)
+            {
+                ctx.Block(RequestAskPlayerToMakeAChoice(bank, addressToStoreChoice, dialogueId, answerIds));
             }
         }
 
@@ -700,7 +717,7 @@ namespace RPGFramework.Field
             RequestSetMainMenuAccessibility?.Invoke(enabled);
         }
 
-        private void CreateDialogueWindowWithTextOpcodeHandler(ScriptExecutionContext ctx)
+        private void CreateDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
         {
             ulong   dialogueId = ReadUlong(ctx);
             int     x          = ReadInt(ctx);
@@ -708,7 +725,7 @@ namespace RPGFramework.Field
             int     width      = ReadInt(ctx);
             int     height     = ReadInt(ctx);
             RectInt rect       = new RectInt(x, y, width, height);
-            RequestCreateDialogueWindowWithText?.Invoke(new DialogueWindowArgs(dialogueId, rect));
+            RequestCreateDialogueWindow?.Invoke(new DialogueWindowArgs(dialogueId, rect));
         }
 
         private void LockInputOpcodeHandler(ScriptExecutionContext ctx)
