@@ -9,6 +9,7 @@ namespace RPGFramework.Field
         internal int EntityId;
         internal int ScriptId;
         internal int InstructionPointer;
+        internal byte[] Bytecode;
 
         internal void Block(Task blockingTask) => m_BlockingTask = blockingTask;
         internal bool IsBlocked()
