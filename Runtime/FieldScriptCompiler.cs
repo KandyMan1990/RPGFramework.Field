@@ -81,7 +81,7 @@ namespace RPGFramework.Field
                     case "ASK_PLAYER_TO_MAKE_A_CHOICE":
                         bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
                         bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
-                        bw.Write(byte.Parse(parts[2], CultureInfo.InvariantCulture));
+                        bw.Write(ushort.Parse(parts[2], CultureInfo.InvariantCulture));
                         bw.Write(Fnv1a64.Hash(parts[3]));
 
                         byte count = (byte)(parts.Length - 4);
