@@ -32,6 +32,7 @@ namespace RPGFramework.Field
         private readonly ILocalisationService               m_LocalisationService;
         private readonly IFieldModule                       m_This;
         private readonly Dictionary<ulong, IDialogueWindow> m_DialogueWindows;
+        private readonly IMemoryService                     m_MemoryService;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
@@ -63,7 +64,8 @@ namespace RPGFramework.Field
                            ISfxPlayer           sfxPlayer,
                            IFieldRegistry       fieldRegistry,
                            IFieldPresentation   fieldPresentation,
-                           ILocalisationService localisationService)
+                           ILocalisationService localisationService,
+                           IMemoryService       memoryService)
         {
             m_CoreModule          = coreModule;
             m_DIResolver          = diResolver;
@@ -74,6 +76,7 @@ namespace RPGFramework.Field
             m_FieldRegistry       = fieldRegistry;
             m_FieldPresentation   = fieldPresentation;
             m_LocalisationService = localisationService;
+            m_MemoryService       = memoryService;
             m_DialogueWindows     = new Dictionary<ulong, IDialogueWindow>(8);
             m_This                = this;
         }
@@ -151,7 +154,7 @@ namespace RPGFramework.Field
 
             m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == m_FieldTransitionArgs.GetSpawnId);
 
-            FieldVM vm = new FieldVM();
+            FieldVM vm = new FieldVM(m_MemoryService);
 
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
 
@@ -618,7 +621,7 @@ namespace RPGFramework.Field
             }
         }
 
-        private async Task RequestAskPlayerToMakeAChoiceAsync(byte bank, byte addressToStoreChoice, ulong dialogueId, ulong[] answerIds)
+        private async Task RequestAskPlayerToMakeAChoiceAsync(byte bank, ushort addressToStoreChoice, ulong dialogueId, ulong[] answerIds)
         {
             RequestInputLock(true);
 
@@ -643,9 +646,10 @@ namespace RPGFramework.Field
 
             await dialogueWindow.RunAsync(dialogueFlow, dialogues, fieldDialogueInputContext);
 
-            int selectedChoice = dialogueWindow.GetSelectedChoice();
-            Debug.Log($"Index chosen: {selectedChoice}");
-            Debug.Log("TODO: store [selectedChoice] into [bank] at [addressToStoreChoice]");
+            byte       selectedChoice = dialogueWindow.GetSelectedChoice();
+            MemoryBank memoryBank     = (MemoryBank)bank;
+            m_MemoryService.WriteByte(memoryBank, addressToStoreChoice, selectedChoice);
+            // TODO: test reading from the memory bank
 
             await RequestCloseDialogueWindowAsync(dialogueId);
 
