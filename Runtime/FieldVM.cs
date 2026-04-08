@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using RPGFramework.Core;
+using RPGFramework.Core.SharedTypes;
 using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
 using UnityEngine;
@@ -27,35 +29,25 @@ namespace RPGFramework.Field
         internal event Action<bool>                                RequestSetMainMenuAccessibility;
         internal event Action<DialogueWindowArgs>                  RequestCreateDialogueWindow;
         internal event Func<ulong, bool, Task>                     RequestShowDialogueWindow;
-        internal event Func<byte, byte, ulong, ulong[], Task>      RequestAskPlayerToMakeAChoice;
-
-        internal byte[] FieldVars;
-        internal byte[] GlobalVars;
+        internal event Func<byte, ushort, ulong, ulong[], Task>    RequestAskPlayerToMakeAChoice;
 
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
 
-        private const int INSTRUCTION_POINTER_SIZE = sizeof(FieldScriptOpCode);
-
-        //(Owned by the VM for now)
-        private readonly Dictionary<int, FieldScript> m_Scripts;
-
-        private readonly Dictionary<FieldScriptOpCode, OpcodeHandler>                     m_OpcodeHandlers;
         private readonly Dictionary<(int entityId, int scriptId), ScriptExecutionContext> m_Contexts;
         private readonly Dictionary<int, FieldEntityRuntime>                              m_Entities;
+        private readonly Dictionary<FieldScriptOpCode, OpcodeHandler>                     m_OpcodeHandlers;
+        private readonly Dictionary<int, byte[]>                                          m_Scripts;
 
-        internal FieldVM()
+        private readonly IMemoryService m_MemoryService;
+
+        internal FieldVM(IMemoryService memoryService)
         {
-            m_Contexts = new Dictionary<(int entityId, int scriptId), ScriptExecutionContext>();
-            m_Entities = new Dictionary<int, FieldEntityRuntime>();
-
+            m_Contexts       = new Dictionary<(int entityId, int scriptId), ScriptExecutionContext>();
+            m_Entities       = new Dictionary<int, FieldEntityRuntime>();
             m_OpcodeHandlers = BuildOpcodeHandlersArray();
+            m_Scripts        = new Dictionary<int, byte[]>();
 
-            // Hardcoded test scripts
-            m_Scripts = new Dictionary<int, FieldScript>();
-
-            // temp, values should come from constructor when new'd up in FieldModule, then stored in the save map when changing field
-            FieldVars  = new byte[256];
-            GlobalVars = new byte[256];
+            m_MemoryService = memoryService;
         }
 
         internal void RegisterEntity(int entityId, FieldEntityRuntime entity)
@@ -65,7 +57,7 @@ namespace RPGFramework.Field
 
         internal void RegisterScript(int scriptId, FieldCompiledScript script)
         {
-            m_Scripts.Add(scriptId, new FieldScript(script.Bytecode));
+            m_Scripts.Add(scriptId, script.Bytecode);
         }
 
         private bool IsScriptRunning(int entityId, int scriptId)
@@ -88,7 +80,8 @@ namespace RPGFramework.Field
                       {
                               EntityId           = entityId,
                               ScriptId           = scriptId,
-                              InstructionPointer = 0
+                              InstructionPointer = 0,
+                              Bytecode           = m_Scripts[scriptId]
                       };
                 m_Contexts[key] = ctx;
             }
@@ -114,143 +107,104 @@ namespace RPGFramework.Field
             }
         }
 
-        private FieldScriptOpCode FetchOpcode(ScriptExecutionContext ctx)
+        private static FieldScriptOpCode FetchOpcode(ScriptExecutionContext ctx)
         {
-            FieldScript script = m_Scripts[ctx.ScriptId];
-
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
-
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
-
-            ctx.InstructionPointer += INSTRUCTION_POINTER_SIZE;
-            return (FieldScriptOpCode)br.ReadUInt16();
+            return (FieldScriptOpCode)ReadUshort(ctx);
         }
 
-        private byte ReadByteFromBank(byte bank, byte address, ScriptExecutionContext ctx)
+        private byte ReadByteFromBank(byte bank, ushort address)
         {
-            return bank switch
-                   {
-                           0x0 => FieldVars[address],
-                           0x1 => GlobalVars[address],
-                           _   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(ReadByteFromBank)} Unknown bank {bank}")
-                   };
+            return m_MemoryService.ReadByte((MemoryBank)bank, address);
         }
 
-        // TODO: Currently reads byte-backed vars; widened to int, fix later
-        private int ReadIntFromBank(byte bank, byte address)
+        private int ReadIntFromBank(byte bank, ushort address)
         {
-            return bank switch
-                   {
-                           0x0 => FieldVars[address],
-                           0x1 => GlobalVars[address],
-                           _   => throw new InvalidOperationException($"Unknown variable bank {bank}")
-                   };
+            return m_MemoryService.ReadInt((MemoryBank)bank, address);
         }
 
-        private byte ReadByte(ScriptExecutionContext ctx)
+        private static byte ReadByte(ScriptExecutionContext ctx)
         {
-            FieldScript script = m_Scripts[ctx.ScriptId];
+            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
 
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
-
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
-
+            byte value = bytecode[ctx.InstructionPointer];
             ctx.InstructionPointer += sizeof(byte);
-            return br.ReadByte();
-        }
-        private bool ReadBool(ScriptExecutionContext ctx)
-        {
-            FieldScript script = m_Scripts[ctx.ScriptId];
 
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
-
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
-
-            ctx.InstructionPointer += sizeof(bool);
-            return br.ReadBoolean();
+            return value;
         }
 
-        private ushort ReadUshort(ScriptExecutionContext ctx)
+        private static bool ReadBool(ScriptExecutionContext ctx)
         {
-            FieldScript script = m_Scripts[ctx.ScriptId];
+            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
 
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
+            byte value = bytecode[ctx.InstructionPointer];
+            ctx.InstructionPointer += sizeof(byte);
 
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
+            return value != 0;
+        }
+
+        private static ushort ReadUshort(ScriptExecutionContext ctx)
+        {
+            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
+
+            ushort value = (ushort)(bytecode[ctx.InstructionPointer] | bytecode[ctx.InstructionPointer + 1] << 8);
 
             ctx.InstructionPointer += sizeof(ushort);
-            return br.ReadUInt16();
+
+            return value;
         }
 
-        private int ReadInt(ScriptExecutionContext ctx)
+        private static int ReadInt(ScriptExecutionContext ctx)
         {
-            FieldScript script = m_Scripts[ctx.ScriptId];
+            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
 
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
-
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
+            int value = bytecode[ctx.InstructionPointer]           |
+                        bytecode[ctx.InstructionPointer + 1] << 8  |
+                        bytecode[ctx.InstructionPointer + 2] << 16 |
+                        bytecode[ctx.InstructionPointer + 3] << 24;
 
             ctx.InstructionPointer += sizeof(int);
-            return br.ReadInt32();
+
+            return value;
         }
 
-        private float ReadFloat(ScriptExecutionContext ctx)
+        private static float ReadFloat(ScriptExecutionContext ctx)
         {
-            FieldScript script = m_Scripts[ctx.ScriptId];
+            int value = ReadInt(ctx);
 
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
-
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
-
-            ctx.InstructionPointer += sizeof(float);
-            return br.ReadSingle();
+            return BitConverter.Int32BitsToSingle(value);
         }
 
-        private ulong ReadUlong(ScriptExecutionContext ctx)
+        private static ulong ReadUlong(ScriptExecutionContext ctx)
         {
-            FieldScript script = m_Scripts[ctx.ScriptId];
+            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
 
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
-
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
+            ulong value = bytecode[ctx.InstructionPointer]                  |
+                          (ulong)bytecode[ctx.InstructionPointer + 1] << 8  |
+                          (ulong)bytecode[ctx.InstructionPointer + 2] << 16 |
+                          (ulong)bytecode[ctx.InstructionPointer + 3] << 24 |
+                          (ulong)bytecode[ctx.InstructionPointer + 4] << 32 |
+                          (ulong)bytecode[ctx.InstructionPointer + 5] << 40 |
+                          (ulong)bytecode[ctx.InstructionPointer + 6] << 48 |
+                          (ulong)bytecode[ctx.InstructionPointer + 7] << 56;
 
             ctx.InstructionPointer += sizeof(ulong);
-            return br.ReadUInt64();
+
+            return value;
         }
 
-        private byte[] ReadFieldStringBytes(ScriptExecutionContext ctx)
+        private static byte[] ReadFieldStringBytes(ScriptExecutionContext ctx)
         {
-            FieldScript script = m_Scripts[ctx.ScriptId];
-
-            using MemoryStream ms = new MemoryStream(script.Bytecode);
-            using BinaryReader br = new BinaryReader(ms);
-
-            br.BaseStream.Seek(ctx.InstructionPointer, SeekOrigin.Begin);
+            byte[] result = new byte[FieldProvider.FieldNameSize];
+            Array.Copy(ctx.Bytecode, ctx.InstructionPointer, result, 0, FieldProvider.FieldNameSize);
 
             ctx.InstructionPointer += FieldProvider.FieldNameSize;
-            return br.ReadBytes(FieldProvider.FieldNameSize);
+
+            return result;
         }
 
         private void ClearEntityContexts(int entityId)
         {
-            List<(int entityId, int scriptId)> toRemove = new List<(int entityId, int scriptId)>();
-
-            foreach ((int entityId, int scriptId) key in m_Contexts.Keys)
-            {
-                if (key.entityId == entityId)
-                {
-                    toRemove.Add(key);
-                }
-            }
-
-            foreach ((int entityId, int scriptId) key in toRemove)
+            foreach ((int entityId, int scriptId) key in m_Contexts.Keys.Where(k => k.entityId == entityId).ToList())
             {
                 m_Contexts.Remove(key);
             }
@@ -282,6 +236,7 @@ namespace RPGFramework.Field
             await Awaitable.WaitForSecondsAsync(seconds);
         }
 
+        // TODO: once op codes are implemented, convert from dictionary to an array
         private Dictionary<FieldScriptOpCode, OpcodeHandler> BuildOpcodeHandlersArray()
         {
             return new Dictionary<FieldScriptOpCode, OpcodeHandler>
@@ -594,8 +549,8 @@ namespace RPGFramework.Field
             byte comparisonType  = ReadByte(ctx);
             byte jumpAmount      = ReadByte(ctx);
 
-            byte a = ReadByteFromBank(bank1, addressA, ctx);
-            byte b = bank2 == 0 ? valueOrAddressB : ReadByteFromBank(bank2, valueOrAddressB, ctx);
+            byte a = ReadByteFromBank(bank1, addressA);
+            byte b = bank2 == 0 ? valueOrAddressB : ReadByteFromBank(bank2, valueOrAddressB);
 
             bool result = comparisonType switch
                           {
@@ -695,7 +650,7 @@ namespace RPGFramework.Field
         private void AskPlayerToMakeAChoiceOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte    bank                 = ReadByte(ctx);
-            byte    addressToStoreChoice = ReadByte(ctx);
+            ushort  addressToStoreChoice = ReadUshort(ctx);
             ulong   dialogueId           = ReadUlong(ctx);
             byte    answerCount          = ReadByte(ctx);
             ulong[] answerIds            = new ulong[answerCount];
@@ -797,9 +752,9 @@ namespace RPGFramework.Field
         private void SetEntityRotationAsyncOpcodeHandler(ScriptExecutionContext ctx)
         {
             Quaternion            rotation     = Quaternion.Euler(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
-            RotationDirection     direction    = Enum.Parse<RotationDirection>(ReadByte(ctx).ToString());
+            RotationDirection     direction    = (RotationDirection)ReadByte(ctx);
             float                 duration     = ReadFloat(ctx);
-            RotationInterpolation rotationType = Enum.Parse<RotationInterpolation>(ReadByte(ctx).ToString());
+            RotationInterpolation rotationType = (RotationInterpolation)ReadByte(ctx);
 
             SetEntityRotationAsyncArgs args = new SetEntityRotationAsyncArgs(rotation, direction, duration, rotationType);
 
