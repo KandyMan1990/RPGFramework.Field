@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using RPGFramework.Core;
 using RPGFramework.Core.SharedTypes;
+using RPGFramework.Field.BlockState;
 using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
 using UnityEngine;
@@ -12,24 +12,27 @@ namespace RPGFramework.Field
 {
     internal sealed class FieldVM
     {
-        internal event Action<IFieldModuleArgs>                    RequestFieldTransition;
-        internal event Action<int>                                 RequestMusic;
-        internal event Action<int>                                 RequestSfx;
-        internal event Action<FieldEntityRuntime>                  RequestSetPlayerEntity;
-        internal event Action<int, bool>                           RequestSetEntityVisible;
-        internal event Action<bool>                                RequestSetGatewayTriggersActive;
-        internal event Action<int, bool>                           RequestSetInteractionTriggerActive;
-        internal event Action<int, float>                          RequestSetInteractionRange;
-        internal event Action<bool>                                RequestInputLock;
-        internal event Action<int, Vector3>                        RequestSetEntityPosition;
-        internal event Action<int, Quaternion>                     RequestSetEntityRotation;
-        internal event Func<int, SetEntityRotationAsyncArgs, Task> RequestSetEntityRotationAsync;
-        internal event Action<int, int>                            RequestSetEntityToFaceEntity;
-        internal event Action<int, float>                          RequestSetEntityMovementSpeed;
-        internal event Action<bool>                                RequestSetMainMenuAccessibility;
-        internal event Action<DialogueWindowArgs>                  RequestCreateDialogueWindow;
-        internal event Func<ulong, bool, Task>                     RequestShowDialogueWindow;
-        internal event Func<byte, ushort, ulong, ulong[], Task>    RequestAskPlayerToMakeAChoice;
+        internal event Action<IFieldModuleArgs>                RequestFieldTransition;
+        internal event Action<int>                             RequestMusic;
+        internal event Action<int>                             RequestSfx;
+        internal event Action<FieldEntityRuntime>              RequestSetPlayerEntity;
+        internal event Action<int, bool>                       RequestSetEntityVisible;
+        internal event Action<bool>                            RequestSetGatewayTriggersActive;
+        internal event Action<int, bool>                       RequestSetInteractionTriggerActive;
+        internal event Action<int, float>                      RequestSetInteractionRange;
+        internal event Action<bool>                            RequestInputLock;
+        internal event Action<int, Vector3>                    RequestSetEntityPosition;
+        internal event Action<int, Quaternion>                 RequestSetEntityRotation;
+        internal event Action<int, SetEntityRotationAsyncArgs> RequestSetEntityRotationAsync;
+        internal Func<int, bool>                               IsEntityRotating;
+        internal event Action<int, int>                        RequestSetEntityToFaceEntity;
+        internal event Action<int, float>                      RequestSetEntityMovementSpeed;
+        internal event Action<bool>                            RequestSetMainMenuAccessibility;
+        internal event Action<DialogueWindowArgs>              RequestCreateDialogueWindow;
+        internal event Action<ulong, bool>                     RequestShowDialogueWindow;
+        internal Func<ulong, bool>                             IsDialogueWindowOpen;
+        internal event Action<byte, ushort, ulong, ulong[]>    RequestAskPlayerToMakeAChoice;
+        internal Func<ulong, bool>                             IsPlayerMakingAChoice;
 
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
 
@@ -79,7 +82,6 @@ namespace RPGFramework.Field
                 ctx = new ScriptExecutionContext
                       {
                               EntityId           = entityId,
-                              ScriptId           = scriptId,
                               InstructionPointer = 0,
                               Bytecode           = m_Scripts[scriptId]
                       };
@@ -88,6 +90,7 @@ namespace RPGFramework.Field
 
             if (ctx.IsBlocked())
             {
+                ctx.UpdateBlock(Time.deltaTime);
                 return;
             }
 
@@ -194,10 +197,10 @@ namespace RPGFramework.Field
 
         private static byte[] ReadFieldStringBytes(ScriptExecutionContext ctx)
         {
-            byte[] result = new byte[FieldProvider.FieldNameSize];
-            Array.Copy(ctx.Bytecode, ctx.InstructionPointer, result, 0, FieldProvider.FieldNameSize);
+            byte[] result = new byte[FieldNameUtils.FIELD_NAME_SIZE];
+            Array.Copy(ctx.Bytecode, ctx.InstructionPointer, result, 0, FieldNameUtils.FIELD_NAME_SIZE);
 
-            ctx.InstructionPointer += FieldProvider.FieldNameSize;
+            ctx.InstructionPointer += FieldNameUtils.FIELD_NAME_SIZE;
 
             return result;
         }
@@ -208,32 +211,6 @@ namespace RPGFramework.Field
             {
                 m_Contexts.Remove(key);
             }
-        }
-
-        private async Task WaitForScriptStartAsync(byte targetEntityId, byte targetScriptId)
-        {
-            while (!IsScriptRunning(targetEntityId, targetScriptId))
-            {
-                await Awaitable.NextFrameAsync();
-            }
-        }
-
-        private async Task WaitForScriptFinishCondition(byte targetEntityId, byte targetScriptId)
-        {
-            while (IsScriptRunning(targetEntityId, targetScriptId))
-            {
-                await Awaitable.NextFrameAsync();
-            }
-        }
-
-        private static async Task AwaitNextFrameAsync()
-        {
-            await Awaitable.NextFrameAsync();
-        }
-
-        private static async Task WaitForSecondsAsync(float seconds)
-        {
-            await Awaitable.WaitForSecondsAsync(seconds);
         }
 
         // TODO: once op codes are implemented, convert from dictionary to an array
@@ -503,7 +480,7 @@ namespace RPGFramework.Field
 
             m_Entities[targetEntityId].RequestScript(targetScriptId);
 
-            ctx.Block(WaitForScriptStartAsync(targetEntityId, targetScriptId));
+            ctx.Block(new WaitUntilBlock(() => IsScriptRunning(targetEntityId, targetScriptId)));
         }
 
         private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(ScriptExecutionContext ctx)
@@ -513,7 +490,7 @@ namespace RPGFramework.Field
 
             m_Entities[targetEntityId].RequestScript(targetScriptId);
 
-            ctx.Block(WaitForScriptFinishCondition(targetEntityId, targetScriptId));
+            ctx.Block(new WaitUntilBlock(() => !IsScriptRunning(targetEntityId, targetScriptId)));
         }
 
         private void ReturnToAnotherScriptOpcodeHandler(ScriptExecutionContext ctx)
@@ -622,13 +599,13 @@ namespace RPGFramework.Field
 
         private static void YieldOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ctx.Block(AwaitNextFrameAsync());
+            ctx.Block(new WaitForFrameBlock());
         }
 
-        private void WaitSecondsOpcodeHandler(ScriptExecutionContext ctx)
+        private static void WaitSecondsOpcodeHandler(ScriptExecutionContext ctx)
         {
             float seconds = ReadFloat(ctx);
-            ctx.Block(WaitForSecondsAsync(seconds));
+            ctx.Block(new WaitSecondsBlock(seconds));
         }
 
         private static void DoNothingOpcodeHandler(ScriptExecutionContext ctx)
@@ -641,10 +618,9 @@ namespace RPGFramework.Field
             ulong dialogueId    = ReadUlong(ctx);
             bool  blockMovement = ReadBool(ctx);
 
-            if (RequestShowDialogueWindow != null)
-            {
-                ctx.Block(RequestShowDialogueWindow(dialogueId, blockMovement));
-            }
+            RequestShowDialogueWindow?.Invoke(dialogueId, blockMovement);
+
+            ctx.Block(new WaitUntilBlock(() => !IsDialogueWindowOpen(dialogueId)));
         }
 
         private void AskPlayerToMakeAChoiceOpcodeHandler(ScriptExecutionContext ctx)
@@ -660,10 +636,9 @@ namespace RPGFramework.Field
                 answerIds[i] = ReadUlong(ctx);
             }
 
-            if (RequestAskPlayerToMakeAChoice != null)
-            {
-                ctx.Block(RequestAskPlayerToMakeAChoice(bank, addressToStoreChoice, dialogueId, answerIds));
-            }
+            RequestAskPlayerToMakeAChoice?.Invoke(bank, addressToStoreChoice, dialogueId, answerIds);
+
+            ctx.Block(new WaitUntilBlock(() => !IsPlayerMakingAChoice(dialogueId)));
         }
 
         private void MainMenuAccessibilityOpcodeHandler(ScriptExecutionContext ctx)
@@ -691,20 +666,10 @@ namespace RPGFramework.Field
 
         private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte[] fieldIdBytes  = ReadFieldStringBytes(ctx);
-            int    spawnId       = ReadInt(ctx);
-            int    locSheetCount = ReadInt(ctx);
+            int fieldIndex = ReadInt(ctx);
+            int spawnId    = ReadInt(ctx);
 
-            string   fieldId   = FieldProvider.FromBytes(fieldIdBytes);
-            string[] locSheets = new string[locSheetCount];
-
-            for (int i = 0; i < locSheetCount; i++)
-            {
-                byte[] stringBytes = ReadFieldStringBytes(ctx);
-                locSheets[i] = FieldProvider.FromBytes(stringBytes);
-            }
-
-            IFieldModuleArgs args = new FieldModuleArgs(fieldId, spawnId, locSheets);
+            IFieldModuleArgs args = new FieldModuleArgs(fieldIndex, spawnId);
             RequestFieldTransition?.Invoke(args);
         }
 
@@ -758,10 +723,9 @@ namespace RPGFramework.Field
 
             SetEntityRotationAsyncArgs args = new SetEntityRotationAsyncArgs(rotation, direction, duration, rotationType);
 
-            if (RequestSetEntityRotationAsync != null)
-            {
-                ctx.Block(RequestSetEntityRotationAsync(ctx.EntityId, args));
-            }
+            RequestSetEntityRotationAsync?.Invoke(ctx.EntityId, args);
+
+            ctx.Block(new WaitUntilBlock(() => !IsEntityRotating(ctx.EntityId)));
         }
 
         private void SetDirectionToFaceEntityOpcodeHandler(ScriptExecutionContext ctx)

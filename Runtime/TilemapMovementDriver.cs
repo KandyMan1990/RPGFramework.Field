@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using RPGFramework.Field.FieldVmArgs;
+﻿using RPGFramework.Field.FieldVmArgs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -12,16 +11,17 @@ namespace RPGFramework.Field
         private Tilemap         m_Tilemap;
         private float           m_Speed;
         private IMovementDriver m_This;
-
-        private Vector3 m_Target;
-        private bool    m_Moving;
+        private Vector3         m_Target;
+        private bool            m_Moving;
+        private RotationState   m_RotationState;
 
         public void Init(Transform entityTransform, Tilemap tilemap, float speed)
         {
-            m_Transform = entityTransform;
-            m_Tilemap   = tilemap;
-            m_Speed     = speed;
-            m_This      = this;
+            m_Transform     = entityTransform;
+            m_Tilemap       = tilemap;
+            m_Speed         = speed;
+            m_This          = this;
+            m_RotationState = default;
         }
 
         void IMovementDriver.SetMoveInput(Vector3 move)
@@ -58,24 +58,8 @@ namespace RPGFramework.Field
 
         void IMovementDriver.Tick(float deltaTime)
         {
-            if (!m_Moving)
-            {
-                return;
-            }
-
-            m_Transform.position = Vector3.MoveTowards(m_Transform.position, m_Target, m_Speed * deltaTime);
-
-            Vector3 dir = m_Target - m_Transform.position;
-            if (dir.sqrMagnitude > 0.0001f)
-            {
-                m_Transform.forward = dir.normalized;
-            }
-
-            if (Vector3.Distance(m_Transform.position, m_Target) < 0.001f)
-            {
-                m_Transform.position = m_Target;
-                m_Moving             = false;
-            }
+            HandleMovement(deltaTime);
+            HandleRotation(deltaTime);
         }
 
         void IMovementDriver.SetPosition(Vector3 position)
@@ -88,30 +72,27 @@ namespace RPGFramework.Field
             m_Transform.rotation = rotation;
         }
 
-        async Task IMovementDriver.SetRotationAsync(SetEntityRotationAsyncArgs args)
+        void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
-            Quaternion start  = m_Transform.rotation;
-            Quaternion target = ResolveDirection(start, args.Rotation, args.RotationDirection);
+            m_RotationState = new RotationState
+                              {
+                                      Active        = true,
+                                      Start         = m_Transform.rotation,
+                                      Target        = ResolveDirection(m_Transform.rotation, args.Rotation, args.RotationDirection),
+                                      Elapsed       = 0f,
+                                      Duration      = args.Duration,
+                                      Interpolation = args.RotationType
+                              };
+        }
 
-            float elapsed = 0f;
+        void IMovementDriver.ResumeRotation(RotationState rotationState)
+        {
+            m_RotationState = rotationState;
+        }
 
-            while (elapsed < args.Duration)
-            {
-                elapsed += Time.deltaTime;
-
-                float t = math.clamp(elapsed / args.Duration, 0f, 1f);
-
-                if (args.RotationType == RotationInterpolation.Smooth)
-                {
-                    t = math.smoothstep(0f, 1f, t);
-                }
-
-                m_Transform.rotation = Quaternion.Slerp(start, target, t);
-
-                await Awaitable.NextFrameAsync();
-            }
-
-            m_Transform.rotation = target;
+        RotationState IMovementDriver.GetRotationState()
+        {
+            return m_RotationState;
         }
 
         private static Vector3Int Quantize(Vector3 move)
@@ -167,6 +148,53 @@ namespace RPGFramework.Field
         private void Update()
         {
             m_This.Tick(Time.deltaTime);
+        }
+
+        private void HandleMovement(float deltaTime)
+        {
+            if (!m_Moving)
+            {
+                return;
+            }
+
+            m_Transform.position = Vector3.MoveTowards(m_Transform.position, m_Target, m_Speed * deltaTime);
+
+            Vector3 dir = m_Target - m_Transform.position;
+            if (dir.sqrMagnitude > 0.0001f)
+            {
+                m_Transform.forward = dir.normalized;
+            }
+
+            if (Vector3.Distance(m_Transform.position, m_Target) < 0.001f)
+            {
+                m_Transform.position = m_Target;
+                m_Moving             = false;
+            }
+        }
+
+        private void HandleRotation(float deltaTime)
+        {
+            if (!m_RotationState.Active)
+            {
+                return;
+            }
+
+            m_RotationState.Elapsed += deltaTime;
+
+            float t = math.clamp(m_RotationState.Elapsed / m_RotationState.Duration, 0f, 1f);
+            if (m_RotationState.Interpolation == RotationInterpolation.Smooth)
+            {
+                t = math.smoothstep(0f, 1f, t);
+            }
+
+            m_Transform.rotation = Quaternion.Slerp(m_RotationState.Start, m_RotationState.Target, t);
+
+            if (m_RotationState.Elapsed >= m_RotationState.Duration)
+            {
+                m_Transform.rotation = m_RotationState.Target;
+
+                m_RotationState.Active = false;
+            }
         }
     }
 }

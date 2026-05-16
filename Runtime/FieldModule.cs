@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
 using RPGFramework.Core;
+using RPGFramework.Core.Data;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Dialogue.Flows;
 using RPGFramework.Core.Input;
 using RPGFramework.Core.PlayerLoop;
+using RPGFramework.Core.SaveData;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.DI;
 using RPGFramework.Field.FieldVmArgs;
@@ -27,12 +29,13 @@ namespace RPGFramework.Field
         private readonly IMenuTypeProvider                  m_MenuTypeProvider;
         private readonly IMusicPlayer                       m_MusicPlayer;
         private readonly ISfxPlayer                         m_SfxPlayer;
-        private readonly IFieldRegistry                     m_FieldRegistry;
+        private readonly IFieldDatabase                     m_FieldDatabase;
         private readonly IFieldPresentation                 m_FieldPresentation;
         private readonly ILocalisationService               m_LocalisationService;
         private readonly IFieldModule                       m_This;
         private readonly Dictionary<ulong, IDialogueWindow> m_DialogueWindows;
         private readonly IMemoryService                     m_MemoryService;
+        private readonly ISaveDataService                   m_SaveDataService;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
@@ -46,10 +49,11 @@ namespace RPGFramework.Field
         private Dictionary<int, FieldGatewayTrigger>     m_EntityGatewayTriggers;
         private Dictionary<int, FieldInteractionTrigger> m_EntityInteractionTriggers;
         private HashSet<int>                             m_ActiveInteractionTriggerIds;
+        private int                                      m_PlayerEntityId;
 
-        private IFieldModuleArgs m_FieldTransitionArgs;
-        private IFieldModuleArgs m_PreviousFieldTransitionArgs;
-        private bool             m_FieldTransitionRequested = false;
+        private IFieldModuleArgs   m_FieldTransitionArgs;
+        private bool               m_FieldTransitionRequested;
+        private FieldDatabaseAsset m_FieldDatabaseAsset;
 
         private IMovementDriver                  m_PlayerMovementDriver;
         private Dictionary<int, IMovementDriver> m_EntityMovementDrivers;
@@ -62,10 +66,11 @@ namespace RPGFramework.Field
                            IMenuTypeProvider    menuTypeProvider,
                            IMusicPlayer         musicPlayer,
                            ISfxPlayer           sfxPlayer,
-                           IFieldRegistry       fieldRegistry,
+                           IFieldDatabase       fieldDatabase,
                            IFieldPresentation   fieldPresentation,
                            ILocalisationService localisationService,
-                           IMemoryService       memoryService)
+                           IMemoryService       memoryService,
+                           ISaveDataService     saveDataService)
         {
             m_CoreModule          = coreModule;
             m_DIResolver          = diResolver;
@@ -73,10 +78,11 @@ namespace RPGFramework.Field
             m_MenuTypeProvider    = menuTypeProvider;
             m_MusicPlayer         = musicPlayer;
             m_SfxPlayer           = sfxPlayer;
-            m_FieldRegistry       = fieldRegistry;
+            m_FieldDatabase       = fieldDatabase;
             m_FieldPresentation   = fieldPresentation;
             m_LocalisationService = localisationService;
             m_MemoryService       = memoryService;
+            m_SaveDataService     = saveDataService;
             m_DialogueWindows     = new Dictionary<ulong, IDialogueWindow>(8);
             m_This                = this;
         }
@@ -98,8 +104,6 @@ namespace RPGFramework.Field
 
         async Task IModule.OnExitAsync()
         {
-            m_PreviousFieldTransitionArgs = m_FieldTransitionArgs;
-
             await UnloadCurrentFieldAsync();
 
             m_InputRouter.Clear();
@@ -130,9 +134,8 @@ namespace RPGFramework.Field
 
         private void SetFieldModuleArgs(IFieldModuleArgs args)
         {
-            m_PreviousFieldTransitionArgs = m_FieldTransitionArgs;
-            m_FieldTransitionArgs         = args;
-            m_FieldTransitionRequested    = true;
+            m_FieldTransitionArgs      = args;
+            m_FieldTransitionRequested = true;
         }
 
         private async Task TriggerFieldTransitionAsync()
@@ -145,16 +148,16 @@ namespace RPGFramework.Field
 
         private async Task LoadNewFieldAsync()
         {
-            FieldDefinition fieldDefinition = m_FieldRegistry.LoadField(m_FieldTransitionArgs.GetFieldId);
+            m_FieldDatabaseAsset = m_FieldDatabase.Get(m_FieldTransitionArgs.FieldId);
 
-            await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldTransitionArgs.LocalisationSheetsToLoad);
+            await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldDatabaseAsset.LocalisationSheets);
 
-            GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(fieldDefinition);
+            GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(m_FieldDatabaseAsset);
             SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
 
-            m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == m_FieldTransitionArgs.GetSpawnId);
-
             FieldVM vm = new FieldVM(m_MemoryService);
+
+            m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == m_FieldTransitionArgs.SpawnId);
 
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
 
@@ -188,40 +191,71 @@ namespace RPGFramework.Field
                     interactionTrigger.OnTriggerExited  += OnInteractionTriggerExited;
                 }
 
-                // TODO: ensure entity has a FieldScriptType.Init script as its first script
-                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptId);
-
-                entities.Add(fieldEntityRuntime);
-                vm.RegisterEntity(entity.EntityId, fieldEntityRuntime);
-
-                foreach (ScriptEntry scriptEntry in entity.ScriptDefinition.Scripts)
+                if (m_FieldTransitionArgs.SpawnId != -1)
                 {
-                    vm.RegisterScript(scriptId, scriptEntry.CompiledScript);
-                    scriptId++;
+                    // TODO: ensure entity has a FieldScriptType.Init script as its first script
+                    FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptId);
+
+                    entities.Add(fieldEntityRuntime);
+                    vm.RegisterEntity(entity.EntityId, fieldEntityRuntime);
+
+                    foreach (ScriptEntry scriptEntry in entity.ScriptDefinition.Scripts)
+                    {
+                        vm.RegisterScript(scriptId, scriptEntry.CompiledScript);
+                        scriptId++;
+                    }
                 }
             }
 
-            m_FieldContext                = new FieldContext(vm, entities);
+            if (m_FieldTransitionArgs.SpawnId == -1)
+            {
+                m_FieldContext = m_MemoryService.GetTempModuleData<FieldContext>();
+                RequestSetPlayerEntity(m_FieldContext.PlayerEntity);
+                foreach ((int entityId, Vector3 position) in m_FieldContext.EntityPositions)
+                {
+                    RequestSetEntityPosition(entityId, position);
+                }
+                foreach ((int entityId, Quaternion rotation) in m_FieldContext.EntityRotations)
+                {
+                    RequestSetEntityRotation(entityId, rotation);
+                }
+                foreach ((int entityId, RotationState rotationState) in m_FieldContext.EntityRotationStates)
+                {
+                    m_EntityMovementDrivers[entityId].ResumeRotation(rotationState);
+                }
+                foreach (int entityId in m_FieldContext.VisibleEntityIds)
+                {
+                    RequestSetEntityVisible(entityId, true);
+                }
+            }
+            else
+            {
+                m_FieldContext = new FieldContext(vm, entities);
+            }
+
             m_ActiveInteractionTriggerIds = new HashSet<int>();
 
-            vm.RequestFieldTransition             += SetFieldModuleArgs;
-            vm.RequestMusic                       += RequestMusic;
-            vm.RequestSfx                         += RequestSfx;
-            vm.RequestSetPlayerEntity             += RequestSetPlayerEntity;
-            vm.RequestSetEntityVisible            += RequestSetEntityVisible;
-            vm.RequestSetGatewayTriggersActive    += RequestSetGatewayTriggersActive;
-            vm.RequestSetInteractionTriggerActive += RequestSetInteractionTriggerActive;
-            vm.RequestSetInteractionRange         += RequestSetInteractionRange;
-            vm.RequestInputLock                   += RequestInputLock;
-            vm.RequestSetEntityPosition           += RequestSetEntityPosition;
-            vm.RequestSetEntityRotation           += RequestSetEntityRotation;
-            vm.RequestSetEntityRotationAsync      += RequestSetEntityRotationAsync;
-            vm.RequestSetEntityToFaceEntity       += RequestSetEntityToFaceEntity;
-            vm.RequestSetEntityMovementSpeed      += RequestSetEntityMovementSpeed;
-            vm.RequestSetMainMenuAccessibility    += RequestSetMainMenuAccessibility;
-            vm.RequestCreateDialogueWindow        += RequestCreateDialogueWindow;
-            vm.RequestShowDialogueWindow          += RequestShowDialogueWindowAsync;
-            vm.RequestAskPlayerToMakeAChoice      += RequestAskPlayerToMakeAChoiceAsync;
+            m_FieldContext.VM.RequestFieldTransition             += SetFieldModuleArgs;
+            m_FieldContext.VM.RequestMusic                       += RequestMusic;
+            m_FieldContext.VM.RequestSfx                         += RequestSfx;
+            m_FieldContext.VM.RequestSetPlayerEntity             += RequestSetPlayerEntity;
+            m_FieldContext.VM.RequestSetEntityVisible            += RequestSetEntityVisible;
+            m_FieldContext.VM.RequestSetGatewayTriggersActive    += RequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetInteractionTriggerActive += RequestSetInteractionTriggerActive;
+            m_FieldContext.VM.RequestSetInteractionRange         += RequestSetInteractionRange;
+            m_FieldContext.VM.RequestInputLock                   += RequestInputLock;
+            m_FieldContext.VM.RequestSetEntityPosition           += RequestSetEntityPosition;
+            m_FieldContext.VM.RequestSetEntityRotation           += RequestSetEntityRotation;
+            m_FieldContext.VM.RequestSetEntityRotationAsync      += RequestSetEntityRotationAsync;
+            m_FieldContext.VM.IsEntityRotating                   =  IsEntityRotating;
+            m_FieldContext.VM.RequestSetEntityToFaceEntity       += RequestSetEntityToFaceEntity;
+            m_FieldContext.VM.RequestSetEntityMovementSpeed      += RequestSetEntityMovementSpeed;
+            m_FieldContext.VM.RequestSetMainMenuAccessibility    += RequestSetMainMenuAccessibility;
+            m_FieldContext.VM.RequestCreateDialogueWindow        += RequestCreateDialogueWindow;
+            m_FieldContext.VM.RequestShowDialogueWindow          += RequestShowDialogueWindow;
+            m_FieldContext.VM.IsDialogueWindowOpen               =  IsDialogueWindowOpen;
+            m_FieldContext.VM.RequestAskPlayerToMakeAChoice      += RequestAskPlayerToMakeAChoice;
+            m_FieldContext.VM.IsPlayerMakingAChoice              =  IsDialogueWindowOpen;
 
             m_Camera = Object.FindAnyObjectByType<Camera>();
 
@@ -235,7 +269,7 @@ namespace RPGFramework.Field
             m_InputAdapter.Enable();
         }
 
-        private Task UnloadCurrentFieldAsync()
+        private async Task UnloadCurrentFieldAsync()
         {
             m_InputAdapter.Disable();
 
@@ -243,12 +277,15 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
-            m_FieldContext.VM.RequestAskPlayerToMakeAChoice      -= RequestAskPlayerToMakeAChoiceAsync;
-            m_FieldContext.VM.RequestShowDialogueWindow          -= RequestShowDialogueWindowAsync;
+            m_FieldContext.VM.IsPlayerMakingAChoice              =  null;
+            m_FieldContext.VM.RequestAskPlayerToMakeAChoice      -= RequestAskPlayerToMakeAChoice;
+            m_FieldContext.VM.IsDialogueWindowOpen               =  null;
+            m_FieldContext.VM.RequestShowDialogueWindow          -= RequestShowDialogueWindow;
             m_FieldContext.VM.RequestCreateDialogueWindow        -= RequestCreateDialogueWindow;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    -= RequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= RequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= RequestSetEntityToFaceEntity;
+            m_FieldContext.VM.IsEntityRotating                   =  null;
             m_FieldContext.VM.RequestSetEntityRotationAsync      -= RequestSetEntityRotationAsync;
             m_FieldContext.VM.RequestSetEntityRotation           -= RequestSetEntityRotation;
             m_FieldContext.VM.RequestSetEntityPosition           -= RequestSetEntityPosition;
@@ -278,11 +315,21 @@ namespace RPGFramework.Field
 
             m_FieldContext = null;
 
-            m_FieldPresentation.Unload();
+            await m_FieldPresentation.Unload();
 
-            m_LocalisationService.UnloadLocalisationData(m_PreviousFieldTransitionArgs.LocalisationSheetsToLoad);
+            m_LocalisationService.UnloadLocalisationData(m_FieldDatabaseAsset.LocalisationSheets);
+        }
 
-            return Task.CompletedTask;
+        private bool IsDialogueWindowOpen(ulong id)
+        {
+            return m_DialogueWindows.ContainsKey(id);
+        }
+
+        private bool IsEntityRotating(int entityId)
+        {
+            RotationState rotationsState = m_EntityMovementDrivers[entityId].GetRotationState();
+
+            return rotationsState.Active;
         }
 
         private void RequestMusic(int id)
@@ -305,15 +352,30 @@ namespace RPGFramework.Field
 
             m_FieldContext.SetPlayerEntity(entity);
 
+            m_PlayerEntityId = entity.EntityId;
             FieldEntity newPlayerEntity = m_EntityGameObjects[entity.EntityId];
 
-            newPlayerEntity.transform.SetPositionAndRotation(m_SpawnPoint.Position, m_SpawnPoint.Rotation);
+            Vector3    position;
+            Quaternion rotation;
+
+            if (m_FieldTransitionArgs.SpawnId == -1)
+            {
+                position = m_FieldTransitionArgs.Position;
+                rotation = m_FieldTransitionArgs.Rotation;
+            }
+            else
+            {
+                position = m_SpawnPoint.Position;
+                rotation = m_SpawnPoint.Rotation;
+            }
+            newPlayerEntity.transform.SetPositionAndRotation(position, rotation);
 
             m_PlayerMovementDriver = MovementDriverFactory.Create(newPlayerEntity.gameObject, 3f);
         }
 
         private void RequestSetEntityVisible(int entityId, bool visible)
         {
+            m_FieldContext.SetEntityVisible(entityId, visible);
             m_EntityGameObjects[entityId].SetVisible(visible);
         }
 
@@ -450,6 +512,40 @@ namespace RPGFramework.Field
                 return;
             }
 
+            // TODO: core should probably always try to resume via memory service first, fallback to save service if there is nothing in memory service
+
+            m_SaveDataService.TryGetSection(FrameworkSaveSectionDatabase.RESUME_DATA, out SaveSection<RuntimeResumeData> saveSection);
+
+            Transform  playerTransform = m_EntityGameObjects[m_PlayerEntityId].transform;
+            Vector3    playerPosition  = playerTransform.position;
+            Quaternion playerRotation  = playerTransform.rotation;
+
+            saveSection.Data.Index     = m_FieldTransitionArgs.FieldId;
+            saveSection.Data.SpawnId   = -1;
+            saveSection.Data.PositionX = playerPosition.x;
+            saveSection.Data.PositionY = playerPosition.y;
+            saveSection.Data.PositionZ = playerPosition.z;
+            saveSection.Data.RotationX = playerRotation.x;
+            saveSection.Data.RotationY = playerRotation.y;
+            saveSection.Data.RotationZ = playerRotation.z;
+            saveSection.Data.RotationW = playerRotation.w;
+
+            m_SaveDataService.SetSection(FrameworkSaveSectionDatabase.RESUME_DATA, saveSection);
+
+            foreach (KeyValuePair<int, FieldEntity> kvp in m_EntityGameObjects)
+            {
+                m_FieldContext.SetEntityPositionAndRotation(kvp.Key, kvp.Value.transform);
+            }
+
+            foreach ((int entityId, IMovementDriver driver) in m_EntityMovementDrivers)
+            {
+                RotationState rotationState = driver.GetRotationState();
+
+                m_FieldContext.SetEntityRotationState(entityId, rotationState);
+            }
+
+            m_MemoryService.SetTempModuleData(m_FieldContext);
+
             byte type = (byte)MenuType.Config;
 
             m_This.LoadMenuModuleAsync(type).FireAndForget();
@@ -537,7 +633,7 @@ namespace RPGFramework.Field
             movementDriver.SetRotation(rotation);
         }
 
-        private Task RequestSetEntityRotationAsync(int entityId, SetEntityRotationAsyncArgs args)
+        private void RequestSetEntityRotationAsync(int entityId, SetEntityRotationAsyncArgs args)
         {
             if (!m_EntityMovementDrivers.TryGetValue(entityId, out IMovementDriver movementDriver))
             {
@@ -546,7 +642,7 @@ namespace RPGFramework.Field
                 m_EntityMovementDrivers.Add(entityId, movementDriver);
             }
 
-            return movementDriver.SetRotationAsync(args);
+            movementDriver.StartRotation(args);
         }
 
         private void RequestSetEntityToFaceEntity(int entityId, int targetEntityId)
@@ -590,6 +686,11 @@ namespace RPGFramework.Field
             m_DialogueWindows.Add(args.DialogueId, window);
         }
 
+        private void RequestShowDialogueWindow(ulong id, bool blockMovement)
+        {
+            RequestShowDialogueWindowAsync(id, blockMovement).FireAndForget();
+        }
+
         private async Task RequestShowDialogueWindowAsync(ulong id, bool blockMovement)
         {
             if (blockMovement)
@@ -621,6 +722,11 @@ namespace RPGFramework.Field
             }
         }
 
+        private void RequestAskPlayerToMakeAChoice(byte bank, ushort addressToStoreChoice, ulong dialogueId, ulong[] answerIds)
+        {
+            RequestAskPlayerToMakeAChoiceAsync(bank, addressToStoreChoice, dialogueId, answerIds).FireAndForget();
+        }
+
         private async Task RequestAskPlayerToMakeAChoiceAsync(byte bank, ushort addressToStoreChoice, ulong dialogueId, ulong[] answerIds)
         {
             RequestInputLock(true);
@@ -649,7 +755,6 @@ namespace RPGFramework.Field
             byte       selectedChoice = dialogueWindow.GetSelectedChoice();
             MemoryBank memoryBank     = (MemoryBank)bank;
             m_MemoryService.WriteByte(memoryBank, addressToStoreChoice, selectedChoice);
-            // TODO: test reading from the memory bank
 
             await RequestCloseDialogueWindowAsync(dialogueId);
 
@@ -660,9 +765,11 @@ namespace RPGFramework.Field
 
         private async Task RequestCloseDialogueWindowAsync(ulong id)
         {
-            m_DialogueWindows.Remove(id, out IDialogueWindow dialogueWindow);
+            IDialogueWindow dialogueWindow = m_DialogueWindows[id];
 
             await dialogueWindow.AnimateWindowClosedAsync();
+
+            m_DialogueWindows.Remove(id);
 
             dialogueWindow.Destroy();
         }

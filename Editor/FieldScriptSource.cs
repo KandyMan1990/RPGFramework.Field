@@ -1,13 +1,12 @@
 ﻿using UnityEngine;
 
-#if UNITY_EDITOR
 using System.IO;
 using UnityEditor;
 
-namespace RPGFramework.Field
+namespace RPGFramework.Field.Editor
 {
     [CustomEditor(typeof(FieldScriptSource))]
-    public sealed class FieldScriptSourceEditor : Editor
+    public sealed class FieldScriptSourceEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
@@ -39,9 +38,8 @@ namespace RPGFramework.Field
         }
     }
 }
-#endif
 
-namespace RPGFramework.Field
+namespace RPGFramework.Field.Editor
 {
     [CreateAssetMenu(menuName = "RPG Framework/Field/Script Source", fileName = "FieldScriptSource")]
     public sealed class FieldScriptSource : ScriptableObject

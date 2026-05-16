@@ -1,31 +1,37 @@
-﻿using System.Threading.Tasks;
+﻿using RPGFramework.Field.BlockState;
 
 namespace RPGFramework.Field
 {
     internal sealed class ScriptExecutionContext
     {
-        private Task m_BlockingTask;
+        internal int         EntityId;
+        internal int         InstructionPointer;
+        internal byte[]      Bytecode;
+        private  IBlockState m_BlockingState;
 
-        internal int EntityId;
-        internal int ScriptId;
-        internal int InstructionPointer;
-        internal byte[] Bytecode;
+        internal void Block(IBlockState blockingState)
+        {
+            m_BlockingState = blockingState;
+        }
 
-        internal void Block(Task blockingTask) => m_BlockingTask = blockingTask;
         internal bool IsBlocked()
         {
-            if (m_BlockingTask == null)
+            return m_BlockingState != null;
+        }
+
+        internal void UpdateBlock(float deltaTime)
+        {
+            if (m_BlockingState == null)
             {
-                return false;
+                return;
             }
 
-            if (m_BlockingTask.IsCompleted || m_BlockingTask.IsFaulted || m_BlockingTask.IsCanceled)
-            {
-                m_BlockingTask = null;
-                return false;
-            }
+            m_BlockingState.Update(deltaTime);
 
-            return true;
+            if (m_BlockingState.IsComplete)
+            {
+                m_BlockingState = null;
+            }
         }
     }
 }

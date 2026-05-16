@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using RPGFramework.Field.FieldVmArgs;
+﻿using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.Utils;
 using Unity.Mathematics;
 using UnityEngine;
@@ -11,14 +10,15 @@ namespace RPGFramework.Field
         private Rigidbody2D     m_Rigidbody;
         private float           m_Speed;
         private IMovementDriver m_This;
-
-        private Vector3 m_MoveInput;
+        private Vector3         m_MoveInput;
+        private RotationState   m_RotationState;
 
         public void Init(Rigidbody2D rb, float speed)
         {
-            m_Rigidbody = rb;
-            m_Speed     = speed;
-            m_This      = this;
+            m_Rigidbody     = rb;
+            m_Speed         = speed;
+            m_This          = this;
+            m_RotationState = default;
         }
 
         void IMovementDriver.SetMoveInput(Vector3 worldMove)
@@ -33,13 +33,8 @@ namespace RPGFramework.Field
 
         void IMovementDriver.Tick(float deltaTime)
         {
-            if (m_MoveInput.sqrMagnitude < 0.0001f)
-            {
-                return;
-            }
-
-            Vector2 velocity = new Vector2(m_MoveInput.x, m_MoveInput.y).normalized * m_Speed;
-            m_Rigidbody.MovePosition(m_Rigidbody.position + velocity * deltaTime);
+            HandleMovement(deltaTime);
+            HandleRotation(deltaTime);
         }
 
         void IMovementDriver.SetPosition(Vector3 position)
@@ -52,33 +47,67 @@ namespace RPGFramework.Field
             m_Rigidbody.MoveRotation(rotation);
         }
 
-        async Task IMovementDriver.SetRotationAsync(SetEntityRotationAsyncArgs args)
+        void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
-            float start   = m_Rigidbody.rotation;
-            float targetZ = args.Rotation.eulerAngles.z;
+            m_RotationState = new RotationState
+                              {
+                                      Active        = true,
+                                      Start         = new Quaternion(0f, 0f, m_Rigidbody.rotation,        0f),
+                                      Target        = new Quaternion(0f, 0f, args.Rotation.eulerAngles.z, 0f),
+                                      Elapsed       = 0f,
+                                      Duration      = args.Duration,
+                                      Interpolation = args.RotationType
+                              };
+        }
 
-            float elapsed = 0f;
+        void IMovementDriver.ResumeRotation(RotationState rotationState)
+        {
+            m_RotationState = rotationState;
+        }
 
-            while (elapsed < args.Duration)
-            {
-                await Awaitable.FixedUpdateAsync();
-
-                elapsed += Time.fixedDeltaTime;
-
-                float t = math.clamp(elapsed / args.Duration, 0f, 1f);
-                t = RotationUtility.ApplyInterpolation(t, args.RotationType);
-
-                float rot = MathUtils.LerpAngle(start, targetZ, t);
-
-                m_Rigidbody.MoveRotation(rot);
-            }
-
-            m_Rigidbody.MoveRotation(targetZ);
+        RotationState IMovementDriver.GetRotationState()
+        {
+            return m_RotationState;
         }
 
         private void FixedUpdate()
         {
             m_This.Tick(Time.fixedDeltaTime);
+        }
+
+        private void HandleMovement(float deltaTime)
+        {
+            if (m_MoveInput.sqrMagnitude < 0.0001f)
+            {
+                return;
+            }
+
+            Vector2 velocity = new Vector2(m_MoveInput.x, m_MoveInput.y).normalized * m_Speed;
+            m_Rigidbody.MovePosition(m_Rigidbody.position + velocity * deltaTime);
+        }
+
+        private void HandleRotation(float deltaTime)
+        {
+            if (!m_RotationState.Active)
+            {
+                return;
+            }
+
+            m_RotationState.Elapsed += deltaTime;
+
+            float t = math.clamp(m_RotationState.Elapsed / m_RotationState.Duration, 0f, 1f);
+            t = RotationUtility.ApplyInterpolation(t, m_RotationState.Interpolation);
+
+            float rot = MathUtils.LerpAngle(m_RotationState.Start.z, m_RotationState.Target.z, t);
+
+            m_Rigidbody.MoveRotation(rot);
+
+            if (m_RotationState.Elapsed >= m_RotationState.Duration)
+            {
+                m_Rigidbody.MoveRotation(m_RotationState.Target.z);
+
+                m_RotationState.Active = false;
+            }
         }
     }
 }

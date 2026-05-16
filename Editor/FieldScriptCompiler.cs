@@ -1,10 +1,10 @@
-﻿#if UNITY_EDITOR
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using RPGFramework.Hashing;
 
-namespace RPGFramework.Field
+namespace RPGFramework.Field.Editor
 {
     public static class FieldScriptCompiler
     {
@@ -49,20 +49,40 @@ namespace RPGFramework.Field
                         break;
 
                     case "JUMP_TO_MAP":
-                        byte[] fieldIdBytes  = FieldProvider.ToBytes(parts[1]);
-                        int    spawnId       = int.Parse(parts[2], CultureInfo.InvariantCulture);
-                        int    locSheetCount = parts.Length - 3;
+                        string   typeName   = nameof(FieldDatabaseScriptableObject);
+                        string[] assetGuids = UnityEditor.AssetDatabase.FindAssets("t:" + typeName);
+                        int      indexOfMap = -1;
+
+                        foreach (string assetGuid in assetGuids)
+                        {
+                            string                        assetPath     = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
+                            FieldDatabaseScriptableObject fieldDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<FieldDatabaseScriptableObject>(assetPath);
+
+                            for (int i = 0; i < fieldDatabase.m_Fields.Length; i++)
+                            {
+                                if (fieldDatabase.m_Fields[i].Prefab.name == parts[1])
+                                {
+                                    indexOfMap = i;
+                                    break;
+                                }
+                            }
+
+                            if (indexOfMap != -1)
+                            {
+                                break;
+                            }
+                        }
+
+                        if (indexOfMap == -1)
+                        {
+                            throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(Compile)} Could not find index for map {parts[1]} when compiling [JUMP_TO_MAP]");
+                        }
+
+                        int spawnId = int.Parse(parts[2], CultureInfo.InvariantCulture);
 
                         bw.Write((ushort)FieldScriptOpCode.JumpToAnotherMap);
-                        bw.Write(fieldIdBytes);
+                        bw.Write(indexOfMap);
                         bw.Write(spawnId);
-                        bw.Write(locSheetCount);
-
-                        for (int i = 3; i < parts.Length; i++)
-                        {
-                            byte[] locSheetBytes = FieldProvider.ToBytes(parts[i]);
-                            bw.Write(locSheetBytes);
-                        }
                         break;
 
                     case "GATEWAY_TRIGGER_ACTIVATION":
@@ -192,4 +212,3 @@ namespace RPGFramework.Field
         }
     }
 }
-#endif

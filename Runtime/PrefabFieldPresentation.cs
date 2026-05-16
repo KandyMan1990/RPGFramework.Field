@@ -5,11 +5,20 @@ namespace RPGFramework.Field
 {
     public sealed class PrefabFieldPresentation : IFieldPresentation
     {
-        private GameObject m_Instance;
+        private GameObject  m_Instance;
+        private AssetBundle m_AssetBundle;
 
-        async Task<GameObject> IFieldPresentation.LoadAsync(FieldDefinition field)
+        async Task<GameObject> IFieldPresentation.LoadAsync(FieldDatabaseAsset asset)
         {
-            GameObject prefab = Resources.Load<GameObject>(field.PrefabAddress);
+            AssetBundleCreateRequest bundleRequest = AssetBundle.LoadFromFileAsync(asset.AssetPath);
+            await bundleRequest;
+            
+            AssetBundleRequest prefabRequest = bundleRequest.assetBundle.LoadAssetWithSubAssetsAsync<GameObject>(asset.AssetName);
+            await prefabRequest;
+            
+            m_AssetBundle = bundleRequest.assetBundle;
+
+            GameObject prefab = (GameObject)prefabRequest.asset;
 
             GameObject[] op = await Object.InstantiateAsync(prefab);
             m_Instance = op[0];
@@ -17,9 +26,12 @@ namespace RPGFramework.Field
             return m_Instance;
         }
 
-        void IFieldPresentation.Unload()
+        async Task IFieldPresentation.Unload()
         {
             Object.Destroy(m_Instance);
+            AssetBundleUnloadOperation op = m_AssetBundle.UnloadAsync(true);
+            
+            await op;
         }
     }
 }

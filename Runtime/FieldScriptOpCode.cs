@@ -1,6 +1,6 @@
 ﻿namespace RPGFramework.Field
 {
-    internal enum FieldScriptOpCode : ushort
+    public enum FieldScriptOpCode : ushort
     {
         // Script Flow and Control
         Return,                                  //

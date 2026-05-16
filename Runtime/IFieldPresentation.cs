@@ -5,7 +5,7 @@ namespace RPGFramework.Field
 {
     public interface IFieldPresentation
     {
-        Task<GameObject> LoadAsync(FieldDefinition field);
-        void             Unload();
+        Task<GameObject> LoadAsync(FieldDatabaseAsset asset);
+        Task             Unload();
     }
 }
