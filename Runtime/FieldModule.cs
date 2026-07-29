@@ -8,6 +8,7 @@ using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Dialogue.Flows;
 using RPGFramework.Core.Input;
 using RPGFramework.Core.PlayerLoop;
+using RPGFramework.Core.Rendering;
 using RPGFramework.Core.SaveData;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.DI;
@@ -36,6 +37,7 @@ namespace RPGFramework.Field
         private readonly Dictionary<ulong, IDialogueWindow> m_DialogueWindows;
         private readonly IMemoryService                     m_MemoryService;
         private readonly ISaveDataService                   m_SaveDataService;
+        private readonly IScreenFadeService                 m_ScreenFadeService;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
@@ -70,7 +72,8 @@ namespace RPGFramework.Field
                            IFieldPresentation   fieldPresentation,
                            ILocalisationService localisationService,
                            IMemoryService       memoryService,
-                           ISaveDataService     saveDataService)
+                           ISaveDataService     saveDataService,
+                           IScreenFadeService   screenFadeService)
         {
             m_CoreModule          = coreModule;
             m_DIResolver          = diResolver;
@@ -83,12 +86,15 @@ namespace RPGFramework.Field
             m_LocalisationService = localisationService;
             m_MemoryService       = memoryService;
             m_SaveDataService     = saveDataService;
+            m_ScreenFadeService   = screenFadeService;
             m_DialogueWindows     = new Dictionary<ulong, IDialogueWindow>(8);
             m_This                = this;
         }
 
         async Task IModule.OnEnterAsync(IModuleArgs args)
         {
+            await m_ScreenFadeService.FadeOutAsync(true);
+            
             m_InputAdapter = Object.FindAnyObjectByType<InputAdapter>();
             m_DIResolver.InjectInto(m_InputAdapter);
 
@@ -266,6 +272,8 @@ namespace RPGFramework.Field
             m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
             m_InputRouter.Push(m_CurrentInputContext);
 
+            await m_ScreenFadeService.FadeInAsync();
+
             m_InputAdapter.Enable();
         }
 
@@ -314,6 +322,8 @@ namespace RPGFramework.Field
             }
 
             m_FieldContext = null;
+
+            await m_ScreenFadeService.FadeOutAsync();
 
             await m_FieldPresentation.Unload();
 
