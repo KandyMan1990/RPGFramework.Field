@@ -31,7 +31,6 @@
         GetLastFieldMap,
         StartBattle,
         RandomEncounters,
-        SetBattleModeOptionsAgain,
         GatewayTriggerActivation, // bool active
         GameOver,
 

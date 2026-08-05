@@ -47,6 +47,14 @@ namespace RPGFramework.Field.Editor
                         bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
                         bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
+                    
+                    case "SET_BATTLE_MODE_OPTIONS":
+                        bw.Write((ushort)FieldScriptOpCode.SetBattleModeOptions);
+                        bw.Write(ushort.Parse(parts[1], CultureInfo.InvariantCulture));
+                        bw.Write(ushort.Parse(parts[2], CultureInfo.InvariantCulture));
+                        bw.Write(ushort.Parse(parts[3], CultureInfo.InvariantCulture));
+                        bw.Write(byte.Parse(parts[4], CultureInfo.InvariantCulture));
+                        break;
 
                     case "JUMP_TO_MAP":
                         string   typeName   = nameof(FieldDatabaseScriptableObject);
@@ -83,6 +91,10 @@ namespace RPGFramework.Field.Editor
                         bw.Write((ushort)FieldScriptOpCode.JumpToAnotherMap);
                         bw.Write(indexOfMap);
                         bw.Write(spawnId);
+                        break;
+                    
+                    case "START_BATTLE":
+                        bw.Write((ushort)FieldScriptOpCode.StartBattle);
                         break;
 
                     case "GATEWAY_TRIGGER_ACTIVATION":

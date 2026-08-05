@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
+using RPGFramework.Battle.SharedTypes;
+using RPGFramework.Battle.SharedTypes.Providers;
 using RPGFramework.Core;
 using RPGFramework.Core.Data;
 using RPGFramework.Core.Dialogue;
@@ -38,6 +40,7 @@ namespace RPGFramework.Field
         private readonly IMemoryService                     m_MemoryService;
         private readonly ISaveDataService                   m_SaveDataService;
         private readonly IScreenFadeService                 m_ScreenFadeService;
+        private readonly IBattleArgsProvider                m_BattleArgsProvider;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
@@ -56,6 +59,8 @@ namespace RPGFramework.Field
         private IFieldModuleArgs   m_FieldTransitionArgs;
         private bool               m_FieldTransitionRequested;
         private FieldDatabaseAsset m_FieldDatabaseAsset;
+        
+        private bool m_BattleTransitionRequested;
 
         private IMovementDriver                  m_PlayerMovementDriver;
         private Dictionary<int, IMovementDriver> m_EntityMovementDrivers;
@@ -73,7 +78,8 @@ namespace RPGFramework.Field
                            ILocalisationService localisationService,
                            IMemoryService       memoryService,
                            ISaveDataService     saveDataService,
-                           IScreenFadeService   screenFadeService)
+                           IScreenFadeService   screenFadeService,
+                           IBattleArgsProvider  battleArgsProvider)
         {
             m_CoreModule          = coreModule;
             m_DIResolver          = diResolver;
@@ -87,6 +93,7 @@ namespace RPGFramework.Field
             m_MemoryService       = memoryService;
             m_SaveDataService     = saveDataService;
             m_ScreenFadeService   = screenFadeService;
+            m_BattleArgsProvider  = battleArgsProvider;
             m_DialogueWindows     = new Dictionary<ulong, IDialogueWindow>(8);
             m_This                = this;
         }
@@ -94,7 +101,7 @@ namespace RPGFramework.Field
         async Task IModule.OnEnterAsync(IModuleArgs args)
         {
             await m_ScreenFadeService.FadeOutAsync(true);
-            
+
             m_InputAdapter = Object.FindAnyObjectByType<InputAdapter>();
             m_DIResolver.InjectInto(m_InputAdapter);
 
@@ -135,6 +142,11 @@ namespace RPGFramework.Field
             if (m_FieldTransitionRequested)
             {
                 TriggerFieldTransitionAsync().FireAndForget();
+            }
+
+            if (m_BattleTransitionRequested)
+            {
+                m_CoreModule.LoadModuleAsync<IBattleModule>(null).FireAndForget();
             }
         }
 
@@ -221,14 +233,17 @@ namespace RPGFramework.Field
                 {
                     RequestSetEntityPosition(entityId, position);
                 }
+
                 foreach ((int entityId, Quaternion rotation) in m_FieldContext.EntityRotations)
                 {
                     RequestSetEntityRotation(entityId, rotation);
                 }
+
                 foreach ((int entityId, RotationState rotationState) in m_FieldContext.EntityRotationStates)
                 {
                     m_EntityMovementDrivers[entityId].ResumeRotation(rotationState);
                 }
+
                 foreach (int entityId in m_FieldContext.VisibleEntityIds)
                 {
                     RequestSetEntityVisible(entityId, true);
@@ -262,6 +277,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsDialogueWindowOpen               =  IsDialogueWindowOpen;
             m_FieldContext.VM.RequestAskPlayerToMakeAChoice      += RequestAskPlayerToMakeAChoice;
             m_FieldContext.VM.IsPlayerMakingAChoice              =  IsDialogueWindowOpen;
+            m_FieldContext.VM.RequestSetBattleModeOptions        += RequestSetBattleModeOptions;
+            m_FieldContext.VM.RequestStartBattle                 += RequestStartBattle;
 
             m_Camera = Object.FindAnyObjectByType<Camera>();
 
@@ -285,6 +302,8 @@ namespace RPGFramework.Field
 
             UpdateManager.QueueForUnregisterUpdatable(this);
 
+            m_FieldContext.VM.RequestStartBattle                 -= RequestStartBattle;
+            m_FieldContext.VM.RequestSetBattleModeOptions        -= RequestSetBattleModeOptions;
             m_FieldContext.VM.IsPlayerMakingAChoice              =  null;
             m_FieldContext.VM.RequestAskPlayerToMakeAChoice      -= RequestAskPlayerToMakeAChoice;
             m_FieldContext.VM.IsDialogueWindowOpen               =  null;
@@ -378,6 +397,7 @@ namespace RPGFramework.Field
                 position = m_SpawnPoint.Position;
                 rotation = m_SpawnPoint.Rotation;
             }
+
             newPlayerEntity.transform.SetPositionAndRotation(position, rotation);
 
             m_PlayerMovementDriver = MovementDriverFactory.Create(newPlayerEntity.gameObject, 3f);
@@ -782,6 +802,17 @@ namespace RPGFramework.Field
             m_DialogueWindows.Remove(id);
 
             dialogueWindow.Destroy();
+        }
+
+        private void RequestSetBattleModeOptions(BattleArgs args)
+        {
+            m_BattleArgsProvider.Set(args);
+        }
+
+        private void RequestStartBattle()
+        {
+            m_ScreenFadeService.SetFadeToBattleStart();
+            m_BattleTransitionRequested = true;
         }
     }
 }

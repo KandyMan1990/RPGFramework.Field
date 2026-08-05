@@ -2,9 +2,9 @@
     "name": "RPGFramework.Field.Editor",
     "rootNamespace": "RPGFramework.Field.Editor",
     "references": [
-        "GUID:6c880174b6faa934db92992997e5a8c0",
-        "GUID:e4a7006e7edc2c745af0173f399fb49c",
-        "GUID:d90668ab5c2b51b43803b02b822e0445"
+        "RPGFramework.Field",
+        "RPGFramework.Hashing",
+        "RPGFramework.Localisation.Editor"
     ],
     "includePlatforms": [
         "Editor"
