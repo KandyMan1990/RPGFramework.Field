@@ -13,7 +13,7 @@ namespace RPGFramework.Field
 {
     internal sealed class FieldVM
     {
-        internal event Action<IFieldModuleArgs>                RequestFieldTransition;
+        internal event Action<FieldArgs>                       RequestFieldTransition;
         internal event Action<int>                             RequestMusic;
         internal event Action<int>                             RequestSfx;
         internal event Action<FieldEntityRuntime>              RequestSetPlayerEntity;
@@ -683,7 +683,7 @@ namespace RPGFramework.Field
             int fieldIndex = ReadInt(ctx);
             int spawnId    = ReadInt(ctx);
 
-            IFieldModuleArgs args = new FieldModuleArgs(fieldIndex, spawnId);
+            FieldArgs args = new FieldArgs(fieldIndex, spawnId);
             RequestFieldTransition?.Invoke(args);
         }
 

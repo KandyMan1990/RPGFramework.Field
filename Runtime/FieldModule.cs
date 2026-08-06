@@ -16,8 +16,10 @@ using RPGFramework.Core.SharedTypes;
 using RPGFramework.DI;
 using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
+using RPGFramework.Field.SharedTypes.Providers;
 using RPGFramework.Localisation;
 using RPGFramework.Menu.SharedTypes;
+using RPGFramework.Menu.SharedTypes.Providers;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -29,7 +31,6 @@ namespace RPGFramework.Field
         private readonly ICoreModule                        m_CoreModule;
         private readonly IDIResolver                        m_DIResolver;
         private readonly IInputRouter                       m_InputRouter;
-        private readonly IMenuTypeProvider                  m_MenuTypeProvider;
         private readonly IMusicPlayer                       m_MusicPlayer;
         private readonly ISfxPlayer                         m_SfxPlayer;
         private readonly IFieldDatabase                     m_FieldDatabase;
@@ -41,6 +42,8 @@ namespace RPGFramework.Field
         private readonly ISaveDataService                   m_SaveDataService;
         private readonly IScreenFadeService                 m_ScreenFadeService;
         private readonly IBattleArgsProvider                m_BattleArgsProvider;
+        private readonly IFieldArgsProvider                 m_FieldArgsProvider;
+        private readonly IMenuArgsProvider                  m_MenuArgsProvider;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
@@ -56,10 +59,10 @@ namespace RPGFramework.Field
         private HashSet<int>                             m_ActiveInteractionTriggerIds;
         private int                                      m_PlayerEntityId;
 
-        private IFieldModuleArgs   m_FieldTransitionArgs;
+        private FieldArgs          m_FieldArgs;
         private bool               m_FieldTransitionRequested;
         private FieldDatabaseAsset m_FieldDatabaseAsset;
-        
+
         private bool m_BattleTransitionRequested;
 
         private IMovementDriver                  m_PlayerMovementDriver;
@@ -70,7 +73,6 @@ namespace RPGFramework.Field
         public FieldModule(ICoreModule          coreModule,
                            IDIResolver          diResolver,
                            IInputRouter         inputRouter,
-                           IMenuTypeProvider    menuTypeProvider,
                            IMusicPlayer         musicPlayer,
                            ISfxPlayer           sfxPlayer,
                            IFieldDatabase       fieldDatabase,
@@ -79,12 +81,13 @@ namespace RPGFramework.Field
                            IMemoryService       memoryService,
                            ISaveDataService     saveDataService,
                            IScreenFadeService   screenFadeService,
-                           IBattleArgsProvider  battleArgsProvider)
+                           IBattleArgsProvider  battleArgsProvider,
+                           IFieldArgsProvider   fieldArgsProvider,
+                           IMenuArgsProvider    menuArgsProvider)
         {
             m_CoreModule          = coreModule;
             m_DIResolver          = diResolver;
             m_InputRouter         = inputRouter;
-            m_MenuTypeProvider    = menuTypeProvider;
             m_MusicPlayer         = musicPlayer;
             m_SfxPlayer           = sfxPlayer;
             m_FieldDatabase       = fieldDatabase;
@@ -94,11 +97,13 @@ namespace RPGFramework.Field
             m_SaveDataService     = saveDataService;
             m_ScreenFadeService   = screenFadeService;
             m_BattleArgsProvider  = battleArgsProvider;
+            m_FieldArgsProvider   = fieldArgsProvider;
+            m_MenuArgsProvider    = menuArgsProvider;
             m_DialogueWindows     = new Dictionary<ulong, IDialogueWindow>(8);
             m_This                = this;
         }
 
-        async Task IModule.OnEnterAsync(IModuleArgs args)
+        async Task IModule.OnEnterAsync()
         {
             await m_ScreenFadeService.FadeOutAsync(true);
 
@@ -110,7 +115,7 @@ namespace RPGFramework.Field
             UIDocument uiDoc = Object.FindAnyObjectByType<UIDocument>();
             m_RootElement = uiDoc.rootVisualElement.Q("Root");
 
-            m_FieldTransitionArgs = (IFieldModuleArgs)args;
+            m_FieldArgs = m_FieldArgsProvider.Get;
 
             await LoadNewFieldAsync();
         }
@@ -126,10 +131,10 @@ namespace RPGFramework.Field
 
         Task IFieldModule.LoadMenuModuleAsync(byte menuId)
         {
-            Type            type = m_MenuTypeProvider.GetType(menuId);
-            IMenuModuleArgs args = new MenuModuleArgs(type);
+            MenuArgs args = new MenuArgs(menuId);
+            m_MenuArgsProvider.Set(args);
 
-            return m_CoreModule.LoadModuleAsync<IMenuModule>(args);
+            return m_CoreModule.LoadModuleAsync<IMenuModule>();
         }
 
         void IUpdatable.Update()
@@ -146,13 +151,13 @@ namespace RPGFramework.Field
 
             if (m_BattleTransitionRequested)
             {
-                m_CoreModule.LoadModuleAsync<IBattleModule>(null).FireAndForget();
+                m_CoreModule.LoadModuleAsync<IBattleModule>().FireAndForget();
             }
         }
 
-        private void SetFieldModuleArgs(IFieldModuleArgs args)
+        private void SetFieldModuleArgs(FieldArgs args)
         {
-            m_FieldTransitionArgs      = args;
+            m_FieldArgs                = args;
             m_FieldTransitionRequested = true;
         }
 
@@ -166,7 +171,7 @@ namespace RPGFramework.Field
 
         private async Task LoadNewFieldAsync()
         {
-            m_FieldDatabaseAsset = m_FieldDatabase.Get(m_FieldTransitionArgs.FieldId);
+            m_FieldDatabaseAsset = m_FieldDatabase.Get(m_FieldArgs.FieldId);
 
             await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldDatabaseAsset.LocalisationSheets);
 
@@ -175,7 +180,7 @@ namespace RPGFramework.Field
 
             FieldVM vm = new FieldVM(m_MemoryService);
 
-            m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == m_FieldTransitionArgs.SpawnId);
+            m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == m_FieldArgs.SpawnId);
 
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
 
@@ -209,7 +214,7 @@ namespace RPGFramework.Field
                     interactionTrigger.OnTriggerExited  += OnInteractionTriggerExited;
                 }
 
-                if (m_FieldTransitionArgs.SpawnId != -1)
+                if (m_FieldArgs.SpawnId != -1)
                 {
                     // TODO: ensure entity has a FieldScriptType.Init script as its first script
                     FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptId);
@@ -225,7 +230,7 @@ namespace RPGFramework.Field
                 }
             }
 
-            if (m_FieldTransitionArgs.SpawnId == -1)
+            if (m_FieldArgs.SpawnId == -1)
             {
                 m_FieldContext = m_MemoryService.GetTempModuleData<FieldContext>();
                 RequestSetPlayerEntity(m_FieldContext.PlayerEntity);
@@ -387,10 +392,10 @@ namespace RPGFramework.Field
             Vector3    position;
             Quaternion rotation;
 
-            if (m_FieldTransitionArgs.SpawnId == -1)
+            if (m_FieldArgs.SpawnId == -1)
             {
-                position = m_FieldTransitionArgs.Position;
-                rotation = m_FieldTransitionArgs.Rotation;
+                position = m_FieldArgs.Position;
+                rotation = m_FieldArgs.Rotation;
             }
             else
             {
@@ -550,7 +555,7 @@ namespace RPGFramework.Field
             Vector3    playerPosition  = playerTransform.position;
             Quaternion playerRotation  = playerTransform.rotation;
 
-            saveSection.Data.Index     = m_FieldTransitionArgs.FieldId;
+            saveSection.Data.Index     = m_FieldArgs.FieldId;
             saveSection.Data.SpawnId   = -1;
             saveSection.Data.PositionX = playerPosition.x;
             saveSection.Data.PositionY = playerPosition.y;
