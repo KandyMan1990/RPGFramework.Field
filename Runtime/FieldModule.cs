@@ -151,6 +151,7 @@ namespace RPGFramework.Field
 
             if (m_BattleTransitionRequested)
             {
+                StoreToTempMemory();
                 m_CoreModule.LoadModuleAsync<IBattleModule>().FireAndForget();
             }
         }
@@ -547,6 +548,15 @@ namespace RPGFramework.Field
                 return;
             }
 
+            StoreToTempMemory();
+
+            byte type = (byte)MenuType.Config;
+
+            m_This.LoadMenuModuleAsync(type).FireAndForget();
+        }
+
+        private void StoreToTempMemory()
+        {
             // TODO: core should probably always try to resume via memory service first, fallback to save service if there is nothing in memory service
 
             m_SaveDataService.TryGetSection(FrameworkSaveSectionDatabase.RESUME_DATA, out SaveSection<RuntimeResumeData> saveSection);
@@ -580,10 +590,6 @@ namespace RPGFramework.Field
             }
 
             m_MemoryService.SetTempModuleData(m_FieldContext);
-
-            byte type = (byte)MenuType.Config;
-
-            m_This.LoadMenuModuleAsync(type).FireAndForget();
         }
 
         private void OnMove(Vector2 move)
