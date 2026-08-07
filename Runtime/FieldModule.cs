@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
 using RPGFramework.Battle.SharedTypes;
+using RPGFramework.Battle.SharedTypes.Constants;
 using RPGFramework.Battle.SharedTypes.Providers;
 using RPGFramework.Core;
 using RPGFramework.Core.Data;
@@ -13,6 +14,7 @@ using RPGFramework.Core.PlayerLoop;
 using RPGFramework.Core.Rendering;
 using RPGFramework.Core.SaveData;
 using RPGFramework.Core.SharedTypes;
+using RPGFramework.Core.Store;
 using RPGFramework.DI;
 using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
@@ -20,6 +22,7 @@ using RPGFramework.Field.SharedTypes.Constants;
 using RPGFramework.Field.SharedTypes.Providers;
 using RPGFramework.Localisation;
 using RPGFramework.Menu.SharedTypes;
+using RPGFramework.Menu.SharedTypes.Constants;
 using RPGFramework.Menu.SharedTypes.Providers;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -45,6 +48,8 @@ namespace RPGFramework.Field
         private readonly IBattleArgsProvider                m_BattleArgsProvider;
         private readonly IFieldArgsProvider                 m_FieldArgsProvider;
         private readonly IMenuArgsProvider                  m_MenuArgsProvider;
+        private readonly IChangeModuleStore                 m_ChangeModuleStore;
+        private readonly IResumeModuleStore                 m_ResumeModuleStore;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_CurrentInputContext;
@@ -63,6 +68,7 @@ namespace RPGFramework.Field
         private FieldDatabaseAsset m_FieldDatabaseAsset;
 
         private bool m_BattleTransitionRequested;
+        private bool m_MenuTransitionRequested;
 
         private IMovementDriver m_PlayerMovementDriver;
 
@@ -81,7 +87,9 @@ namespace RPGFramework.Field
                            IScreenFadeService   screenFadeService,
                            IBattleArgsProvider  battleArgsProvider,
                            IFieldArgsProvider   fieldArgsProvider,
-                           IMenuArgsProvider    menuArgsProvider)
+                           IMenuArgsProvider    menuArgsProvider,
+                           IChangeModuleStore   changeModuleStore,
+                           IResumeModuleStore   resumeModuleStore)
         {
             m_CoreModule          = coreModule;
             m_DIResolver          = diResolver;
@@ -97,6 +105,8 @@ namespace RPGFramework.Field
             m_BattleArgsProvider  = battleArgsProvider;
             m_FieldArgsProvider   = fieldArgsProvider;
             m_MenuArgsProvider    = menuArgsProvider;
+            m_ChangeModuleStore   = changeModuleStore;
+            m_ResumeModuleStore   = resumeModuleStore;
             m_DialogueWindows     = new Dictionary<ulong, IDialogueWindow>(8);
             m_This                = this;
         }
@@ -129,12 +139,12 @@ namespace RPGFramework.Field
             m_CoreModule.ResetModule<IFieldModule, FieldModule>();
         }
 
-        Task IFieldModule.LoadMenuModuleAsync(byte menuId)
+        void IFieldModule.RequestMenuModule(byte menuId)
         {
             MenuArgs args = new MenuArgs(menuId);
             m_MenuArgsProvider.Set(args);
 
-            return m_CoreModule.LoadModuleAsync<IMenuModule>();
+            m_MenuTransitionRequested = true;
         }
 
         void IUpdatable.Update()
@@ -147,12 +157,18 @@ namespace RPGFramework.Field
             if (m_FieldTransitionRequested)
             {
                 TriggerFieldTransitionAsync().FireAndForget();
+                return;
+            }
+
+            if (m_MenuTransitionRequested)
+            {
+                TriggerMenuTransitionAsync().FireAndForget();
+                return;
             }
 
             if (m_BattleTransitionRequested)
             {
-                StoreToTempMemory();
-                m_CoreModule.LoadModuleAsync<IBattleModule>().FireAndForget();
+                TriggerBattleTransitionAsync().FireAndForget();
             }
         }
 
@@ -222,6 +238,30 @@ namespace RPGFramework.Field
 
             await UnloadCurrentFieldAsync();
             await LoadNewFieldAsync();
+        }
+
+        private Task TriggerMenuTransitionAsync()
+        {
+            m_MenuTransitionRequested = false;
+
+            StoreToTempMemory();
+
+            m_ResumeModuleStore.SetModuleId(FieldConstants.MODULE_ID);
+            m_ChangeModuleStore.SetModuleId(MenuConstants.MODULE_ID);
+
+            return m_CoreModule.RequestModuleChangeAsync();
+        }
+
+        private Task TriggerBattleTransitionAsync()
+        {
+            m_BattleTransitionRequested = false;
+
+            StoreToTempMemory();
+
+            m_ResumeModuleStore.SetModuleId(FieldConstants.MODULE_ID);
+            m_ChangeModuleStore.SetModuleId(BattleConstants.MODULE_ID);
+
+            return m_CoreModule.RequestModuleChangeAsync();
         }
 
         private async Task LoadNewFieldAsync()
@@ -572,11 +612,9 @@ namespace RPGFramework.Field
                 return;
             }
 
-            StoreToTempMemory();
-
             byte type = (byte)MenuType.Config;
 
-            m_This.LoadMenuModuleAsync(type).FireAndForget();
+            m_This.RequestMenuModule(type);
         }
 
         private void StoreToTempMemory()
@@ -623,7 +661,12 @@ namespace RPGFramework.Field
             }
 
             m_MemoryService.SetTempModuleData(m_FieldContext);
-            m_MemoryService.SetTempModuleData(m_FieldContext);
+            TransformHandle playerTransform = m_Entities[m_PlayerEntityId].Entity.transformHandle;
+            FieldArgs args = new FieldArgs(m_FieldArgsProvider.Get.FieldId,
+                                           FieldConstants.SPAWN_RESUME,
+                                           playerTransform.position,
+                                           playerTransform.rotation);
+            m_FieldArgsProvider.Set(args);
         }
 
         private void OnMove(Vector2 move)
