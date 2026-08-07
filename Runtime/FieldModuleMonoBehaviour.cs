@@ -1,11 +1,16 @@
+using RPGFramework.Core.Input;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace RPGFramework.Field
 {
     public class FieldModuleMonoBehaviour : MonoBehaviour
     {
-        public Vector3 Up                     => m_Up.normalized;
-        public float   PlayerInteractionAngle => m_PlayerInteractionAngle;
+        public Vector3         Up                     => m_Up.normalized;
+        public float           PlayerInteractionAngle => m_PlayerInteractionAngle;
+        public InputAdapter    InputAdapter           => m_InputAdapter;
+        public UIDocument      UIDocument             => m_UIDocument;
+        public TransformHandle CameraTransformHandle  => m_Camera.transformHandle;
 
         [Tooltip("Used to determine the up direction in the game.  3D games should use 0,1,0 (XZ plane).  2D games should use 0,0,1 (XY plane).")]
         [SerializeField]
@@ -15,5 +20,14 @@ namespace RPGFramework.Field
         [SerializeField]
         [Range(0f, 360f)]
         private float m_PlayerInteractionAngle = 60f;
+
+        [SerializeField]
+        private InputAdapter m_InputAdapter;
+
+        [SerializeField]
+        private UIDocument m_UIDocument;
+
+        [SerializeField]
+        private Camera m_Camera;
     }
 }
