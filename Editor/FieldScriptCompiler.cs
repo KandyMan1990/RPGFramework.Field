@@ -57,18 +57,18 @@ namespace RPGFramework.Field.Editor
                         break;
 
                     case "JUMP_TO_MAP":
-                        string   typeName   = nameof(FieldDatabaseScriptableObject);
+                        string   typeName   = nameof(FieldDesignerData);
                         string[] assetGuids = UnityEditor.AssetDatabase.FindAssets("t:" + typeName);
                         int      indexOfMap = -1;
 
                         foreach (string assetGuid in assetGuids)
                         {
-                            string                        assetPath     = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
-                            FieldDatabaseScriptableObject fieldDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<FieldDatabaseScriptableObject>(assetPath);
+                            string            assetPath     = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
+                            FieldDesignerData fieldDesignerData = UnityEditor.AssetDatabase.LoadAssetAtPath<FieldDesignerData>(assetPath);
 
-                            for (int i = 0; i < fieldDatabase.m_Fields.Length; i++)
+                            for (int i = 0; i < fieldDesignerData.FieldDatabase.Fields.Count; i++)
                             {
-                                if (fieldDatabase.m_Fields[i].Prefab.name == parts[1])
+                                if (fieldDesignerData.FieldDatabase.Fields[i].Prefab.name == parts[1])
                                 {
                                     indexOfMap = i;
                                     break;

@@ -1,0 +1,30 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Packages/com.rpgframework.field/Editor/Tooling/Editor/DieldDesignerDataWindow.uss?fileID=7433441132597879392&amp;guid=e2c46eca05f5e4b18bcef9591d80c1e5&amp;type=3#DieldDesignerDataWindow"/>
+    <ui:VisualElement name="Root" style="flex-grow: 1; flex-direction: row;">
+        <ui:VisualElement name="LeftColumn" style="width: 25%;">
+            <ui:Label text="Fields" name="FieldsLabel" style="-unity-text-align: upper-center; background-color: rgb(43, 43, 43);"/>
+            <ui:ListView name="FieldsContainer" show-border="true" show-alternating-row-backgrounds="All" reorderable="true" style="width: 100%; height: 100%;"/>
+            <ui:Button text="Add New Field Entry" name="AddFieldButton"/>
+            <ui:Button text="Delete Selected Field Entry" name="DeleteFieldButton"/>
+            <ui:Button text="Save Database" name="SaveButton"/>
+            <ui:Button text="Export Runtime Data" name="ExportButton"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="DataViewer" style="flex-grow: 1;">
+            <ui:VisualElement name="Header" style="flex-direction: row;">
+                <ui:Button text="Prefab" name="PrefabButton"/>
+                <ui:Button text="Text" name="TextButton"/>
+                <ui:Button text="Scripts" name="ScriptsButton"/>
+                <ui:Button text="Encounters" name="EncountersButton"/>
+            </ui:VisualElement>
+            <ui:Label text="Current Field" name="CurrentFieldLabel" style="-unity-text-align: upper-center;"/>
+            <ui:VisualElement name="PrefabViewer" enabled="true" style="flex-grow: 1;">
+                <uie:ObjectField label="Field Prefab" name="PrefabObjectField" allow-scene-objects="false" type="UnityEngine.GameObject, UnityEngine.CoreModule"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="TextViewer" enabled="true" style="flex-grow: 1;">
+                <ui:ListView name="TextViewerListView" reorderable="true" show-add-remove-footer="true" style="width: 100%; height: 100%;"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="ScriptsViewer" style="flex-grow: 1;"/>
+            <ui:VisualElement name="EncountersViewer" style="flex-grow: 1;"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
