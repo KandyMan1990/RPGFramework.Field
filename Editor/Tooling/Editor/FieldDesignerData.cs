@@ -7,6 +7,7 @@ namespace RPGFramework.Field.Editor
     public class FieldDesignerData : ScriptableObject
     {
         [SerializeField]
+        [HideInInspector]
         private FieldDatabase m_FieldDatabase = new FieldDatabase();
 
         public FieldDatabase                     FieldDatabase => m_FieldDatabase;
