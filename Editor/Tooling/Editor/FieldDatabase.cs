@@ -12,14 +12,10 @@ namespace RPGFramework.Field.Editor
     {
         private readonly string m_AssetBundlesPath = Path.Combine(Application.streamingAssetsPath, "Field");
 
-        private List<FieldDatabaseAssetAuthoring> m_Fields;
+        [SerializeField]
+        private List<FieldDatabaseAssetAuthoring> m_Fields = new List<FieldDatabaseAssetAuthoring>();
 
         public List<FieldDatabaseAssetAuthoring> Fields => m_Fields;
-
-        public FieldDatabase()
-        {
-            m_Fields = new List<FieldDatabaseAssetAuthoring>();
-        }
 
         public void BuildScriptFile(string path, string filename, string namespaceForScript)
         {

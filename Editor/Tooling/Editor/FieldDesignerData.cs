@@ -6,21 +6,16 @@ namespace RPGFramework.Field.Editor
 {
     public class FieldDesignerData : ScriptableObject
     {
-        private FieldDatabase m_FieldDatabase;
+        [SerializeField]
+        private FieldDatabase m_FieldDatabase = new FieldDatabase();
 
         public FieldDatabase                     FieldDatabase => m_FieldDatabase;
         public List<FieldDatabaseAssetAuthoring> Fields        => m_FieldDatabase.Fields;
-
-        public void Initialise()
-        {
-            m_FieldDatabase = new FieldDatabase();
-        }
 
         public void Save()
         {
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
         }
     }
 
@@ -78,7 +73,6 @@ namespace RPGFramework.Field.Editor
             }
 
             FieldDesignerData data = ScriptableObject.CreateInstance<FieldDesignerData>();
-            data.Initialise();
 
             AssetDatabase.CreateAsset(data, ASSET_PATH);
             AssetDatabase.SaveAssets();
