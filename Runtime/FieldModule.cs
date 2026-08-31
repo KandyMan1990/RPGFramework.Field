@@ -55,7 +55,7 @@ namespace RPGFramework.Field
 
         private InputAdapter                           m_InputAdapter;
         private FieldContext                           m_FieldContext;
-        private SpawnPoint                             m_SpawnPoint;
+        private SpawnPoint                             m_InitialPlayerSpawn;
         private Dictionary<int, FieldEntityComponents> m_Entities;
         private HashSet<int>                           m_ActiveInteractionTriggerIds;
         private int                                    m_PlayerEntityId;
@@ -275,7 +275,7 @@ namespace RPGFramework.Field
 
             GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(m_FieldDatabaseAsset);
             SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
-            m_SpawnPoint = Array.Find(spawnPoints, sp => sp.Id == m_FieldArgs.SpawnId);
+            m_InitialPlayerSpawn = Array.Find(spawnPoints, sp => sp.Id == m_FieldArgs.SpawnId);
 
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
             m_Entities = new Dictionary<int, FieldEntityComponents>(entitiesInGameObject.Length);
@@ -493,8 +493,8 @@ namespace RPGFramework.Field
             // an entity position shouldn't change because it became a player
             // add an op code that lets the vm set an entity to a spawn point
             {
-                position = m_SpawnPoint.Position;
-                rotation = m_SpawnPoint.Rotation;
+                position = m_InitialPlayerSpawn.Position;
+                rotation = m_InitialPlayerSpawn.Rotation;
             }
 
             newPlayerEntity.transform.SetPositionAndRotation(position, rotation);
