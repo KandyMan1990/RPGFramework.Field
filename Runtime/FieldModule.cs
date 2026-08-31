@@ -137,8 +137,6 @@ namespace RPGFramework.Field
             await UnloadCurrentFieldAsync();
 
             m_InputRouter.Clear();
-
-            m_CoreModule.ResetModule<IFieldModule, FieldModule>();
         }
 
         private void RequestMenuModule(byte menuId)
