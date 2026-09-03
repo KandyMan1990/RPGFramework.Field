@@ -1,9 +1,12 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field.Editor
 {
@@ -25,6 +28,11 @@ namespace RPGFramework.Field.Editor
         private ObjectField   m_PrefabObjectField;
         private Label         m_CurrentFieldLabel;
         private ListView      m_TextViewerListView;
+        private ListView      m_EntityListView;
+        private ListView      m_EntityScriptListView;
+
+        private GameObject        m_CurrentlyOpenPrefab;
+        private List<FieldEntity> m_CurrentlyOpenPrefabFieldEntities;
 
         [MenuItem("RPG Framework/Field Designer Window")]
         public static void ShowWindow()
@@ -35,6 +43,15 @@ namespace RPGFramework.Field.Editor
         private void OnEnable()
         {
             m_FieldDesignerData = FieldDesignerDataUtility.GetOrCreate();
+        }
+
+        private void OnDestroy()
+        {
+            if (m_CurrentlyOpenPrefab != null)
+            {
+                PrefabUtility.UnloadPrefabContents(m_CurrentlyOpenPrefab);
+                m_CurrentlyOpenPrefab = null;
+            }
         }
 
         public void CreateGUI()
@@ -152,7 +169,13 @@ namespace RPGFramework.Field.Editor
             {
                 return;
             }
-            // this is to list entities in prefab and their view/modify their scripts  
+
+            string path = AssetDatabase.GetAssetPath(m_CurrentFieldAsset.Prefab);
+            m_CurrentlyOpenPrefab = PrefabUtility.LoadPrefabContents(path);
+
+            m_CurrentlyOpenPrefabFieldEntities = m_CurrentlyOpenPrefab.GetComponentsInChildren<FieldEntity>().ToList();
+            m_EntityListView.itemsSource       = m_CurrentlyOpenPrefabFieldEntities;
+            m_EntityListView.Rebuild();
 
             SetElementVisible(m_PrefabViewer,     false);
             SetElementVisible(m_TextViewer,       false);
@@ -181,7 +204,7 @@ namespace RPGFramework.Field.Editor
 
             m_Window.Init(nameof(FieldDesignerWindow), "Generate Asset Bundles and FieldDatabase script", "FieldDatabase.cs");
         }
-        
+
         private void OnGenerateFieldDatabaseScriptButtonClickedCallback(string path, string filename, string namespaceForScript)
         {
             m_Window.OnConfirm -= OnGenerateFieldDatabaseScriptButtonClickedCallback;
@@ -193,6 +216,12 @@ namespace RPGFramework.Field.Editor
 
         private void OnFieldSelected(IEnumerable<int> obj)
         {
+            if (m_CurrentlyOpenPrefab != null)
+            {
+                PrefabUtility.UnloadPrefabContents(m_CurrentlyOpenPrefab);
+                m_CurrentlyOpenPrefab = null;
+            }
+
             m_CurrentFieldAsset = m_FieldDesignerData.Fields[m_FieldsContainerListView.selectedIndex];
 
             GameObject prefab = m_CurrentFieldAsset.Prefab;
@@ -252,12 +281,34 @@ namespace RPGFramework.Field.Editor
         {
             m_ScriptsViewer = rootVisualElement.Q<VisualElement>("ScriptsViewer");
             SetElementVisible(m_ScriptsViewer, false);
+
+            m_EntityListView       = rootVisualElement.Q<ListView>("EntityListView");
+            m_EntityScriptListView = rootVisualElement.Q<ListView>("EntityScriptListView");
+
+            m_EntityListView.makeItem = () => new Label();
+            m_EntityListView.bindItem = (element, index) =>
+                                        {
+                                            GameObject entity = m_CurrentlyOpenPrefabFieldEntities[index].gameObject;
+
+                                            Label label = (Label)element;
+                                            label.text = entity.name;
+                                        };
+            m_EntityListView.selectedIndicesChanged += OnEntitySelected;
         }
 
         private void InitEncountersTab()
         {
             m_EncountersViewer = rootVisualElement.Q<VisualElement>("EncountersViewer");
             SetElementVisible(m_EncountersViewer, false);
+        }
+
+        private void OnEntitySelected(IEnumerable<int> obj)
+        {
+            FieldEntity entity = m_CurrentlyOpenPrefabFieldEntities[m_EntityListView.selectedIndex];
+            
+            Debug.Log($"Entity selected [{entity.name}]");
+            // fill m_EntityScriptListView with available scripts
+            // selecting one of those scripts should show it for editing
         }
 
         private void OnPrefabObjectFieldChanged(ChangeEvent<Object> evt)

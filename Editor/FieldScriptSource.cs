@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-
 using System.IO;
 using UnityEditor;
 
@@ -12,10 +11,9 @@ namespace RPGFramework.Field.Editor
         {
             DrawDefaultInspector();
 
-            FieldScriptSource source = (FieldScriptSource)target;
-
             if (GUILayout.Button("Compile Script"))
             {
+                FieldScriptSource source = (FieldScriptSource)target;
                 Compile(source);
             }
         }

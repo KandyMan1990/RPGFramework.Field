@@ -1,5 +1,5 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <Style src="project://database/Packages/com.rpgframework.field/Editor/Tooling/Editor/DieldDesignerDataWindow.uss?fileID=7433441132597879392&amp;guid=e2c46eca05f5e4b18bcef9591d80c1e5&amp;type=3#DieldDesignerDataWindow"/>
+    <Style src="project://database/Packages/com.rpgframework.field/Editor/Tooling/Editor/FieldDesignerDataWindow.uss?fileID=7433441132597879392&amp;guid=e2c46eca05f5e4b18bcef9591d80c1e5&amp;type=3#FieldDesignerDataWindow"/>
     <ui:VisualElement name="Root" style="flex-grow: 1; flex-direction: row;">
         <ui:VisualElement name="LeftColumn" style="width: 25%;">
             <ui:Label text="Fields" name="FieldsLabel" style="-unity-text-align: upper-center; background-color: rgb(43, 43, 43);"/>
@@ -23,7 +23,10 @@
             <ui:VisualElement name="TextViewer" enabled="true" style="flex-grow: 1;">
                 <ui:ListView name="TextViewerListView" reorderable="true" show-add-remove-footer="true" style="width: 100%; height: 100%;"/>
             </ui:VisualElement>
-            <ui:VisualElement name="ScriptsViewer" style="flex-grow: 1;"/>
+            <ui:VisualElement name="ScriptsViewer" style="flex-grow: 1; flex-direction: row;">
+                <ui:ListView name="EntityListView" reorderable="true" show-add-remove-footer="false" style="width: 100%; height: 100%;"/>
+                <ui:ListView name="EntityScriptListView" reorderable="true" show-add-remove-footer="false" style="width: 100%; height: 100%;"/>
+            </ui:VisualElement>
             <ui:VisualElement name="EncountersViewer" style="flex-grow: 1;"/>
         </ui:VisualElement>
     </ui:VisualElement>
