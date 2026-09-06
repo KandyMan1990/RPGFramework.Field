@@ -3,6 +3,8 @@
     "rootNamespace": "RPGFramework.Field.Editor",
     "references": [
         "RPGFramework.Field",
+        "RPGFramework.Core.SharedTypes",
+        "RPGFramework.Core",
         "RPGFramework.Hashing",
         "RPGFramework.Localisation.Editor"
     ],
