@@ -411,7 +411,7 @@ namespace RPGFramework.Field
 
             m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
 
-            UpdateManager.QueueForUnregisterUpdatable(this);
+            UpdateManager.UnregisterUpdatable(this);
 
             UnsubscribeVm();
 
