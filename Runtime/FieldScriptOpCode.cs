@@ -24,10 +24,10 @@
     {
         // Script flow and control (0x0000)
         Return                                  = 0x0000, //
-        RunAnotherEntityScriptUnlessBusy        = 0x0001, // byte targetEntityId, byte targetScriptId
-        RunAnotherEntityScriptWaitUntilStarted  = 0x0002, // byte targetEntityId, byte targetScriptId
-        RunAnotherEntityScriptWaitUntilFinished = 0x0003, // byte targetEntityId, byte targetScriptId
-        ReturnToAnotherScript                   = 0x0004, // byte targetScriptId
+        RunAnotherEntityScriptUnlessBusy        = 0x0001, // byte targetEntityId, byte priority (0-7), ushort targetEventId (that entity\'s script index)
+        RunAnotherEntityScriptWaitUntilStarted  = 0x0002, // byte targetEntityId, byte priority (0-7), ushort targetEventId (that entity\'s script index)
+        RunAnotherEntityScriptWaitUntilFinished = 0x0003, // byte targetEntityId, byte priority (0-7), ushort targetEventId (that entity\'s script index)
+        ReturnToAnotherScript                   = 0x0004, // ushort targetEventId - hands this priority slot to another of this entity's scripts
         GotoJump                                = 0x0005, // int offset
         GotoDirectly                            = 0x0006, // int index
         CompareTwoByteValues                    = 0x0007, // byte sources, byte immediate | ushort addressA, byte immediate | ushort addressB, byte comparisonType, byte jumpAmount

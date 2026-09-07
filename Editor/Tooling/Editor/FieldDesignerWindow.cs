@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using RPGFramework.Localisation.Editor;
@@ -209,6 +209,17 @@ namespace RPGFramework.Field.Editor
         {
             m_Window.OnConfirm -= OnGenerateFieldDatabaseScriptButtonClickedCallback;
             m_Window           =  null;
+
+            List<string> problems = m_FieldDesignerData.FieldDatabase.ValidateFields();
+
+            if (problems.Count > 0)
+            {
+                string message = $"{problems.Count} problem(s) found. Nothing was exported.\n\n{string.Join("\n\n", problems)}";
+
+                Debug.LogError($"{nameof(FieldDesignerWindow)}::{nameof(OnGenerateFieldDatabaseScriptButtonClickedCallback)} {message}");
+                EditorUtility.DisplayDialog("Field validation failed", message, "OK");
+                return;
+            }
 
             m_FieldDesignerData.FieldDatabase.BuildScriptFile(path, filename, namespaceForScript);
             m_FieldDesignerData.FieldDatabase.BuildAssetBundles();

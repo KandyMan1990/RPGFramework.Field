@@ -278,6 +278,8 @@ namespace RPGFramework.Field
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
             m_Entities = new Dictionary<int, FieldEntityComponents>(entitiesInGameObject.Length);
 
+            m_MemoryService.ClearTemp();
+
             return entitiesInGameObject;
         }
 
@@ -287,8 +289,6 @@ namespace RPGFramework.Field
 
             FieldVM                  vm       = new FieldVM(m_MemoryService);
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
-
-            int scriptId = 0;
 
             foreach (FieldEntity entity in entitiesInGameObject)
             {
@@ -314,22 +314,101 @@ namespace RPGFramework.Field
                     interactionTrigger.OnTriggerExited  += OnInteractionTriggerExited;
                 }
 
-                // TODO: ensure entity has a FieldScriptType.Init script as its first script
-                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptId);
+                List<ScriptEntry> scripts          = entity.ScriptDefinition.Scripts;
+                int[]             scriptIdsByEvent = new int[scripts.Count];
+
+                for (int i = 0; i < scripts.Count; i++)
+                {
+                    ScriptEntry scriptEntry = scripts[i];
+
+                    scriptIdsByEvent[i] = scriptEntry.CompiledScript.ScriptId;
+
+                    vm.RegisterScript(scriptEntry.CompiledScript.ScriptId, scriptEntry.CompiledScript);
+                }
+
+                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptIdsByEvent);
 
                 entities.Add(fieldEntityRuntime);
                 vm.RegisterEntity(entity.EntityId, fieldEntityRuntime);
-
-                foreach (ScriptEntry scriptEntry in entity.ScriptDefinition.Scripts)
-                {
-                    vm.RegisterScript(scriptId, scriptEntry.CompiledScript);
-                    scriptId++;
-                }
             }
 
             m_FieldContext = new FieldContext(vm, entities);
 
+            SubscribeVm();
+
+            InitialiseFieldScripts();
+            StartMainScripts(entitiesInGameObject);
+            InitialisePlayer();
+
             await PostFieldLoadAsync();
+        }
+
+        /// <summary>
+        /// Run every entity's init script to completion, before the field is shown or the player has
+        /// control.<br /><br />
+        /// </summary>
+        private void InitialiseFieldScripts()
+        {
+            FieldVM vm = m_FieldContext.VM;
+
+            foreach (FieldEntityRuntime entity in m_FieldContext.Entities)
+            {
+                entity.Update(vm);
+
+#if UNITY_EDITOR
+                if (entity.IsRunningScript)
+                {
+                    Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script blocked before returning, so the field was shown before it finished. Init is for setup that runs straight through — move anything that waits or loops into a {nameof(FieldScriptType.Main)} script");
+                }
+#endif
+            }
+        }
+
+        /// <summary>
+        /// Start each entity's <see cref="FieldScriptType.Main" /> script, once initialisation is done.
+        /// <br /><br />
+        /// Main is where an entity's ongoing behaviour lives — a patrol route, an idle loop — and unlike
+        /// init it is free to wait and to run for as long as the field does. It gets its own priority
+        /// slot so that a trigger firing does not have to wait for it, and so that a Main script looping
+        /// forever cannot block one.
+        /// </summary>
+        private void StartMainScripts(FieldEntity[] entitiesInGameObject)
+        {
+            foreach (FieldEntity entity in entitiesInGameObject)
+            {
+                if (!entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Main, out int eventId))
+                {
+                    continue;
+                }
+
+                m_FieldContext.VM.RequestScript(entity.EntityId, eventId, FieldEntityRuntime.MAIN_PRIORITY);
+            }
+        }
+
+        private void InitialisePlayer()
+        {
+            FieldEntityRuntime playerEntity = m_FieldContext.PlayerEntity;
+
+            if (playerEntity == null)
+            {
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No entity designated itself as the player during initialisation, so there is nothing to place or control");
+                return;
+            }
+
+            m_PlayerEntityId = playerEntity.EntityId;
+
+            FieldEntity playerFieldEntity = m_Entities[m_PlayerEntityId].Entity;
+
+            if (m_InitialPlayerSpawn == null)
+            {
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No spawn point with id [{m_FieldArgs.SpawnId}] in this field, so the player keeps whatever position its init script gave it");
+            }
+            else
+            {
+                playerFieldEntity.transform.SetPositionAndRotation(m_InitialPlayerSpawn.Position, m_InitialPlayerSpawn.Rotation);
+            }
+
+            m_PlayerMovementDriver = MovementDriverFactory.Create(playerFieldEntity.gameObject, 3f);
         }
 
         private async Task ResumeFieldAsync()
@@ -361,6 +440,8 @@ namespace RPGFramework.Field
                 }
             }
 
+            SubscribeVm();
+
             m_PlayerEntityId       = m_FieldContext.PlayerEntity.EntityId;
             m_PlayerMovementDriver = MovementDriverFactory.Create(m_Entities[m_PlayerEntityId].Entity.gameObject, 3f);
 
@@ -390,8 +471,6 @@ namespace RPGFramework.Field
         private async Task PostFieldLoadAsync()
         {
             m_ActiveInteractionTriggerIds = new HashSet<int>();
-
-            SubscribeVm();
 
             m_MainMenuAccessible = true;
 
@@ -472,32 +551,7 @@ namespace RPGFramework.Field
 
         private void OnRequestSetPlayerEntity(FieldEntityRuntime entity)
         {
-            if (m_PlayerMovementDriver != null)
-            {
-                Component currentDriver = (Component)m_PlayerMovementDriver;
-                Object.Destroy(currentDriver);
-            }
-
             m_FieldContext.SetPlayerEntity(entity);
-
-            m_PlayerEntityId = entity.EntityId;
-            FieldEntity newPlayerEntity = m_Entities[m_PlayerEntityId].Entity;
-
-            Vector3    position;
-            Quaternion rotation;
-
-            // TODO:
-            // this method is doing 2 things
-            // an entity position shouldn't change because it became a player
-            // add an op code that lets the vm set an entity to a spawn point
-            {
-                position = m_InitialPlayerSpawn.Position;
-                rotation = m_InitialPlayerSpawn.Rotation;
-            }
-
-            newPlayerEntity.transform.SetPositionAndRotation(position, rotation);
-
-            m_PlayerMovementDriver = MovementDriverFactory.Create(newPlayerEntity.gameObject, 3f);
         }
 
         private void OnRequestSetEntityVisible(int entityId, bool visible)
@@ -506,14 +560,14 @@ namespace RPGFramework.Field
             m_Entities[entityId].Entity.SetVisible(visible);
         }
 
-        private void OnGatewayTriggered(int entityId, int scriptId)
+        private void OnGatewayTriggered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScriptImmediately(entityId, scriptId);
+            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.DEFAULT_PRIORITY);
         }
 
-        private void OnInteractionTriggered(int entityId, int scriptId)
+        private void OnInteractionTriggered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScriptImmediately(entityId, scriptId);
+            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.DEFAULT_PRIORITY);
         }
 
         private void OnInteractionTriggerEntered(int entityId)

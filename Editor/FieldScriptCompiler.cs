@@ -19,6 +19,11 @@ namespace RPGFramework.Field.Editor
 
         private const byte OPERAND_IMMEDIATE = 0;
 
+        /// <summary>
+        /// Mirrors <c>FieldEntityRuntime.PRIORITY_COUNT</c>, which is internal to the runtime assembly.
+        /// </summary>
+        private const int SCRIPT_PRIORITY_COUNT = 8;
+
         public static byte[] Compile(string source)
         {
             using MemoryStream ms = new MemoryStream();
@@ -26,15 +31,28 @@ namespace RPGFramework.Field.Editor
 
             VariableMapAsset variableMap = null;
 
+            // Every jump has to land on the first byte of an instruction. Nothing checked that, so a
+            // hand-computed offset that was out by a byte would put the instruction pointer in the
+            // middle of an operand, and the VM would execute that operand as an opcode. The offsets of
+            // every instruction are collected as they are emitted, and every jump is resolved against
+            // them once the whole script is known.
+            List<int>      instructionStarts = new List<int>();
+            List<JumpSite> jumpSites         = new List<JumpSite>();
+
             string[] lines = source.Split('\n');
 
-            foreach (string rawLine in lines)
+            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
             {
-                string line = rawLine.Trim();
+                string line = lines[lineIndex].Trim();
                 if (string.IsNullOrEmpty(line))
                     continue;
 
                 string[] parts = line.Split(' ');
+
+                int instructionStart = (int)ms.Position;
+                instructionStarts.Add(instructionStart);
+
+                RecordJumpSite(parts, lineIndex, instructionStart, jumpSites);
 
                 switch (parts[0])
                 {
@@ -119,7 +137,7 @@ namespace RPGFramework.Field.Editor
 
                     case "SHOW_DIALOGUE_WINDOW":
                         bw.Write((ushort)FieldScriptOpCode.ShowDialogueWindow);
-                        bw.Write(Fnv1a64.Hash(parts[1]));
+                        bw.Write(HashDialogueKey(parts, 1, lineIndex + 1));
                         bw.Write(bool.Parse(parts[2]));
                         break;
 
@@ -127,14 +145,19 @@ namespace RPGFramework.Field.Editor
                         bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
                         bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
                         bw.Write(ushort.Parse(parts[2], CultureInfo.InvariantCulture));
-                        bw.Write(Fnv1a64.Hash(parts[3]));
+                        bw.Write(HashDialogueKey(parts, 3, lineIndex + 1));
+
+                        if (parts.Length < 5)
+                        {
+                            throw new Exception($"line {lineIndex + 1}: ASK_PLAYER_TO_MAKE_A_CHOICE needs at least one answer key after the question key");
+                        }
 
                         byte count = (byte)(parts.Length - 4);
                         bw.Write(count);
 
                         for (int i = 4; i < parts.Length; i++)
                         {
-                            bw.Write(Fnv1a64.Hash(parts[i]));
+                            bw.Write(HashDialogueKey(parts, i, lineIndex + 1));
                         }
 
                         break;
@@ -290,7 +313,8 @@ namespace RPGFramework.Field.Editor
                         break;
 
                     case "MOD_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Remainder16Bit, parts, ref variableMap, true); break;
+                        WriteBinaryOperands(bw, FieldScriptOpCode.Remainder16Bit, parts, ref variableMap, true);
+                        break;
 
                     case "AND_8":
                         WriteBinaryOperands(bw, FieldScriptOpCode.BitwiseAnd8Bit, parts, ref variableMap, false);
@@ -358,7 +382,28 @@ namespace RPGFramework.Field.Editor
                         break;
 
                     case "DEC_16_CLAMPED":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16BitClamped, parts, ref variableMap, true); break;
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16BitClamped, parts, ref variableMap, true);
+                        break;
+
+                    case "REQUEST_SCRIPT":
+                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy,        parts, lineIndex + 1);
+                        break;
+                    case "REQUEST_SCRIPT_WAIT_START":
+                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted,  parts, lineIndex + 1);
+                        break;
+                    case "REQUEST_SCRIPT_WAIT_END":
+                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished, parts, lineIndex + 1);
+                        break;
+
+                    case "RETURN_TO_SCRIPT":
+                        if (parts.Length < 2)
+                        {
+                            throw new Exception($"line {lineIndex + 1}: RETURN_TO_SCRIPT needs an event id");
+                        }
+
+                        bw.Write((ushort)FieldScriptOpCode.ReturnToAnotherScript);
+                        bw.Write(ushort.Parse(parts[1], CultureInfo.InvariantCulture));
+                        break;
 
                     case "RANDOM_SEED":
                         bw.Write((ushort)FieldScriptOpCode.RandomNumberSeed);
@@ -371,7 +416,159 @@ namespace RPGFramework.Field.Editor
                 }
             }
 
+            bw.Flush();
+
+            ValidateJumpTargets(jumpSites, instructionStarts, (int)ms.Length);
+
             return ms.ToArray();
+        }
+
+        /// <summary>
+        /// Where a jump was written, and what it will resolve to. Recorded while emitting because the
+        /// destination may not have been emitted yet.
+        /// </summary>
+        private readonly struct JumpSite
+        {
+            internal readonly string Mnemonic;
+            internal readonly int    LineNumber;
+            internal readonly int    InstructionStart;
+            internal readonly int    Operand;
+            internal readonly bool   IsAbsolute;
+
+            internal JumpSite(string mnemonic, int lineNumber, int instructionStart, int operand, bool isAbsolute)
+            {
+                Mnemonic         = mnemonic;
+                LineNumber       = lineNumber;
+                InstructionStart = instructionStart;
+                Operand          = operand;
+                IsAbsolute       = isAbsolute;
+            }
+
+            /// <summary>
+            /// The byte the instruction pointer will hold after this jump runs.<br /><br />
+            /// <c>GOTO_DIRECTLY</c> assigns the operand outright. <c>GOTO_JUMP</c> adds it to the pointer,
+            /// which by then has already advanced past this instruction — two bytes of opcode and four of
+            /// operand.
+            /// </summary>
+            internal int ResolveTarget()
+            {
+                if (IsAbsolute)
+                {
+                    return Operand;
+                }
+
+                const int jumpInstructionSize = sizeof(ushort) + sizeof(int);
+
+                int target = InstructionStart + jumpInstructionSize + Operand;
+
+                return target;
+            }
+        }
+
+        /// <summary>
+        /// Hash a localisation key argument, having first checked there is one.<br /><br />
+        /// A key is hashed at compile time and the runtime only ever sees the hash, so a missing or
+        /// blank key produced a hash of nothing.<br /><br />
+        /// <b>What this does not yet check is that the key actually resolves</b> in the localisation
+        /// sheets the field declares. That needs the set of keys in a sheet, which nothing exposes at
+        /// editor time — the sheets are fetched during binary generation and only the generated C#
+        /// constants survive. It is the natural companion to the field editor's planned "choose a
+        /// dialogue key from a dropdown of this field's sheets", which needs exactly the same
+        /// enumeration and would make an unresolvable key impossible to author in the first place.
+        /// </summary>
+        private static ulong HashDialogueKey(string[] parts, int index, int lineNumber)
+        {
+            if (index >= parts.Length)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} is missing its localisation key");
+            }
+
+            string key = parts[index];
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} has a blank localisation key");
+            }
+
+            ulong hash = Fnv1a64.Hash(key);
+
+            return hash;
+        }
+
+        /// <summary>
+        /// Emit <c>opcode, targetEntityId, priority, targetScriptId</c>, the shape shared by the three
+        /// request opcodes.
+        /// </summary>
+        private static void WriteScriptRequest(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, int lineNumber)
+        {
+            if (parts.Length < 4)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} needs a target entity id, a priority (0-7) and an event id, for example '{parts[0]} 3 0 1' to run entity 3's second script");
+            }
+
+            byte priority = byte.Parse(parts[2], CultureInfo.InvariantCulture);
+
+            if (priority >= SCRIPT_PRIORITY_COUNT)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} priority [{priority}] is outside 0..{SCRIPT_PRIORITY_COUNT - 1}");
+            }
+
+            bw.Write((ushort)opCode);
+            bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
+            bw.Write(priority);
+            bw.Write(ushort.Parse(parts[3], CultureInfo.InvariantCulture));
+        }
+
+        private static void RecordJumpSite(string[] parts, int lineIndex, int instructionStart, List<JumpSite> jumpSites)
+        {
+            bool isAbsolute;
+
+            switch (parts[0])
+            {
+                case "GOTO_JUMP":      isAbsolute = false; break;
+                case "GOTO_DIRECTLY":  isAbsolute = true;  break;
+                default:                                   return;
+            }
+
+            if (parts.Length < 2 || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int operand))
+            {
+                // The switch below emits this line and will raise its own error on a bad operand.
+                return;
+            }
+
+            jumpSites.Add(new JumpSite(parts[0], lineIndex + 1, instructionStart, operand, isAbsolute));
+        }
+
+        private static void ValidateJumpTargets(List<JumpSite> jumpSites, List<int> instructionStarts, int bytecodeLength)
+        {
+            if (jumpSites.Count == 0)
+            {
+                return;
+            }
+
+            HashSet<int> validTargets = new HashSet<int>(instructionStarts);
+            List<string> problems     = new List<string>();
+
+            foreach (JumpSite jumpSite in jumpSites)
+            {
+                int target = jumpSite.ResolveTarget();
+
+                if (target < 0 || target >= bytecodeLength)
+                {
+                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.Mnemonic} resolves to byte {target}, outside the script (0..{bytecodeLength - 1})");
+                    continue;
+                }
+
+                if (!validTargets.Contains(target))
+                {
+                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.Mnemonic} resolves to byte {target}, which is inside an instruction rather than at the start of one");
+                }
+            }
+
+            if (problems.Count > 0)
+            {
+                throw new Exception($"{nameof(FieldScriptCompiler)}::{nameof(ValidateJumpTargets)} {problems.Count} bad jump target(s):\n  {string.Join("\n  ", problems)}");
+            }
         }
 
         /// <summary>
@@ -469,11 +666,6 @@ namespace RPGFramework.Field.Editor
             if (!variableMap.TryGetVariable(name, out VariableDefinition definition))
             {
                 throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(ResolveVariable)} No variable named '{name}' in the variable map, required by [{mnemonic}]");
-            }
-
-            if (definition.Bank == MemoryBank.Temp)
-            {
-                throw new Exception($"Variable '{name}' is in the Temp bank, which is not implemented — MemoryService throws for it. Move it to Session.");
             }
 
             bool definitionIs16Bit = definition.Width == VariableWidth.UShort;

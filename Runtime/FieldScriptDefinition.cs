@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace RPGFramework.Field
@@ -11,18 +10,27 @@ namespace RPGFramework.Field
         public int               EntityId;
         public List<ScriptEntry> Scripts;
 
-        public FieldCompiledScript GetScript(FieldScriptType scriptType)
+        /// <summary>
+        /// The position of a script in this entity's list, which is its <b>event id</b> — the thing a
+        /// script-request opcode names.<br /><br />
+        /// Scripts are addressed relative to their entity. Addressing them by a field-wide id instead
+        /// would mean an author had to know an entity's offset into the whole field just to call one of
+        /// its scripts, and that offset changes whenever anything ahead of it is reordered.
+        /// </summary>
+        public bool TryGetScriptIndex(FieldScriptType scriptType, out int eventId)
         {
             for (int i = 0; i < Scripts.Count; i++)
             {
-                ScriptEntry s = Scripts[i];
-                if (s.ScriptType == scriptType)
+                if (Scripts[i].ScriptType == scriptType)
                 {
-                    return s.CompiledScript;
+                    eventId = i;
+                    return true;
                 }
             }
 
-            throw new Exception($"Script '{scriptType}' not found on {EntityName}");
+            eventId = -1;
+
+            return false;
         }
     }
 }

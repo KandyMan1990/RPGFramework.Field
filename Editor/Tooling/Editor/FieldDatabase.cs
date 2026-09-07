@@ -91,11 +91,155 @@ namespace RPGFramework.Field.Editor
             AssetDatabase.Refresh();
         }
 
+        /// <summary>
+        /// Check every field's entities before their data is exported.<br /><br />
+        /// Script 0 is an entity's init script by convention, and the field module runs it at load. An
+        /// entity whose scripts were authored in another order would have its collision or interaction
+        /// script executed at field load, firing gameplay logic nobody triggered.<br /><br />
+        /// This is checked here rather than at runtime deliberately. A per-load check re-proves the same
+        /// thing on every field load forever, and reports the problem while playing; checking as the
+        /// runtime data is built reports it once, while authoring, to the person who can fix it.
+        /// </summary>
+        /// <returns>A readable problem per offending entity. Empty means every field is well-formed.</returns>
+        public List<string> ValidateFields()
+        {
+            List<string> problems = new List<string>();
+
+            for (int i = 0; i < m_Fields.Count; i++)
+            {
+                GameObject prefab = m_Fields[i].Prefab;
+
+                if (prefab == null)
+                {
+                    problems.Add($"Field [{i}] has no prefab assigned");
+                    continue;
+                }
+
+                FieldEntity[] entities = prefab.GetComponentsInChildren<FieldEntity>(true);
+
+                HashSet<int>            entityIds = new HashSet<int>();
+                Dictionary<int, string> scriptIds = new Dictionary<int, string>();
+
+                foreach (FieldEntity entity in entities)
+                {
+                    ValidateEntity(prefab, entity, entityIds, scriptIds, problems);
+                }
+            }
+
+            return problems;
+        }
+
+        /// <summary>
+        /// Everything about one entity that has to be true before its field is exported, and that cannot
+        /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
+        /// report which authored thing was wrong, so it is all decided here instead.
+        /// </summary>
+        private static void ValidateEntity(GameObject prefab, FieldEntity entity, HashSet<int> entityIds, Dictionary<int, string> scriptIds, List<string> problems)
+        {
+            FieldScriptDefinition scriptDefinition = entity.ScriptDefinition;
+
+            if (scriptDefinition == null)
+            {
+                problems.Add($"{prefab.name} / '{entity.name}' has no {nameof(FieldScriptDefinition)}");
+                return;
+            }
+
+            string entityName = $"{prefab.name} / '{scriptDefinition.EntityName}'";
+
+            // Scripts address each other by entity id, so two entities sharing one makes the target
+            // ambiguous — and the VM's entity dictionary would throw on the duplicate key at load.
+            if (!entityIds.Add(scriptDefinition.EntityId))
+            {
+                problems.Add($"{entityName} reuses entity id [{scriptDefinition.EntityId}], which another entity in this field already has");
+            }
+
+            if (scriptDefinition.Scripts == null || scriptDefinition.Scripts.Count == 0)
+            {
+                problems.Add($"{entityName} declares no scripts, so it has no init script");
+                return;
+            }
+
+            FieldScriptType firstScriptType = scriptDefinition.Scripts[0].ScriptType;
+
+            if (firstScriptType != FieldScriptType.Init)
+            {
+                problems.Add($"{entityName} has [{firstScriptType}] as its first script, but script 0 is run at field load as the init script. Reorder so the {nameof(FieldScriptType.Init)} script is first");
+            }
+
+            int initScriptCount = 0;
+            int mainScriptCount = 0;
+
+            for (int i = 0; i < scriptDefinition.Scripts.Count; i++)
+            {
+                ScriptEntry scriptEntry = scriptDefinition.Scripts[i];
+
+                if (scriptEntry.ScriptType == FieldScriptType.Init)
+                {
+                    initScriptCount++;
+                }
+
+                if (scriptEntry.ScriptType == FieldScriptType.Main)
+                {
+                    mainScriptCount++;
+                }
+
+                if (scriptEntry.CompiledScript == null)
+                {
+                    problems.Add($"{entityName} script [{i}] ({scriptEntry.ScriptType}) has no compiled script assigned");
+                    continue;
+                }
+
+                if (scriptEntry.CompiledScript.Bytecode == null || scriptEntry.CompiledScript.Bytecode.Length == 0)
+                {
+                    problems.Add($"{entityName} script [{i}] ({scriptEntry.ScriptType}) compiled to no bytecode — recompile it from its {nameof(FieldScriptSource)}");
+                }
+
+                // The authored script id is the runtime address: it is what the VM registers scripts
+                // under and what triggers and script-request opcodes name. Two scripts sharing one in the
+                // same field means the second silently replaces the first.
+                int scriptId = scriptEntry.CompiledScript.ScriptId;
+
+                string scriptDescription = $"{entityName} script [{i}] ({scriptEntry.ScriptType})";
+
+                if (scriptIds.TryGetValue(scriptId, out string owner))
+                {
+                    problems.Add($"{scriptDescription} uses script id [{scriptId}], which {owner} already uses");
+                }
+                else
+                {
+                    scriptIds.Add(scriptId, scriptDescription);
+                }
+
+                if (scriptId < 0 || scriptId > ushort.MaxValue)
+                {
+                    problems.Add($"{scriptDescription} has script id [{scriptId}], outside the 0..{ushort.MaxValue} a script-request opcode can address");
+                }
+            }
+
+            if (initScriptCount > 1)
+            {
+                problems.Add($"{entityName} has {initScriptCount} {nameof(FieldScriptType.Init)} scripts, but only script 0 is run at load");
+            }
+
+            if (mainScriptCount > 1)
+            {
+                problems.Add($"{entityName} has {mainScriptCount} {nameof(FieldScriptType.Main)} scripts, but only one is started after initialisation");
+            }
+        }
+
         public void BuildAssetBundles()
         {
             int count = m_Fields.Count;
             if (count == 0)
             {
+                return;
+            }
+
+            List<string> problems = ValidateFields();
+
+            if (problems.Count > 0)
+            {
+                Debug.LogError($"{nameof(FieldDatabase)}::{nameof(BuildAssetBundles)} Not building — {problems.Count} problem(s) in the fields:\n  {string.Join("\n  ", problems)}");
                 return;
             }
 

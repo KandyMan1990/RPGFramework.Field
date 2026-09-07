@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core;
 using RPGFramework.Core.SharedTypes;
@@ -39,10 +38,10 @@ namespace RPGFramework.Field
 
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
 
-        private readonly Dictionary<(int entityId, int scriptId), ScriptExecutionContext> m_Contexts;
-        private readonly Dictionary<int, FieldEntityRuntime>                              m_Entities;
-        private readonly Dictionary<FieldScriptOpCode, OpcodeHandler>                     m_OpcodeHandlers;
-        private readonly Dictionary<int, byte[]>                                          m_Scripts;
+        private readonly Dictionary<(int entityId, byte priority), ScriptExecutionContext> m_Contexts;
+        private readonly Dictionary<int, FieldEntityRuntime>                               m_Entities;
+        private readonly Dictionary<FieldScriptOpCode, OpcodeHandler>                      m_OpcodeHandlers;
+        private readonly Dictionary<int, byte[]>                                           m_Scripts;
 
         private readonly IMemoryService m_MemoryService;
 
@@ -50,7 +49,7 @@ namespace RPGFramework.Field
 
         internal FieldVM(IMemoryService memoryService)
         {
-            m_Contexts       = new Dictionary<(int entityId, int scriptId), ScriptExecutionContext>();
+            m_Contexts       = new Dictionary<(int entityId, byte priority), ScriptExecutionContext>();
             m_Entities       = new Dictionary<int, FieldEntityRuntime>();
             m_OpcodeHandlers = BuildOpcodeHandlersArray();
             m_Scripts        = new Dictionary<int, byte[]>();
@@ -68,27 +67,43 @@ namespace RPGFramework.Field
             m_Scripts.Add(scriptId, script.Bytecode);
         }
 
-        private bool IsScriptRunning(int entityId, int scriptId)
+        /// <summary>
+        /// Start one of an entity's scripts by event id, for something the engine initiates rather than
+        /// another script — a gateway or an interaction trigger. Refused if the slot is busy.
+        /// </summary>
+        internal void RequestScript(int entityId, int eventId, byte priority)
         {
-            return m_Contexts.ContainsKey((entityId, scriptId));
-        }
+            FieldEntityRuntime entity = m_Entities[entityId];
 
-        internal void RequestScriptImmediately(int entityId, int scriptId)
-        {
-            m_Entities[entityId].RequestScript(scriptId);
-        }
-
-        internal void Execute(int entityId, int scriptId, FieldEntityRuntime entity)
-        {
-            (int entityId, int scriptId) key = (entityId, scriptId);
-
-            if (!m_Contexts.TryGetValue(key, out ScriptExecutionContext ctx))
+            if (!entity.TryGetScriptId(eventId, out int scriptId))
             {
+                return;
+            }
+
+            entity.TryRequestScript(scriptId, priority);
+        }
+
+        internal void Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity)
+        {
+            (int entityId, byte priority) key = (entityId, priority);
+
+            // A slot outlives the scripts that pass through it, so a context is reused only while it is
+            // still running the script the slot currently holds.
+            if (!m_Contexts.TryGetValue(key, out ScriptExecutionContext ctx) || ctx.ScriptId != scriptId)
+            {
+                if (!m_Scripts.TryGetValue(scriptId, out byte[] bytecode))
+                {
+                    entity.ClearSlot(priority);
+                    return;
+                }
+
                 ctx = new ScriptExecutionContext
                       {
                           EntityId           = entityId,
+                          Priority           = priority,
+                          ScriptId           = scriptId,
                           InstructionPointer = 0,
-                          Bytecode           = m_Scripts[scriptId]
+                          Bytecode           = bytecode
                       };
                 m_Contexts[key] = ctx;
             }
@@ -103,13 +118,19 @@ namespace RPGFramework.Field
             {
                 FieldScriptOpCode opcode = FetchOpcode(ctx);
 
-                OpcodeHandler opcodeHandler = m_OpcodeHandlers[opcode];
+                if (!m_OpcodeHandlers.TryGetValue(opcode, out OpcodeHandler opcodeHandler))
+                {
+                    m_Contexts.Remove(key);
+                    entity.ClearSlot(priority);
+                    return;
+                }
+
                 opcodeHandler(ctx);
 
                 if (opcode == FieldScriptOpCode.Return)
                 {
                     m_Contexts.Remove(key);
-                    entity.OnScriptFinished();
+                    entity.ClearSlot(priority);
                     return;
                 }
             }
@@ -323,14 +344,6 @@ namespace RPGFramework.Field
             return result;
         }
 
-        private void ClearEntityContexts(int entityId)
-        {
-            foreach ((int entityId, int scriptId) key in m_Contexts.Keys.Where(k => k.entityId == entityId).ToList())
-            {
-                m_Contexts.Remove(key);
-            }
-        }
-
         // TODO: once op codes are implemented, convert from dictionary to an array
         private Dictionary<FieldScriptOpCode, OpcodeHandler> BuildOpcodeHandlersArray()
         {
@@ -540,45 +553,101 @@ namespace RPGFramework.Field
             // noop
         }
 
+        /// <summary>
+        /// Queue a script in another entity's priority slot and carry on. If the slot is busy the
+        /// request is refused and the caller does not learn of it — use the waiting variants when the
+        /// request must land.
+        /// </summary>
         private void RunAnotherEntityScriptUnlessBusyOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte targetEntityId = ReadByte(ctx);
-            byte targetScriptId = ReadByte(ctx);
-
-            if (!IsScriptRunning(targetEntityId, targetScriptId))
+            if (!TryReadScriptRequest(ctx, nameof(RunAnotherEntityScriptUnlessBusyOpcodeHandler), out FieldEntityRuntime target, out int targetScriptId, out byte priority))
             {
-                m_Entities[targetEntityId].RequestScript(targetScriptId);
+                return;
             }
+
+            target.TryRequestScript(targetScriptId, priority);
         }
 
+        /// <summary>
+        /// Retry until the slot accepts the script, then continue without waiting for it to finish.
+        /// </summary>
         private void RunAnotherEntityScriptWaitUntilStartedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte targetEntityId = ReadByte(ctx);
-            byte targetScriptId = ReadByte(ctx);
+            if (!TryReadScriptRequest(ctx, nameof(RunAnotherEntityScriptWaitUntilStartedOpcodeHandler), out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            {
+                return;
+            }
 
-            m_Entities[targetEntityId].RequestScript(targetScriptId);
-
-            ctx.Block(new WaitUntilBlock(() => IsScriptRunning(targetEntityId, targetScriptId)));
+            ctx.Block(new RequestScriptBlock(target, targetScriptId, priority, false));
         }
 
+        /// <summary>
+        /// Retry until the slot accepts the script, then wait for it to run to its return before
+        /// continuing.
+        /// </summary>
         private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte targetEntityId = ReadByte(ctx);
-            byte targetScriptId = ReadByte(ctx);
+            if (!TryReadScriptRequest(ctx, nameof(RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler), out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            {
+                return;
+            }
 
-            m_Entities[targetEntityId].RequestScript(targetScriptId);
-
-            ctx.Block(new WaitUntilBlock(() => !IsScriptRunning(targetEntityId, targetScriptId)));
+            ctx.Block(new RequestScriptBlock(target, targetScriptId, priority, true));
         }
 
+        /// <summary>
+        /// Hand this slot over to another script. The script being replaced is the one asking, so unlike
+        /// a request from outside this replaces rather than being refused.
+        /// </summary>
         private void ReturnToAnotherScriptOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte targetScriptId = ReadByte(ctx);
-            int  entityId       = ctx.EntityId;
+            ushort targetEventId = ReadUshort(ctx);
 
-            ClearEntityContexts(entityId);
+            FieldEntityRuntime entity = m_Entities[ctx.EntityId];
 
-            m_Entities[entityId].RequestScript(targetScriptId);
+            if (!entity.TryGetScriptId(targetEventId, out int targetScriptId))
+            {
+                return;
+            }
+
+            m_Contexts.Remove((ctx.EntityId, ctx.Priority));
+
+            entity.ReplaceScriptInSlot(targetScriptId, ctx.Priority);
+        }
+
+        /// <summary>
+        /// Decode the operands shared by the three request opcodes and resolve the target entity.
+        /// </summary>
+        private bool TryReadScriptRequest(ScriptExecutionContext ctx, string caller, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
+        {
+            byte   targetEntityId = ReadByte(ctx);
+            ushort targetEventId;
+
+            priority      = ReadByte(ctx);
+            targetEventId = ReadUshort(ctx);
+
+            targetScriptId = 0;
+
+            if (!m_Entities.TryGetValue(targetEntityId, out target))
+            {
+                return false;
+            }
+
+            if (priority >= FieldEntityRuntime.PRIORITY_COUNT)
+            {
+                target = null;
+                return false;
+            }
+
+            // The request names an event id relative to the target entity, which the entity resolves to
+            // the field-wide script id the VM holds bytecode under.
+            if (!target.TryGetScriptId(targetEventId, out targetScriptId))
+            {
+                target = null;
+                return false;
+            }
+
+            return true;
         }
 
         private void GotoOpcodeHandler(ScriptExecutionContext ctx)

@@ -28,7 +28,6 @@ namespace RPGFramework.Field
             m_EntityPositions      = new Dictionary<int, Vector3>(entities.Count);
             m_EntityRotations      = new Dictionary<int, Quaternion>(entities.Count);
             m_EntityRotationStates = new Dictionary<int, RotationState>();
-            m_EntityRotationStates = new Dictionary<int, RotationState>();
         }
 
         internal void SetPlayerEntity(FieldEntityRuntime playerEntity) => m_PlayerEntity = playerEntity;

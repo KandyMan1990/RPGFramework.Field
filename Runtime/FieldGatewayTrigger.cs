@@ -44,8 +44,12 @@ namespace RPGFramework.Field
                 return;
             }
 
-            FieldCompiledScript compiledScript = m_Entity.ScriptDefinition.GetScript(FieldScriptType.OnCollision);
-            OnTriggered?.Invoke(m_EntityId, compiledScript.ScriptId);
+            if (!m_Entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.OnCollision, out int eventId))
+            {
+                return;
+            }
+
+            OnTriggered?.Invoke(m_EntityId, eventId);
         }
 
         public void SetActive(bool active)
