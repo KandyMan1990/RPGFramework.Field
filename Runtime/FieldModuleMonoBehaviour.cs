@@ -11,6 +11,9 @@ namespace RPGFramework.Field
         public InputAdapter    InputAdapter           => m_InputAdapter;
         public UIDocument      UIDocument             => m_UIDocument;
         public TransformHandle CameraTransformHandle  => m_Camera.transformHandle;
+#if UNITY_EDITOR
+        public Camera          Camera                 => m_Camera;
+#endif
 
         [Tooltip("Used to determine the up direction in the game.  3D games should use 0,1,0 (XZ plane).  2D games should use 0,0,1 (XY plane).")]
         [SerializeField]

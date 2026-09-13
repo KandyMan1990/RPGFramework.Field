@@ -28,7 +28,7 @@ using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field
 {
-    public class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
+    public partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
     {
         private readonly ICoreModule                        m_CoreModule;
         private readonly IDIResolver                        m_DIResolver;
@@ -160,6 +160,10 @@ namespace RPGFramework.Field
             {
                 entity.MovementDriver?.Tick(deltaTime);
             }
+
+#if UNITY_EDITOR
+            DrawInteractionDebug();
+#endif
 
             if (m_FieldTransitionRequested)
             {
@@ -535,6 +539,10 @@ namespace RPGFramework.Field
             UnsubscribeVm();
 
             m_ActiveInteractionTriggerIds.Clear();
+#if UNITY_EDITOR
+            m_DebugOverlay?.RemoveFromHierarchy();
+            m_DebugOverlay = null;
+#endif
 
             foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
             {
