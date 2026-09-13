@@ -82,6 +82,10 @@ namespace RPGFramework.Field.Editor
                         WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoIntValues, parts, lineIndex + 1, true, ref variableMap, openBlocks);
                         break;
 
+                    case "ELSE":
+                        OpenElse(bw, ms, lineIndex + 1, openBlocks);
+                        break;
+
                     case "END_IF":
                         CloseComparison(bw, ms, lineIndex + 1, openBlocks);
                         break;
@@ -565,11 +569,15 @@ namespace RPGFramework.Field.Editor
             internal readonly int JumpByteposition;
             internal readonly int BodyStart;
 
-            internal OpenBlock(int lineNumber, int jumpBytePosition, int bodyStart)
+            // An else body is skipped by a GOTO_JUMP with an int distance; an IF body by the comparison's byte.
+            internal readonly bool IsElse;
+
+            internal OpenBlock(int lineNumber, int jumpBytePosition, int bodyStart, bool isElse = false)
             {
                 LineNumber       = lineNumber;
                 JumpByteposition = jumpBytePosition;
                 BodyStart        = bodyStart;
+                IsElse           = isElse;
             }
         }
 
@@ -652,8 +660,35 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Close the innermost IF by writing back how many bytes its body occupies. The VM adds that to
-        /// the instruction pointer when the comparison fails, landing on the instruction after END_IF.
+        /// End the IF body with a jump over the else body, and point the failed comparison at the else body.
+        /// </summary>
+        private static void OpenElse(BinaryWriter bw, MemoryStream ms, int lineNumber, Stack<OpenBlock> openBlocks)
+        {
+            if (openBlocks.Count == 0)
+            {
+                throw new Exception($"line {lineNumber}: ELSE with no IF open");
+            }
+
+            if (openBlocks.Peek().IsElse)
+            {
+                throw new Exception($"line {lineNumber}: a second ELSE for the IF opened on line {openBlocks.Peek().LineNumber}");
+            }
+
+            OpenBlock ifBlock = openBlocks.Pop();
+
+            bw.Write((ushort)FieldScriptOpCode.GotoJump);
+
+            int jumpPosition = (int)ms.Position;
+
+            bw.Write(0);
+
+            WriteSkipDistance(bw, ms, ifBlock, lineNumber);
+
+            openBlocks.Push(new OpenBlock(ifBlock.LineNumber, jumpPosition, (int)ms.Position, true));
+        }
+
+        /// <summary>
+        /// Close the innermost IF or ELSE by writing back how many bytes its body occupies.
         /// </summary>
         private static void CloseComparison(BinaryWriter bw, MemoryStream ms, int lineNumber, Stack<OpenBlock> openBlocks)
         {
@@ -662,14 +697,16 @@ namespace RPGFramework.Field.Editor
                 throw new Exception($"line {lineNumber}: END_IF with no IF open");
             }
 
-            OpenBlock block = openBlocks.Pop();
+            WriteSkipDistance(bw, ms, openBlocks.Pop(), lineNumber);
+        }
 
+        private static void WriteSkipDistance(BinaryWriter bw, MemoryStream ms, OpenBlock block, int lineNumber)
+        {
             bw.Flush();
 
             int bodyLength = (int)ms.Position - block.BodyStart;
 
-            // The distance is a single byte, so a body longer than 255 bytes cannot be skipped.
-            if (bodyLength > byte.MaxValue)
+            if (!block.IsElse && bodyLength > byte.MaxValue)
             {
                 throw new Exception($"line {lineNumber}: the IF opened on line {block.LineNumber} has a {bodyLength} byte body, more than the {byte.MaxValue} a jump distance can hold. Move some of it into another script and call that instead");
             }
@@ -677,7 +714,16 @@ namespace RPGFramework.Field.Editor
             long resume = ms.Position;
 
             ms.Position = block.JumpByteposition;
-            bw.Write((byte)bodyLength);
+
+            if (block.IsElse)
+            {
+                bw.Write(bodyLength);
+            }
+            else
+            {
+                bw.Write((byte)bodyLength);
+            }
+
             bw.Flush();
 
             ms.Position = resume;

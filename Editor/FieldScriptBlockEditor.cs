@@ -163,17 +163,72 @@ namespace RPGFramework.Field.Editor
 
             if (block.OpensBlock)
             {
-                root.Add(BuildBody(block));
+                root.Add(BuildBranch(block.Children, "Add block inside"));
+                root.Add(BuildElse(block));
             }
 
             return root;
         }
 
-        /// <summary>
-        /// The instructions that run only when the comparison holds, indented under it. The jump
-        /// distance the compiler needs is worked out from what is in here, so it is never shown.
-        /// </summary>
-        private VisualElement BuildBody(FieldScriptBlock block)
+        private VisualElement BuildElse(FieldScriptBlock block)
+        {
+            VisualElement section = new VisualElement();
+
+            if (!block.HasElse)
+            {
+                Button addElse = new Button(() =>
+                                            {
+                                                block.AddElse();
+                                                RebuildBlockList();
+                                                NotifyChanged();
+                                            })
+                                 {
+                                     text = "Add else"
+                                 };
+
+                addElse.style.marginTop = 4;
+                section.Add(addElse);
+
+                return section;
+            }
+
+            VisualElement header = new VisualElement();
+            header.style.flexDirection = FlexDirection.Row;
+            header.style.alignItems    = Align.Center;
+            header.style.marginTop     = 4;
+
+            Label label = new Label(FieldScriptBlocks.ELSE_BLOCK);
+            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.flexGrow                = 1;
+
+            header.Add(label);
+            header.Add(MakeSmallButton("✕", "Remove else", () => RemoveElse(block)));
+
+            section.Add(header);
+            section.Add(BuildBranch(block.ElseChildren, "Add block to else"));
+
+            return section;
+        }
+
+        private void RemoveElse(FieldScriptBlock block)
+        {
+            if (block.ElseChildren.Count > 0)
+            {
+                bool confirmed = EditorUtility.DisplayDialog("Remove else", $"This removes the else and the {block.ElseChildren.Count} instruction(s) inside it.", "Remove", "Cancel");
+
+                if (!confirmed)
+                {
+                    return;
+                }
+            }
+
+            block.RemoveElse();
+
+            RebuildBlockList();
+            NotifyChanged();
+        }
+
+        private VisualElement BuildBranch(List<FieldScriptBlock> children, string addLabel)
         {
             VisualElement body = new VisualElement();
             body.style.marginLeft      = 12;
@@ -182,7 +237,7 @@ namespace RPGFramework.Field.Editor
             body.style.borderLeftColor = new Color(0.35f, 0.55f, 0.85f, 0.4f);
             body.style.paddingLeft     = 8;
 
-            if (block.Children.Count == 0)
+            if (children.Count == 0)
             {
                 Label emptyLabel = new Label("nothing yet");
                 emptyLabel.style.opacity = 0.5f;
@@ -190,9 +245,9 @@ namespace RPGFramework.Field.Editor
                 body.Add(emptyLabel);
             }
 
-            AddBlocks(body, block.Children);
+            AddBlocks(body, children);
 
-            Button addInside = new Button(() => ShowOpCodePicker(block.Children)) { text = "Add block inside" };
+            Button addInside = new Button(() => ShowOpCodePicker(children)) { text = addLabel };
             addInside.style.marginTop = 4;
 
             body.Add(addInside);
@@ -745,10 +800,12 @@ namespace RPGFramework.Field.Editor
         {
             // Removing a block that opens one takes its body with it, which is what the nesting shows,
             // so it is worth being asked first.
-            if (owner[index].OpensBlock && owner[index].Children.Count > 0)
+            int inside = owner[index].OpensBlock ? owner[index].Children.Count + (owner[index].ElseChildren?.Count ?? 0) : 0;
+
+            if (inside > 0)
             {
                 bool confirmed = EditorUtility.DisplayDialog("Remove block",
-                                                             $"This removes the {owner[index].OpCode.ScriptName} and the {owner[index].Children.Count} instruction(s) inside it.",
+                                                             $"This removes the {owner[index].OpCode.ScriptName} and the {inside} instruction(s) inside it.",
                                                              "Remove", "Cancel");
 
                 if (!confirmed)

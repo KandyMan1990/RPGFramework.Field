@@ -29,6 +29,11 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         public List<FieldScriptBlock> Children { get; }
 
+        /// <summary>The instructions that run when the comparison does not hold. Null when there is no ELSE.</summary>
+        public List<FieldScriptBlock> ElseChildren { get; private set; }
+
+        public bool HasElse => ElseChildren != null;
+
         public bool IsRecognised => OpCode != null;
 
         public bool OpensBlock => OpCode != null && OpCode.OpensBlock;
@@ -39,6 +44,16 @@ namespace RPGFramework.Field.Editor
             Arguments = arguments;
             RawLine   = null;
             Children  = opCode != null && opCode.OpensBlock ? new List<FieldScriptBlock>() : null;
+        }
+
+        public void AddElse()
+        {
+            ElseChildren ??= new List<FieldScriptBlock>();
+        }
+
+        public void RemoveElse()
+        {
+            ElseChildren = null;
         }
 
         public FieldScriptBlock(string rawLine)
@@ -130,6 +145,8 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         public const string END_BLOCK = "END_IF";
 
+        public const string ELSE_BLOCK = "ELSE";
+
         private const string INDENT = "    ";
 
         public static List<FieldScriptBlock> Parse(string scriptText)
@@ -146,6 +163,8 @@ namespace RPGFramework.Field.Editor
             Stack<List<FieldScriptBlock>> openBodies = new Stack<List<FieldScriptBlock>>();
             openBodies.Push(blocks);
 
+            Stack<FieldScriptBlock> openBlocks = new Stack<FieldScriptBlock>();
+
             foreach (string rawLine in scriptText.Split('\n'))
             {
                 string line = rawLine.Trim();
@@ -160,9 +179,28 @@ namespace RPGFramework.Field.Editor
                 if (line == END_BLOCK)
                 {
                     // A stray END_IF would otherwise close the root list and lose everything after it.
-                    if (openBodies.Count > 1)
+                    if (openBlocks.Count > 0)
                     {
                         openBodies.Pop();
+                        openBlocks.Pop();
+                    }
+                    else
+                    {
+                        body.Add(new FieldScriptBlock(line));
+                    }
+
+                    continue;
+                }
+
+                if (line == ELSE_BLOCK)
+                {
+                    if (openBlocks.Count > 0 && !openBlocks.Peek().HasElse)
+                    {
+                        FieldScriptBlock owner = openBlocks.Peek();
+                        owner.AddElse();
+
+                        openBodies.Pop();
+                        openBodies.Push(owner.ElseChildren);
                     }
                     else
                     {
@@ -204,6 +242,7 @@ namespace RPGFramework.Field.Editor
                 if (block.OpensBlock)
                 {
                     openBodies.Push(block.Children);
+                    openBlocks.Push(block);
                 }
             }
 
@@ -236,6 +275,14 @@ namespace RPGFramework.Field.Editor
                 }
 
                 Write(block.Children, sb, depth + 1);
+
+                if (block.HasElse)
+                {
+                    sb.Append(indent);
+                    sb.AppendLine(ELSE_BLOCK);
+
+                    Write(block.ElseChildren, sb, depth + 1);
+                }
 
                 sb.Append(indent);
                 sb.AppendLine(END_BLOCK);
