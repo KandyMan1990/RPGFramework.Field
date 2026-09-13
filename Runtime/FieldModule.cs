@@ -176,6 +176,7 @@ namespace RPGFramework.Field
         {
             m_FieldContext.VM.RequestFieldTransition             += OnSetFieldModuleArgs;
             m_FieldContext.VM.RequestMusic                       += OnRequestMusic;
+            m_FieldContext.VM.RequestMusicStemState              += OnRequestMusicStemState;
             m_FieldContext.VM.RequestSfx                         += OnRequestSfx;
             m_FieldContext.VM.RequestSetPlayerEntity             += OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSetEntityVisible            += OnRequestSetEntityVisible;
@@ -223,6 +224,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetPlayerEntity             -= OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSfx                         -= OnRequestSfx;
             m_FieldContext.VM.RequestMusic                       -= OnRequestMusic;
+            m_FieldContext.VM.RequestMusicStemState              -= OnRequestMusicStemState;
             m_FieldContext.VM.RequestFieldTransition             -= OnSetFieldModuleArgs;
         }
 
@@ -358,19 +360,38 @@ namespace RPGFramework.Field
 #if UNITY_EDITOR
                 if (entity.IsRunningScript)
                 {
-                    Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script blocked before returning, so the field was shown before it finished. Init is for setup that runs straight through — move anything that waits or loops into a {nameof(FieldScriptType.Main)} script");
+                    ReportInitScriptDidNotReturn(entity, vm);
                 }
 #endif
             }
         }
 
+#if UNITY_EDITOR
+        /// <summary>
+        /// An init script still holding its slot after its frame means one of two different mistakes,
+        /// and the fix is different for each, so they are reported separately rather than as one
+        /// "did not return".
+        /// </summary>
+        private static void ReportInitScriptDidNotReturn(FieldEntityRuntime entity, FieldVM vm)
+        {
+            if (vm.IsSlotWaiting(entity.EntityId, FieldEntityRuntime.DEFAULT_PRIORITY))
+            {
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script is waiting on something, so the field was shown before it finished. Init runs straight through in a single frame and cannot wait — move the wait, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");
+
+                return;
+            }
+
+            Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script is still running after the {FieldVM.INSTRUCTIONS_PER_SLOT_PER_FRAME} instructions a script gets in a frame, so the field was shown before it finished. Either it loops, or it is simply too long for init — shorten it, or move the rest into a {nameof(FieldScriptType.Main)} script");
+        }
+#endif
+
         /// <summary>
         /// Start each entity's <see cref="FieldScriptType.Main" /> script, once initialisation is done.
         /// <br /><br />
         /// Main is where an entity's ongoing behaviour lives — a patrol route, an idle loop — and unlike
-        /// init it is free to wait and to run for as long as the field does. It gets its own priority
-        /// slot so that a trigger firing does not have to wait for it, and so that a Main script looping
-        /// forever cannot block one.
+        /// init it is free to wait and to run for as long as the field does. It sits one priority below
+        /// the triggers, so a trigger firing preempts it however long it has been looping, and it
+        /// resumes where it left off once the trigger's script returns.
         /// </summary>
         private void StartMainScripts(FieldEntity[] entitiesInGameObject)
         {
@@ -539,14 +560,19 @@ namespace RPGFramework.Field
             return rotationsState.Active;
         }
 
-        private void OnRequestMusic(int id)
+        private void OnRequestMusic(ulong nameHash, ulong stateNameHash)
         {
-            m_MusicPlayer.Play(id).FireAndForget();
+            m_MusicPlayer.PlayAsync(nameHash, stateNameHash).FireAndForget();
         }
 
-        private void OnRequestSfx(int id)
+        private void OnRequestMusicStemState(ulong stateNameHash, float fadeSeconds)
         {
-            m_SfxPlayer.Play(id);
+            m_MusicPlayer.SetStemStateFadeAsync(stateNameHash, fadeSeconds).FireAndForget();
+        }
+
+        private void OnRequestSfx(ulong nameHash)
+        {
+            m_SfxPlayer.Play(nameHash);
         }
 
         private void OnRequestSetPlayerEntity(FieldEntityRuntime entity)

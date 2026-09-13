@@ -3,8 +3,9 @@
 namespace RPGFramework.Field
 {
     /// <summary>
-    /// One running script. There is an instance per occupied priority slot on an entity, so an entity
-    /// with several slots in use has several of these in flight at once.
+    /// One script's execution state. There is an instance per occupied priority slot, but only the
+    /// entity's highest-priority slot advances in a frame — the rest are preempted scripts holding
+    /// their instruction pointers until the ones above them return.
     /// </summary>
     internal sealed class ScriptExecutionContext
     {

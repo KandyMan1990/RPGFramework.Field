@@ -24,8 +24,11 @@
                 <ui:ListView name="TextViewerListView" reorderable="true" show-add-remove-footer="true" style="width: 100%; height: 100%;"/>
             </ui:VisualElement>
             <ui:VisualElement name="ScriptsViewer" style="flex-grow: 1; flex-direction: row;">
-                <ui:ListView name="EntityListView" reorderable="true" show-add-remove-footer="false" style="width: 100%; height: 100%;"/>
-                <ui:ListView name="EntityScriptListView" reorderable="true" show-add-remove-footer="false" style="width: 100%; height: 100%;"/>
+                <ui:ListView name="EntityListView" reorderable="false" show-add-remove-footer="false" style="width: 20%; height: 100%;"/>
+                <ui:ListView name="EntityScriptListView" reorderable="false" show-add-remove-footer="false" style="width: 20%; height: 100%;"/>
+                <ui:ScrollView name="ScriptBlockScrollView" style="flex-grow: 1; height: 100%;">
+                    <ui:VisualElement name="ScriptBlockContainer" style="flex-grow: 1; padding-left: 6px; padding-right: 6px; padding-top: 4px;"/>
+                </ui:ScrollView>
             </ui:VisualElement>
             <ui:VisualElement name="EncountersViewer" style="flex-grow: 1;"/>
         </ui:VisualElement>

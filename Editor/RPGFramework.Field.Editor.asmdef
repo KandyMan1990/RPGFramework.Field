@@ -2,6 +2,7 @@
     "name": "RPGFramework.Field.Editor",
     "rootNamespace": "RPGFramework.Field.Editor",
     "references": [
+        "RPGFramework.Audio",
         "RPGFramework.Field",
         "RPGFramework.Core.SharedTypes",
         "RPGFramework.Core",

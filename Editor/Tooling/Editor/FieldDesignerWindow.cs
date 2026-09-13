@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
@@ -30,6 +31,10 @@ namespace RPGFramework.Field.Editor
         private ListView      m_TextViewerListView;
         private ListView      m_EntityListView;
         private ListView      m_EntityScriptListView;
+        private VisualElement m_ScriptBlockContainer;
+
+        private FieldEntity       m_SelectedEntity;
+        private FieldScriptSource m_SelectedScriptSource;
 
         private GameObject        m_CurrentlyOpenPrefab;
         private List<FieldEntity> m_CurrentlyOpenPrefabFieldEntities;
@@ -130,6 +135,7 @@ namespace RPGFramework.Field.Editor
             if (EditorUtility.DisplayDialog("Delete Field", "Are you sure you want to delete this field?", "Ok", "Cancel"))
             {
                 m_FieldDesignerData.Fields.RemoveAt(m_FieldsContainerListView.selectedIndex);
+                m_FieldsContainerListView.ClearSelection();
                 m_FieldsContainerListView.RefreshItems();
             }
         }
@@ -174,8 +180,20 @@ namespace RPGFramework.Field.Editor
             m_CurrentlyOpenPrefab = PrefabUtility.LoadPrefabContents(path);
 
             m_CurrentlyOpenPrefabFieldEntities = m_CurrentlyOpenPrefab.GetComponentsInChildren<FieldEntity>().ToList();
-            m_EntityListView.itemsSource       = m_CurrentlyOpenPrefabFieldEntities;
+
+            m_EntityListView.ClearSelection();
+            m_EntityScriptListView.ClearSelection();
+            m_EntityScriptListView.itemsSource = new List<ScriptEntry>();
+            m_EntityScriptListView.Rebuild();
+
+            m_ScriptBlockContainer.Clear();
+            m_SelectedEntity       = null;
+            m_SelectedScriptSource = null;
+
+            m_EntityListView.itemsSource = m_CurrentlyOpenPrefabFieldEntities;
             m_EntityListView.Rebuild();
+
+            m_ScriptBlockContainer.Add(new HelpBox("Select an entity, then one of its scripts.", HelpBoxMessageType.None));
 
             SetElementVisible(m_PrefabViewer,     false);
             SetElementVisible(m_TextViewer,       false);
@@ -189,7 +207,6 @@ namespace RPGFramework.Field.Editor
             {
                 return;
             }
-            // this is to list which encounters can happen and their frequency including off
 
             SetElementVisible(m_PrefabViewer,     false);
             SetElementVisible(m_TextViewer,       false);
@@ -233,7 +250,13 @@ namespace RPGFramework.Field.Editor
                 m_CurrentlyOpenPrefab = null;
             }
 
-            m_CurrentFieldAsset = m_FieldDesignerData.Fields[m_FieldsContainerListView.selectedIndex];
+            int index = m_FieldsContainerListView.selectedIndex;
+            if (index < 0)
+            {
+                return;
+            }
+
+            m_CurrentFieldAsset = m_FieldDesignerData.Fields[index];
 
             GameObject prefab = m_CurrentFieldAsset.Prefab;
             string     text   = prefab != null ? prefab.name : "Unknown";
@@ -305,6 +328,18 @@ namespace RPGFramework.Field.Editor
                                             label.text = entity.name;
                                         };
             m_EntityListView.selectedIndicesChanged += OnEntitySelected;
+
+            m_ScriptBlockContainer = rootVisualElement.Q<VisualElement>("ScriptBlockContainer");
+
+            m_EntityScriptListView.makeItem = () => new Label();
+            m_EntityScriptListView.bindItem = (element, index) =>
+                                              {
+                                                  ScriptEntry scriptEntry = m_SelectedEntity.ScriptDefinition.Scripts[index];
+
+                                                  Label label = (Label)element;
+                                                  label.text = $"{index}  {scriptEntry.ScriptType}";
+                                              };
+            m_EntityScriptListView.selectedIndicesChanged += OnEntityScriptSelected;
         }
 
         private void InitEncountersTab()
@@ -315,11 +350,134 @@ namespace RPGFramework.Field.Editor
 
         private void OnEntitySelected(IEnumerable<int> obj)
         {
-            FieldEntity entity = m_CurrentlyOpenPrefabFieldEntities[m_EntityListView.selectedIndex];
-            
-            Debug.Log($"Entity selected [{entity.name}]");
-            // fill m_EntityScriptListView with available scripts
-            // selecting one of those scripts should show it for editing
+            m_SelectedEntity = m_CurrentlyOpenPrefabFieldEntities[m_EntityListView.selectedIndex];
+
+            m_ScriptBlockContainer.Clear();
+            m_SelectedScriptSource = null;
+
+            m_EntityScriptListView.ClearSelection();
+
+            if (m_SelectedEntity.ScriptDefinition == null)
+            {
+                m_EntityScriptListView.itemsSource = new List<ScriptEntry>();
+                m_EntityScriptListView.Rebuild();
+
+                m_ScriptBlockContainer.Add(new HelpBox($"'{m_SelectedEntity.name}' has no {nameof(FieldScriptDefinition)}.", HelpBoxMessageType.Warning));
+                return;
+            }
+
+            m_EntityScriptListView.itemsSource = m_SelectedEntity.ScriptDefinition.Scripts;
+            m_EntityScriptListView.Rebuild();
+
+            m_ScriptBlockContainer.Add(new HelpBox("Select one of this entity's scripts to edit it.", HelpBoxMessageType.None));
+        }
+
+        private void OnEntityScriptSelected(IEnumerable<int> obj)
+        {
+            m_ScriptBlockContainer.Clear();
+            m_SelectedScriptSource = null;
+
+            int index = m_EntityScriptListView.selectedIndex;
+
+            if (index < 0 || m_SelectedEntity?.ScriptDefinition?.Scripts == null)
+            {
+                return;
+            }
+
+            if (index >= m_SelectedEntity.ScriptDefinition.Scripts.Count)
+            {
+                return;
+            }
+
+            ScriptEntry scriptEntry = m_SelectedEntity.ScriptDefinition.Scripts[index];
+
+            if (scriptEntry.CompiledScript == null)
+            {
+                m_ScriptBlockContainer.Add(new HelpBox($"Script [{index}] ({scriptEntry.ScriptType}) has no compiled script assigned.", HelpBoxMessageType.Warning));
+                return;
+            }
+
+            if (!TryFindScriptSource(scriptEntry.CompiledScript, out m_SelectedScriptSource))
+            {
+                m_ScriptBlockContainer.Add(new HelpBox($"No {nameof(FieldScriptSource)} found beside '{scriptEntry.CompiledScript.name}'. A compiled script is written next to the source it came from, so the two must stay together.", HelpBoxMessageType.Warning));
+                return;
+            }
+
+            m_ScriptBlockContainer.Add(BuildScriptHeader(index, scriptEntry));
+            m_ScriptBlockContainer.Add(new FieldScriptBlockEditor(m_SelectedScriptSource.ScriptText, OnScriptTextChanged));
+        }
+
+        private VisualElement BuildScriptHeader(int eventId, ScriptEntry scriptEntry)
+        {
+            VisualElement header = new VisualElement();
+            header.style.marginBottom = 6;
+
+            Label scriptTitle = new Label($"{m_SelectedEntity.ScriptDefinition.EntityName} — {scriptEntry.ScriptType} (event {eventId})");
+            scriptTitle.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            header.Add(scriptTitle);
+            header.Add(new Button(CompileSelectedScript) { text = "Compile script" });
+
+            return header;
+        }
+
+        private void OnScriptTextChanged(string scriptText)
+        {
+            if (m_SelectedScriptSource == null)
+            {
+                return;
+            }
+
+            Undo.RecordObject(m_SelectedScriptSource, "Edit field script");
+
+            m_SelectedScriptSource.ScriptText = scriptText;
+
+            EditorUtility.SetDirty(m_SelectedScriptSource);
+        }
+
+        private void CompileSelectedScript()
+        {
+            if (m_SelectedScriptSource == null)
+            {
+                return;
+            }
+
+            try
+            {
+                byte[] bytecode = FieldScriptCompiler.Compile(m_SelectedScriptSource.ScriptText);
+
+                FieldCompiledScript compiled = CreateInstance<FieldCompiledScript>();
+                compiled.ScriptId      = m_SelectedScriptSource.ScriptId;
+                compiled.FormatVersion = FieldCompiledScript.CURRENT_FORMAT_VERSION;
+                compiled.Bytecode      = bytecode;
+
+                string path = Path.ChangeExtension(AssetDatabase.GetAssetPath(m_SelectedScriptSource), ".compiled.asset");
+
+                AssetDatabase.CreateAsset(compiled, path);
+                AssetDatabase.SaveAssets();
+
+                Debug.Log($"{nameof(FieldDesignerWindow)} compiled '{m_SelectedScriptSource.name}' to {bytecode.Length} bytes");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Compile failed", e.Message, "OK");
+            }
+        }
+
+        /// <summary>
+        /// A compiled script is written as <c>Name.compiled.asset</c> beside the <c>Name.asset</c> it was
+        /// compiled from, so the source is found by undoing that.
+        /// </summary>
+        private static bool TryFindScriptSource(FieldCompiledScript compiled, out FieldScriptSource source)
+        {
+            string compiledPath = AssetDatabase.GetAssetPath(compiled);
+            string sourcePath   = compiledPath.Replace(".compiled.asset", ".asset");
+
+            source = AssetDatabase.LoadAssetAtPath<FieldScriptSource>(sourcePath);
+
+            bool found = source != null;
+
+            return found;
         }
 
         private void OnPrefabObjectFieldChanged(ChangeEvent<Object> evt)

@@ -8,8 +8,9 @@
     internal sealed class FieldEntityRuntime
     {
         /// <summary>
-        /// Priorities are 0-7. <b>0 is serviced first</b>: occupied slots run in numerical order within
-        /// a frame.
+        /// Priorities are 0-7, <b>0 being the highest</b>. An entity runs the lowest-numbered occupied
+        /// slot and only that one; a higher priority arriving preempts what is running, and the script
+        /// underneath resumes when it returns.
         /// </summary>
         internal const int PRIORITY_COUNT = 8;
 
@@ -122,6 +123,17 @@
             m_ScriptIdBySlot[priority] = NO_SCRIPT;
         }
 
+        /// <summary>
+        /// Advance this entity by one frame.<br /><br />
+        /// <b>Only the highest-priority occupied slot runs.</b> An entity is one actor and runs one
+        /// script at a time; the slots below hold their scripts and their instruction pointers
+        /// untouched, and the next one down resumes where it left off once the script above it returns.
+        /// Occupying a slot is what marks a script pending, and returning is what releases it.<br /><br />
+        /// A script that is waiting still holds the entity — nothing below it runs while it waits. Only
+        /// a <b>higher</b> priority arriving takes over, which is the point of the ordering: a trigger
+        /// at <see cref="DEFAULT_PRIORITY" /> preempts a Main script at <see cref="MAIN_PRIORITY" />
+        /// however long that Main script has been looping, and Main picks up again afterwards.
+        /// </summary>
         internal void Update(FieldVM vm)
         {
             if (!IsActive)
@@ -139,6 +151,8 @@
                 }
 
                 vm.Execute(EntityId, priority, scriptId, this);
+
+                return;
             }
         }
     }

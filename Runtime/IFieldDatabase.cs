@@ -2,6 +2,6 @@
 {
     public interface IFieldDatabase
     {
-        FieldDatabaseAsset Get(int index);
+        FieldDatabaseAsset Get(ulong fieldNameHash);
     }
 }

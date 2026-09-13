@@ -1,38 +1,119 @@
-﻿using UnityEngine;
-using System.IO;
+﻿using System.IO;
 using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace RPGFramework.Field.Editor
 {
     [CustomEditor(typeof(FieldScriptSource))]
     public sealed class FieldScriptSourceEditor : UnityEditor.Editor
     {
-        public override void OnInspectorGUI()
-        {
-            DrawDefaultInspector();
+        private FieldScriptSource m_Source;
+        private HelpBox           m_CompileResult;
+        private TextField         m_RawTextView;
 
-            if (GUILayout.Button("Compile Script"))
+        public override VisualElement CreateInspectorGUI()
+        {
+            m_Source = (FieldScriptSource)target;
+
+            VisualElement root = new VisualElement();
+
+            root.Add(new PropertyField(serializedObject.FindProperty("ScriptId")));
+            root.Add(Spacer(8));
+
+            root.Add(Heading("Blocks"));
+            root.Add(new FieldScriptBlockEditor(m_Source.ScriptText, OnScriptTextChanged));
+
+            root.Add(Spacer(8));
+            root.Add(BuildRawText());
+
+            root.Add(Spacer(8));
+            root.Add(new Button(Compile) { text = "Compile script" });
+
+            m_CompileResult               = new HelpBox(string.Empty, HelpBoxMessageType.Info);
+            m_CompileResult.style.display = DisplayStyle.None;
+            root.Add(m_CompileResult);
+
+            root.Bind(serializedObject);
+
+            return root;
+        }
+
+        private VisualElement BuildRawText()
+        {
+            Foldout foldout = new Foldout { text = "Script text", value = false };
+
+            TextField text = new TextField { multiline = true, value = m_Source.ScriptText };
+            text.style.minHeight = 120;
+            text.SetEnabled(false);
+
+            foldout.Add(new HelpBox("Generated from the blocks above. Edit the asset directly if you need to hand-write a script; unrecognised lines are preserved.", HelpBoxMessageType.None));
+            foldout.Add(text);
+
+            m_RawTextView = text;
+
+            return foldout;
+        }
+
+        private void OnScriptTextChanged(string scriptText)
+        {
+            Undo.RecordObject(m_Source, "Edit field script");
+
+            m_Source.ScriptText = scriptText;
+
+            EditorUtility.SetDirty(m_Source);
+            serializedObject.Update();
+
+            m_RawTextView?.SetValueWithoutNotify(scriptText);
+        }
+
+        private void Compile()
+        {
+            try
             {
-                FieldScriptSource source = (FieldScriptSource)target;
-                Compile(source);
+                byte[] bytecode = FieldScriptCompiler.Compile(m_Source.ScriptText);
+
+                FieldCompiledScript compiled = CreateInstance<FieldCompiledScript>();
+                compiled.ScriptId      = m_Source.ScriptId;
+                compiled.FormatVersion = FieldCompiledScript.CURRENT_FORMAT_VERSION;
+                compiled.Bytecode      = bytecode;
+
+                string path = Path.ChangeExtension(AssetDatabase.GetAssetPath(m_Source), ".compiled.asset");
+
+                AssetDatabase.CreateAsset(compiled, path);
+                AssetDatabase.SaveAssets();
+
+                ShowResult($"Compiled to {bytecode.Length} bytes at {path}", HelpBoxMessageType.Info);
+            }
+            catch (System.Exception e)
+            {
+                ShowResult(e.Message, HelpBoxMessageType.Error);
             }
         }
 
-        private static void Compile(FieldScriptSource source)
+        private void ShowResult(string message, HelpBoxMessageType messageType)
         {
-            byte[] bytecode = FieldScriptCompiler.Compile(source.ScriptText);
+            m_CompileResult.text          = message;
+            m_CompileResult.messageType   = messageType;
+            m_CompileResult.style.display = DisplayStyle.Flex;
+        }
 
-            FieldCompiledScript compiled = CreateInstance<FieldCompiledScript>();
-            compiled.ScriptId = source.ScriptId;
-            compiled.Bytecode = bytecode;
+        private static VisualElement Spacer(int height)
+        {
+            VisualElement spacer = new VisualElement();
+            spacer.style.height = height;
 
-            string path = AssetDatabase.GetAssetPath(source);
-            path = Path.ChangeExtension(path, ".compiled.asset");
+            return spacer;
+        }
 
-            AssetDatabase.CreateAsset(compiled, path);
-            AssetDatabase.SaveAssets();
+        private static Label Heading(string text)
+        {
+            Label label = new Label(text);
+            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.marginBottom            = 4;
 
-            Debug.Log($"Compiled script {source.name} → {path}");
+            return label;
         }
     }
 }

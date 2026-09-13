@@ -13,8 +13,9 @@ namespace RPGFramework.Field
     internal sealed class FieldVM
     {
         internal event Action<FieldArgs>                       RequestFieldTransition;
-        internal event Action<int>                             RequestMusic;
-        internal event Action<int>                             RequestSfx;
+        internal event Action<ulong, ulong>                    RequestMusic;
+        internal event Action<ulong, float>                    RequestMusicStemState;
+        internal event Action<ulong>                           RequestSfx;
         internal event Action<FieldEntityRuntime>              RequestSetPlayerEntity;
         internal event Action<int, bool>                       RequestSetEntityVisible;
         internal event Action<bool>                            RequestSetGatewayTriggersActive;
@@ -62,8 +63,21 @@ namespace RPGFramework.Field
             m_Entities.Add(entityId, entity);
         }
 
+        /// <summary>
+        /// Take a compiled script, unless it was compiled for a different bytecode layout.<br /><br />
+        /// A stale script is refused rather than run. Its slot then finds no script and clears, so the
+        /// entity goes quiet instead of executing the wrong instructions — see
+        /// <see cref="FieldCompiledScript.CURRENT_FORMAT_VERSION" /> for why that matters.
+        /// </summary>
         internal void RegisterScript(int scriptId, FieldCompiledScript script)
         {
+            if (script.FormatVersion != FieldCompiledScript.CURRENT_FORMAT_VERSION)
+            {
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(RegisterScript)} [{script.name}] was compiled for bytecode format [{script.FormatVersion}] but this build reads format [{FieldCompiledScript.CURRENT_FORMAT_VERSION}], so it has not been loaded. Recompile it. Format [0] means it was compiled before the format carried a version");
+
+                return;
+            }
+
             m_Scripts.Add(scriptId, script.Bytecode);
         }
 
@@ -81,6 +95,25 @@ namespace RPGFramework.Field
             }
 
             entity.TryRequestScript(scriptId, priority);
+        }
+
+        internal const int INSTRUCTIONS_PER_SLOT_PER_FRAME = 16;
+
+        /// <summary>
+        /// Whether the script in a slot is waiting on something, as opposed to having run out of its
+        /// instructions for the frame. Both leave the slot occupied, and they are different authoring
+        /// mistakes, so the init report tells them apart with this.
+        /// </summary>
+        internal bool IsSlotWaiting(int entityId, byte priority)
+        {
+            if (!m_Contexts.TryGetValue((entityId, priority), out ScriptExecutionContext ctx))
+            {
+                return false;
+            }
+
+            bool isWaiting = ctx.IsBlocked();
+
+            return isWaiting;
         }
 
         internal void Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity)
@@ -114,8 +147,17 @@ namespace RPGFramework.Field
                 return;
             }
 
+            int instructionsRun = 0;
+
             while (!ctx.IsBlocked())
             {
+                if (instructionsRun == INSTRUCTIONS_PER_SLOT_PER_FRAME)
+                {
+                    return;
+                }
+
+                instructionsRun++;
+
                 FieldScriptOpCode opcode = FetchOpcode(ctx);
 
                 if (!m_OpcodeHandlers.TryGetValue(opcode, out OpcodeHandler opcodeHandler))
@@ -141,7 +183,7 @@ namespace RPGFramework.Field
             return (FieldScriptOpCode)ReadUshort(ctx);
         }
 
-        // Operand sources are packed two to a byte: the high nibble selects where the first operand
+        // Argument sources are packed two to a byte: the high nibble selects where the first argument
         // (the destination, for anything that writes) comes from, the low nibble the second.
         //
         //   0 = immediate, the value follows inline in the bytecode
@@ -149,16 +191,16 @@ namespace RPGFramework.Field
         //
         // Bank addresses are ushort, matching IMemoryService, so a script can reach any variable the
         // variable map declares.
-        private const byte OPERAND_IMMEDIATE = 0;
+        private const byte ARGUMENT_IMMEDIATE = 0;
 
-        private static byte GetFirstOperandSource(byte sources)
+        private static byte GetFirstArgumentSource(byte sources)
         {
             byte source = (byte)(sources >> 4);
 
             return source;
         }
 
-        private static byte GetSecondOperandSource(byte sources)
+        private static byte GetSecondArgumentSource(byte sources)
         {
             byte source = (byte)(sources & 0x0F);
 
@@ -167,9 +209,9 @@ namespace RPGFramework.Field
 
         private static MemoryBank ToMemoryBank(byte source)
         {
-            if (source == OPERAND_IMMEDIATE)
+            if (source == ARGUMENT_IMMEDIATE)
             {
-                throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(ToMemoryBank)} Operand source [{source}] is an immediate value, not a bank. A destination operand must name a bank");
+                throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(ToMemoryBank)} Argument source [{source}] is an immediate value, not a bank. A destination argument must name a bank");
             }
 
             MemoryBank bank = (MemoryBank)(source - 1);
@@ -178,11 +220,11 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Read an 8 bit operand: either an inline literal byte, or a ushort address into a bank.
+        /// Read an 8 bit argument: either an inline literal byte, or a ushort address into a bank.
         /// </summary>
-        private byte ReadOperandByte(ScriptExecutionContext ctx, byte source)
+        private byte ReadArgumentByte(ScriptExecutionContext ctx, byte source)
         {
-            if (source == OPERAND_IMMEDIATE)
+            if (source == ARGUMENT_IMMEDIATE)
             {
                 byte immediate = ReadByte(ctx);
 
@@ -196,11 +238,11 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Read a 16 bit operand: either an inline literal ushort, or a ushort address into a bank.
+        /// Read a 16 bit argument: either an inline literal ushort, or a ushort address into a bank.
         /// </summary>
-        private ushort ReadOperandUshort(ScriptExecutionContext ctx, byte source)
+        private ushort ReadArgumentUshort(ScriptExecutionContext ctx, byte source)
         {
-            if (source == OPERAND_IMMEDIATE)
+            if (source == ARGUMENT_IMMEDIATE)
             {
                 ushort immediate = ReadUshort(ctx);
 
@@ -214,11 +256,11 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Read an int operand: either an inline literal int, or a ushort address into a bank.
+        /// Read an int argument: either an inline literal int, or a ushort address into a bank.
         /// </summary>
-        private int ReadOperandInt(ScriptExecutionContext ctx, byte source)
+        private int ReadArgumentInt(ScriptExecutionContext ctx, byte source)
         {
-            if (source == OPERAND_IMMEDIATE)
+            if (source == ARGUMENT_IMMEDIATE)
             {
                 int immediate = ReadInt(ctx);
 
@@ -233,24 +275,24 @@ namespace RPGFramework.Field
 
         /// <summary>
         /// Decode the common shape of every opcode that reads a destination variable, combines it with a
-        /// second operand and writes the result back: sources byte, destination address, then the operand.
+        /// second argument and writes the result back: sources byte, destination address, then the argument.
         /// </summary>
-        private void ReadBinaryOperandsByte(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress, out byte operand)
+        private void ReadBinaryArgumentsByte(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress, out byte argument)
         {
             byte sources = ReadByte(ctx);
 
-            destinationBank    = ToMemoryBank(GetFirstOperandSource(sources));
+            destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
             destinationAddress = ReadUshort(ctx);
-            operand            = ReadOperandByte(ctx, GetSecondOperandSource(sources));
+            argument           = ReadArgumentByte(ctx, GetSecondArgumentSource(sources));
         }
 
-        private void ReadBinaryOperandsUshort(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress, out ushort operand)
+        private void ReadBinaryArgumentsUshort(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress, out ushort argument)
         {
             byte sources = ReadByte(ctx);
 
-            destinationBank    = ToMemoryBank(GetFirstOperandSource(sources));
+            destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
             destinationAddress = ReadUshort(ctx);
-            operand            = ReadOperandUshort(ctx, GetSecondOperandSource(sources));
+            argument           = ReadArgumentUshort(ctx, GetSecondArgumentSource(sources));
         }
 
         /// <summary>
@@ -260,7 +302,7 @@ namespace RPGFramework.Field
         {
             byte sources = ReadByte(ctx);
 
-            destinationBank    = ToMemoryBank(GetFirstOperandSource(sources));
+            destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
             destinationAddress = ReadUshort(ctx);
         }
 
@@ -539,6 +581,7 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.MusicOperation, MusicOperationOpcodeHandler },
                        { FieldScriptOpCode.PlayMusic, PlayMusicOpcodeHandler },
                        { FieldScriptOpCode.PlaySound, PlaySoundOpcodeHandler },
+                       { FieldScriptOpCode.SetMusicStemState, SetMusicStemStateOpcodeHandler },
                        // { FieldScriptOpCode.MusicLockMode, MusicLockModeOpcodeHandler },
                        // { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
                        // { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
@@ -616,7 +659,7 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Decode the operands shared by the three request opcodes and resolve the target entity.
+        /// Decode the arguments shared by the three request opcodes and resolve the target entity.
         /// </summary>
         private bool TryReadScriptRequest(ScriptExecutionContext ctx, string caller, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
         {
@@ -666,26 +709,26 @@ namespace RPGFramework.Field
         {
             byte sources = ReadByte(ctx);
 
-            byte a = ReadOperandByte(ctx, GetFirstOperandSource(sources));
-            byte b = ReadOperandByte(ctx, GetSecondOperandSource(sources));
+            byte a = ReadArgumentByte(ctx, GetFirstArgumentSource(sources));
+            byte b = ReadArgumentByte(ctx, GetSecondArgumentSource(sources));
 
             byte comparisonType = ReadByte(ctx);
             byte jumpAmount     = ReadByte(ctx);
 
-            bool result = comparisonType switch
+            bool result = (ScriptComparison)comparisonType switch
                           {
-                              0x0 => a              == b,
-                              0x1 => a              != b,
-                              0x2 => a              > b,
-                              0x3 => a              < b,
-                              0x4 => a              >= b,
-                              0x5 => a              <= b,
-                              0x6 => (a & b)        != 0,
-                              0x7 => (a ^ b)        != 0,
-                              0x8 => (a | b)        != 0,
-                              0x9 => (a & (1 << b)) != 0,
-                              0xA => (a & (1 << b)) == 0,
-                              _   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoByteValuesOpcodeHandler)} Unknown comparison type {comparisonType}")
+                              ScriptComparison.Equal              => a              == b,
+                              ScriptComparison.NotEqual           => a              != b,
+                              ScriptComparison.GreaterThan        => a              > b,
+                              ScriptComparison.LessThan           => a              < b,
+                              ScriptComparison.GreaterThanOrEqual => a              >= b,
+                              ScriptComparison.LessThanOrEqual    => a              <= b,
+                              ScriptComparison.AnyBitInCommon     => (a & b)        != 0,
+                              ScriptComparison.AnyBitDifferent    => (a ^ b)        != 0,
+                              ScriptComparison.AnyBitSet          => (a | b)        != 0,
+                              ScriptComparison.BitIsSet           => (a & (1 << b)) != 0,
+                              ScriptComparison.BitIsClear         => (a & (1 << b)) == 0,
+                              _                                   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoByteValuesOpcodeHandler)} Unknown comparison [{comparisonType}]")
                           };
 
             if (!result)
@@ -698,26 +741,26 @@ namespace RPGFramework.Field
         {
             byte sources = ReadByte(ctx);
 
-            int a = ReadOperandInt(ctx, GetFirstOperandSource(sources));
-            int b = ReadOperandInt(ctx, GetSecondOperandSource(sources));
+            int a = ReadArgumentInt(ctx, GetFirstArgumentSource(sources));
+            int b = ReadArgumentInt(ctx, GetSecondArgumentSource(sources));
 
             byte comparisonType = ReadByte(ctx);
             byte jumpAmount     = ReadByte(ctx);
 
-            bool result = comparisonType switch
+            bool result = (ScriptComparison)comparisonType switch
                           {
-                              0x0 => a              == b,
-                              0x1 => a              != b,
-                              0x2 => a              > b,
-                              0x3 => a              < b,
-                              0x4 => a              >= b,
-                              0x5 => a              <= b,
-                              0x6 => (a & b)        != 0,
-                              0x7 => (a ^ b)        != 0,
-                              0x8 => (a | b)        != 0,
-                              0x9 => (a & (1 << b)) != 0,
-                              0xA => (a & (1 << b)) == 0,
-                              _   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoIntValuesOpcodeHandler)} Unknown comparison type {comparisonType}")
+                              ScriptComparison.Equal              => a              == b,
+                              ScriptComparison.NotEqual           => a              != b,
+                              ScriptComparison.GreaterThan        => a              > b,
+                              ScriptComparison.LessThan           => a              < b,
+                              ScriptComparison.GreaterThanOrEqual => a              >= b,
+                              ScriptComparison.LessThanOrEqual    => a              <= b,
+                              ScriptComparison.AnyBitInCommon     => (a & b)        != 0,
+                              ScriptComparison.AnyBitDifferent    => (a ^ b)        != 0,
+                              ScriptComparison.AnyBitSet          => (a | b)        != 0,
+                              ScriptComparison.BitIsSet           => (a & (1 << b)) != 0,
+                              ScriptComparison.BitIsClear         => (a & (1 << b)) == 0,
+                              _                                   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoIntValuesOpcodeHandler)} Unknown comparison [{comparisonType}]")
                           };
 
             if (!result)
@@ -728,245 +771,245 @@ namespace RPGFramework.Field
 
         private void AssignValue8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            m_MemoryService.WriteByte(bank, address, operand);
+            m_MemoryService.WriteByte(bank, address, argument);
         }
 
         private void AssignValue16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            m_MemoryService.WriteUshort(bank, address, operand);
+            m_MemoryService.WriteUshort(bank, address, argument);
         }
 
         private void Addition8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current + operand);
+            byte result  = (byte)(current + argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void Addition16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current + operand);
+            ushort result  = (ushort)(current + argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void Addition8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             int  current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)Math.Min(current + operand, byte.MaxValue);
+            byte result  = (byte)Math.Min(current + argument, byte.MaxValue);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void Addition16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             int    current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)Math.Min(current + operand, ushort.MaxValue);
+            ushort result  = (ushort)Math.Min(current + argument, ushort.MaxValue);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void Subtraction8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current - operand);
+            byte result  = (byte)(current - argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void Subtraction16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current - operand);
+            ushort result  = (ushort)(current - argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void Subtraction8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             int  current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)Math.Max(current - operand, 0);
+            byte result  = (byte)Math.Max(current - argument, 0);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void Subtraction16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             int    current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)Math.Max(current - operand, 0);
+            ushort result  = (ushort)Math.Max(current - argument, 0);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void Multiplication8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current * operand);
+            byte result  = (byte)(current * argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void Multiplication16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current * operand);
+            ushort result  = (ushort)(current * argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void Division8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            if (operand == 0)
+            if (argument == 0)
             {
                 Debug.LogError($"{nameof(FieldVM)}::{nameof(Division8BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
                 return;
             }
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current / operand);
+            byte result  = (byte)(current / argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void Division16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            if (operand == 0)
+            if (argument == 0)
             {
                 Debug.LogError($"{nameof(FieldVM)}::{nameof(Division16BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
                 return;
             }
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current / operand);
+            ushort result  = (ushort)(current / argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void Remainder8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            if (operand == 0)
+            if (argument == 0)
             {
                 Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder8BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
                 return;
             }
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current % operand);
+            byte result  = (byte)(current % argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void Remainder16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            if (operand == 0)
+            if (argument == 0)
             {
                 Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder16BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
                 return;
             }
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current % operand);
+            ushort result  = (ushort)(current % argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void BitwiseAnd8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current & operand);
+            byte result  = (byte)(current & argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void BitwiseAnd16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current & operand);
+            ushort result  = (ushort)(current & argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void BitwiseOr8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current | operand);
+            byte result  = (byte)(current | argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void BitwiseOr16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current | operand);
+            ushort result  = (ushort)(current | argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void BitwiseXor8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte operand);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
             byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current ^ operand);
+            byte result  = (byte)(current ^ argument);
 
             m_MemoryService.WriteByte(bank, address, result);
         }
 
         private void BitwiseXor16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsUshort(ctx, out MemoryBank bank, out ushort address, out ushort operand);
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
             ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current ^ operand);
+            ushort result  = (ushort)(current ^ argument);
 
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
         private void SetBitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
 
             if (bitIndex > 7)
             {
@@ -982,7 +1025,7 @@ namespace RPGFramework.Field
 
         private void UnsetBitOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
 
             if (bitIndex > 7)
             {
@@ -1077,12 +1120,12 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Write a random byte in <c>[0, operand)</c> to the destination. An operand of 0 is treated as a
+        /// Write a random byte in <c>[0, argument)</c> to the destination. An argument of 0 is treated as a
         /// full byte range, so GET_RANDOM_NUMBER with no sensible bound still produces a value.
         /// </summary>
         private void GetRandomNumberOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryOperandsByte(ctx, out MemoryBank bank, out ushort address, out byte exclusiveMaximum);
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte exclusiveMaximum);
 
             int  upperBound = exclusiveMaximum == 0 ? byte.MaxValue + 1 : exclusiveMaximum;
             byte result     = (byte)m_Random.Next(0, upperBound);
@@ -1096,7 +1139,7 @@ namespace RPGFramework.Field
         private void RandomNumberSeedOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte sources = ReadByte(ctx);
-            int  seed    = ReadOperandInt(ctx, GetSecondOperandSource(sources));
+            int  seed    = ReadArgumentInt(ctx, GetSecondArgumentSource(sources));
 
             m_Random = new System.Random(seed);
         }
@@ -1182,10 +1225,10 @@ namespace RPGFramework.Field
 
         private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
         {
-            int fieldIndex = ReadInt(ctx);
-            int spawnId    = ReadInt(ctx);
+            ulong fieldNameHash = ReadUlong(ctx);
+            int   spawnId       = ReadInt(ctx);
 
-            FieldArgs args = new FieldArgs(fieldIndex, spawnId);
+            FieldArgs args = new FieldArgs(fieldNameHash, spawnId);
             RequestFieldTransition?.Invoke(args);
         }
 
@@ -1263,14 +1306,24 @@ namespace RPGFramework.Field
 
         private void PlayMusicOpcodeHandler(ScriptExecutionContext ctx)
         {
-            int id = ReadInt(ctx);
-            RequestMusic?.Invoke(id);
+            ulong nameHash      = ReadUlong(ctx);
+            ulong stateNameHash = ReadUlong(ctx);
+
+            RequestMusic?.Invoke(nameHash, stateNameHash);
         }
 
         private void PlaySoundOpcodeHandler(ScriptExecutionContext ctx)
         {
-            int id = ReadInt(ctx);
-            RequestSfx?.Invoke(id);
+            ulong nameHash = ReadUlong(ctx);
+            RequestSfx?.Invoke(nameHash);
+        }
+
+        private void SetMusicStemStateOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ulong stateNameHash = ReadUlong(ctx);
+            float fadeSeconds   = ReadFloat(ctx);
+
+            RequestMusicStemState?.Invoke(stateNameHash, fadeSeconds);
         }
     }
 }

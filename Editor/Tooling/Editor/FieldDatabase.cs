@@ -39,6 +39,8 @@ namespace RPGFramework.Field.Editor
             sb.AppendLine($"// Last generated at {DateTime.UtcNow}\n");
 
             sb.AppendLine("using RPGFramework.Field;");
+            sb.AppendLine("using RPGFramework.Hashing;");
+            sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using System.IO;");
             sb.AppendLine("using UnityEngine;");
             sb.AppendLine();
@@ -47,17 +49,19 @@ namespace RPGFramework.Field.Editor
 
             sb.AppendLine($"\tinternal class {scriptFileName.Replace(" ", "")} : IFieldDatabase");
             sb.AppendLine("\t{");
-            sb.AppendLine("\t\tprivate readonly FieldDatabaseAsset[] m_Fields;");
+            sb.AppendLine("\t\tprivate readonly Dictionary<ulong, FieldDatabaseAsset> m_FieldsByNameHash;");
             sb.AppendLine();
             sb.AppendLine($"\t\tinternal {scriptFileName.Replace(" ", "")}()");
             sb.AppendLine("\t\t{");
 
             sb.AppendLine("\t\t\tstring assetBundlesPath = Path.Combine(Application.streamingAssetsPath, \"Field\");");
-            sb.AppendLine("\t\t\tm_Fields = new FieldDatabaseAsset[]");
+            sb.AppendLine($"\t\t\tm_FieldsByNameHash = new Dictionary<ulong, FieldDatabaseAsset>({count})");
             sb.AppendLine("\t\t\t{");
             for (int i = 0; i < count; i++)
             {
-                sb.AppendLine($"\t\t\t\tnew FieldDatabaseAsset(\"{m_Fields[i].Prefab.name}\", Path.Combine(assetBundlesPath, \"{m_Fields[i].Prefab.name.ToLower()}\"),");
+                string fieldName = m_Fields[i].Prefab.name;
+
+                sb.AppendLine($"\t\t\t\t[Fnv1a64.Hash(\"{fieldName}\")] = new FieldDatabaseAsset(\"{fieldName}\", Path.Combine(assetBundlesPath, \"{fieldName.ToLower()}\"),");
                 sb.AppendLine("\t\t\t\t\tnew string[]");
                 sb.AppendLine("\t\t\t\t\t{");
                 for (int j = 0; j < m_Fields[i].LocalisationSheets.Length; j++)
@@ -75,9 +79,9 @@ namespace RPGFramework.Field.Editor
 
             sb.AppendLine();
 
-            sb.AppendLine("\t\tFieldDatabaseAsset IFieldDatabase.Get(int index)");
+            sb.AppendLine("\t\tFieldDatabaseAsset IFieldDatabase.Get(ulong fieldNameHash)");
             sb.AppendLine("\t\t{");
-            sb.AppendLine("\t\t\treturn m_Fields[index];");
+            sb.AppendLine("\t\t\treturn m_FieldsByNameHash[fieldNameHash];");
             sb.AppendLine("\t\t}");
 
             sb.AppendLine("\t}");

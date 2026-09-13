@@ -12,12 +12,12 @@ namespace RPGFramework.Field.Editor
     {
         /// <summary>
         /// Prefix marking a token as a variable name to resolve against the <see cref="VariableMapAsset" />
-        /// rather than a literal. <c>ADD_8 $money 100</c> adds the literal 100 to the variable named money;
-        /// <c>ADD_8 $money $payslip</c> adds one variable to another.
+        /// rather than a literal. <c>ADD_BYTE $money 100</c> adds the literal 100 to the variable named money;
+        /// <c>ADD_BYTE $money $payslip</c> adds one variable to another.
         /// </summary>
         private const char VARIABLE_PREFIX = '$';
 
-        private const byte OPERAND_IMMEDIATE = 0;
+        private const byte ARGUMENT_IMMEDIATE = 0;
 
         /// <summary>
         /// Mirrors <c>FieldEntityRuntime.PRIORITY_COUNT</c>, which is internal to the runtime assembly.
@@ -33,11 +33,15 @@ namespace RPGFramework.Field.Editor
 
             // Every jump has to land on the first byte of an instruction. Nothing checked that, so a
             // hand-computed offset that was out by a byte would put the instruction pointer in the
-            // middle of an operand, and the VM would execute that operand as an opcode. The offsets of
+            // middle of an argument, and the VM would execute that argument as an opcode. The offsets of
             // every instruction are collected as they are emitted, and every jump is resolved against
             // them once the whole script is known.
             List<int>      instructionStarts = new List<int>();
             List<JumpSite> jumpSites         = new List<JumpSite>();
+
+            // Open IF blocks, innermost last. Each remembers where its jump distance was left blank so
+            // END_IF can fill it in, once the size of the body is known.
+            Stack<OpenBlock> openBlocks = new Stack<OpenBlock>();
 
             string[] lines = source.Split('\n');
 
@@ -70,6 +74,22 @@ namespace RPGFramework.Field.Editor
                         bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
+                    case "IF_BYTE":
+                        WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoByteValues, parts, lineIndex + 1, false, ref variableMap, openBlocks);
+                        break;
+
+                    case "IF_INT":
+                        WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoIntValues, parts, lineIndex + 1, true, ref variableMap, openBlocks);
+                        break;
+
+                    case "END_IF":
+                        CloseComparison(bw, ms, lineIndex + 1, openBlocks);
+                        break;
+
+                    case "NOP":
+                        bw.Write((ushort)FieldScriptOpCode.DoNothing);
+                        break;
+
                     case "YIELD":
                         bw.Write((ushort)FieldScriptOpCode.Yield);
                         break;
@@ -88,39 +108,10 @@ namespace RPGFramework.Field.Editor
                         break;
 
                     case "JUMP_TO_MAP":
-                        string   typeName   = nameof(FieldDesignerData);
-                        string[] assetGuids = UnityEditor.AssetDatabase.FindAssets("t:" + typeName);
-                        int      indexOfMap = -1;
-
-                        foreach (string assetGuid in assetGuids)
-                        {
-                            string            assetPath         = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
-                            FieldDesignerData fieldDesignerData = UnityEditor.AssetDatabase.LoadAssetAtPath<FieldDesignerData>(assetPath);
-
-                            for (int i = 0; i < fieldDesignerData.FieldDatabase.Fields.Count; i++)
-                            {
-                                if (fieldDesignerData.FieldDatabase.Fields[i].Prefab.name == parts[1])
-                                {
-                                    indexOfMap = i;
-                                    break;
-                                }
-                            }
-
-                            if (indexOfMap != -1)
-                            {
-                                break;
-                            }
-                        }
-
-                        if (indexOfMap == -1)
-                        {
-                            throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(Compile)} Could not find index for map {parts[1]} when compiling [JUMP_TO_MAP]");
-                        }
-
                         int spawnId = int.Parse(parts[2], CultureInfo.InvariantCulture);
 
                         bw.Write((ushort)FieldScriptOpCode.JumpToAnotherMap);
-                        bw.Write(indexOfMap);
+                        bw.Write(HashFieldName(parts[1], lineIndex + 1));
                         bw.Write(spawnId);
                         break;
 
@@ -244,152 +235,162 @@ namespace RPGFramework.Field.Editor
 
                     case "PLAY_MUSIC":
                         bw.Write((ushort)FieldScriptOpCode.PlayMusic);
-                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
+                        bw.Write(Fnv1a64.Hash(parts[1]));
+                        bw.Write(Fnv1a64.Hash(parts[2]));
+                        break;
+
+                    // parts[1] is the track the author had in mind. It is not emitted: the opcode applies
+                    // to whatever is playing, and it is in the script only so the editor can offer that
+                    // track's states rather than every track's.
+                    case "MUSIC_STEM_STATE":
+                        bw.Write((ushort)FieldScriptOpCode.SetMusicStemState);
+                        bw.Write(Fnv1a64.Hash(parts[2]));
+                        bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
                         break;
 
                     case "PLAY_SOUND":
                         bw.Write((ushort)FieldScriptOpCode.PlaySound);
-                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
+                        bw.Write(Fnv1a64.Hash(parts[1]));
                         break;
 
-                    case "ASSIGN_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.AssignValue8Bit, parts, ref variableMap, false);
+                    case "ASSIGN_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.AssignValue8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "ASSIGN_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.AssignValue16Bit, parts, ref variableMap, true);
+                    case "ASSIGN_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.AssignValue16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "ADD_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Addition8Bit, parts, ref variableMap, false);
+                    case "ADD_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "ADD_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Addition16Bit, parts, ref variableMap, true);
+                    case "ADD_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "ADD_8_CLAMPED":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Addition8BitClamped, parts, ref variableMap, false);
+                    case "ADD_BYTE_CLAMPED":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition8BitClamped, parts, ref variableMap, false);
                         break;
 
-                    case "ADD_16_CLAMPED":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Addition16BitClamped, parts, ref variableMap, true);
+                    case "ADD_SHORT_CLAMPED":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition16BitClamped, parts, ref variableMap, true);
                         break;
 
-                    case "SUB_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Subtraction8Bit, parts, ref variableMap, false);
+                    case "SUB_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "SUB_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Subtraction16Bit, parts, ref variableMap, true);
+                    case "SUB_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "SUB_8_CLAMPED":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Subtraction8BitClamped, parts, ref variableMap, false);
+                    case "SUB_BYTE_CLAMPED":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction8BitClamped, parts, ref variableMap, false);
                         break;
 
-                    case "SUB_16_CLAMPED":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Subtraction16BitClamped, parts, ref variableMap, true);
+                    case "SUB_SHORT_CLAMPED":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction16BitClamped, parts, ref variableMap, true);
                         break;
 
-                    case "MUL_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Multiplication8Bit, parts, ref variableMap, false);
+                    case "MUL_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Multiplication8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "MUL_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Multiplication16Bit, parts, ref variableMap, true);
+                    case "MUL_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Multiplication16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "DIV_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Division8Bit, parts, ref variableMap, false);
+                    case "DIV_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Division8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "DIV_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Division16Bit, parts, ref variableMap, true);
+                    case "DIV_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Division16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "MOD_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Remainder8Bit, parts, ref variableMap, false);
+                    case "MOD_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Remainder8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "MOD_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.Remainder16Bit, parts, ref variableMap, true);
+                    case "MOD_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Remainder16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "AND_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.BitwiseAnd8Bit, parts, ref variableMap, false);
+                    case "AND_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseAnd8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "AND_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.BitwiseAnd16Bit, parts, ref variableMap, true);
+                    case "AND_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseAnd16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "OR_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.BitwiseOr8Bit, parts, ref variableMap, false);
+                    case "OR_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseOr8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "OR_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.BitwiseOr16Bit, parts, ref variableMap, true);
+                    case "OR_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseOr16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "XOR_8":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.BitwiseXor8Bit, parts, ref variableMap, false);
+                    case "XOR_BYTE":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseXor8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "XOR_16":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.BitwiseXor16Bit, parts, ref variableMap, true);
+                    case "XOR_SHORT":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseXor16Bit, parts, ref variableMap, true);
                         break;
 
 
                     case "SET_BIT":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.SetBit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.SetBit, parts, ref variableMap, false);
                         break;
 
                     case "UNSET_BIT":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.UnsetBit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.UnsetBit, parts, ref variableMap, false);
                         break;
 
                     case "GET_RANDOM":
-                        WriteBinaryOperands(bw, FieldScriptOpCode.GetRandomNumber, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.GetRandomNumber, parts, ref variableMap, false);
                         break;
 
-                    case "INC_8":
+                    case "INC_BYTE":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Increment8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "INC_16":
+                    case "INC_SHORT":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Increment16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "INC_8_CLAMPED":
+                    case "INC_BYTE_CLAMPED":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Increment8BitClamped, parts, ref variableMap, false);
                         break;
 
-                    case "INC_16_CLAMPED":
+                    case "INC_SHORT_CLAMPED":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Increment16BitClamped, parts, ref variableMap, true);
                         break;
 
-                    case "DEC_8":
+                    case "DEC_BYTE":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Decrement8Bit, parts, ref variableMap, false);
                         break;
 
-                    case "DEC_16":
+                    case "DEC_SHORT":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16Bit, parts, ref variableMap, true);
                         break;
 
-                    case "DEC_8_CLAMPED":
+                    case "DEC_BYTE_CLAMPED":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Decrement8BitClamped, parts, ref variableMap, false);
                         break;
 
-                    case "DEC_16_CLAMPED":
+                    case "DEC_SHORT_CLAMPED":
                         WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16BitClamped, parts, ref variableMap, true);
                         break;
 
                     case "REQUEST_SCRIPT":
-                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy,        parts, lineIndex + 1);
+                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy, parts, lineIndex + 1);
                         break;
                     case "REQUEST_SCRIPT_WAIT_START":
-                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted,  parts, lineIndex + 1);
+                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted, parts, lineIndex + 1);
                         break;
                     case "REQUEST_SCRIPT_WAIT_END":
                         WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished, parts, lineIndex + 1);
@@ -407,7 +408,7 @@ namespace RPGFramework.Field.Editor
 
                     case "RANDOM_SEED":
                         bw.Write((ushort)FieldScriptOpCode.RandomNumberSeed);
-                        bw.Write((byte)OPERAND_IMMEDIATE);
+                        bw.Write((byte)ARGUMENT_IMMEDIATE);
                         bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
                         break;
 
@@ -417,6 +418,13 @@ namespace RPGFramework.Field.Editor
             }
 
             bw.Flush();
+
+            if (openBlocks.Count > 0)
+            {
+                OpenBlock unclosed = openBlocks.Peek();
+
+                throw new Exception($"{nameof(FieldScriptCompiler)}::{nameof(Compile)} {openBlocks.Count} unclosed IF block(s); the one opened on line {unclosed.LineNumber} has no END_IF");
+            }
 
             ValidateJumpTargets(jumpSites, instructionStarts, (int)ms.Length);
 
@@ -429,40 +437,68 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         private readonly struct JumpSite
         {
-            internal readonly string Mnemonic;
+            internal readonly string ScriptName;
             internal readonly int    LineNumber;
             internal readonly int    InstructionStart;
-            internal readonly int    Operand;
+            internal readonly int    Argument;
             internal readonly bool   IsAbsolute;
 
-            internal JumpSite(string mnemonic, int lineNumber, int instructionStart, int operand, bool isAbsolute)
+            internal JumpSite(string scriptName, int lineNumber, int instructionStart, int argument, bool isAbsolute)
             {
-                Mnemonic         = mnemonic;
+                ScriptName       = scriptName;
                 LineNumber       = lineNumber;
                 InstructionStart = instructionStart;
-                Operand          = operand;
+                Argument         = argument;
                 IsAbsolute       = isAbsolute;
             }
 
             /// <summary>
             /// The byte the instruction pointer will hold after this jump runs.<br /><br />
-            /// <c>GOTO_DIRECTLY</c> assigns the operand outright. <c>GOTO_JUMP</c> adds it to the pointer,
+            /// <c>GOTO_DIRECTLY</c> assigns the argument outright. <c>GOTO_JUMP</c> adds it to the pointer,
             /// which by then has already advanced past this instruction — two bytes of opcode and four of
-            /// operand.
+            /// argument.
             /// </summary>
             internal int ResolveTarget()
             {
                 if (IsAbsolute)
                 {
-                    return Operand;
+                    return Argument;
                 }
 
                 const int jumpInstructionSize = sizeof(ushort) + sizeof(int);
 
-                int target = InstructionStart + jumpInstructionSize + Operand;
+                int target = InstructionStart + jumpInstructionSize + Argument;
 
                 return target;
             }
+        }
+
+        /// <summary>
+        /// Resolve a field by the name an author wrote and return that name's hash.<br /><br />
+        /// The hash is what goes in the bytecode. The lookup is only to fail here, at compile time, on a
+        /// name no field answers to
+        /// </summary>
+        private static ulong HashFieldName(string fieldName, int lineNumber)
+        {
+            string[] assetGuids = UnityEditor.AssetDatabase.FindAssets("t:" + nameof(FieldDesignerData));
+
+            foreach (string assetGuid in assetGuids)
+            {
+                string            assetPath         = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
+                FieldDesignerData fieldDesignerData = UnityEditor.AssetDatabase.LoadAssetAtPath<FieldDesignerData>(assetPath);
+
+                foreach (FieldDatabaseAssetAuthoring field in fieldDesignerData.FieldDatabase.Fields)
+                {
+                    if (field.Prefab.name == fieldName)
+                    {
+                        ulong hash = Fnv1a64.Hash(fieldName);
+
+                        return hash;
+                    }
+                }
+            }
+
+            throw new KeyNotFoundException($"line {lineNumber}: no field is named [{fieldName}]. JUMP_TO_MAP names a field, and the name has to match a field in the field database");
         }
 
         /// <summary>
@@ -519,24 +555,157 @@ namespace RPGFramework.Field.Editor
             bw.Write(ushort.Parse(parts[3], CultureInfo.InvariantCulture));
         }
 
+        /// <summary>
+        /// An IF whose body is still being written. The jump distance cannot be known until the body
+        /// ends, so a placeholder byte is written and its position kept until END_IF.
+        /// </summary>
+        private readonly struct OpenBlock
+        {
+            internal readonly int LineNumber;
+            internal readonly int JumpByteposition;
+            internal readonly int BodyStart;
+
+            internal OpenBlock(int lineNumber, int jumpBytePosition, int bodyStart)
+            {
+                LineNumber       = lineNumber;
+                JumpByteposition = jumpBytePosition;
+                BodyStart        = bodyStart;
+            }
+        }
+
+        /// <summary>
+        /// Emit a comparison and open a block. The instructions that follow are its body, and the jump
+        /// distance written here is the number of bytes to skip when the comparison does not hold — so
+        /// it is filled in by <see cref="CloseComparison" /> rather than written by an author.
+        /// </summary>
+        private static void WriteComparison(BinaryWriter bw, MemoryStream ms, FieldScriptOpCode opCode, string[] parts, int lineNumber, bool isInt, ref VariableMapAsset variableMap, Stack<OpenBlock> openBlocks)
+        {
+            if (parts.Length < 4)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} needs a value, a comparison and a second value, for example '{parts[0]} $flag == 1'");
+            }
+
+            if (!ScriptComparisonExtensions.TryParse(parts[2], out ScriptComparison comparison))
+            {
+                throw new Exception($"line {lineNumber}: '{parts[2]}' is not a comparison. Use == != > < >= <= & ^ | bit_set bit_clear");
+            }
+
+            byte   aSource  = ARGUMENT_IMMEDIATE;
+            byte   bSource  = ARGUMENT_IMMEDIATE;
+            ushort aAddress = 0;
+            ushort bAddress = 0;
+
+            if (IsVariableToken(parts[1]))
+            {
+                VariableDefinition a = ResolveVariable(parts[1], parts[0], ref variableMap, isInt);
+                aSource  = ToArgumentSource(a.Bank);
+                aAddress = (ushort)a.Offset;
+            }
+
+            if (IsVariableToken(parts[3]))
+            {
+                VariableDefinition b = ResolveVariable(parts[3], parts[0], ref variableMap, isInt);
+                bSource  = ToArgumentSource(b.Bank);
+                bAddress = (ushort)b.Offset;
+            }
+
+            bw.Write((ushort)opCode);
+            bw.Write((byte)((aSource << 4) | bSource));
+
+            WriteComparisonValue(bw, parts[1], aSource, aAddress, isInt, lineNumber, parts[0]);
+            WriteComparisonValue(bw, parts[3], bSource, bAddress, isInt, lineNumber, parts[0]);
+
+            bw.Write((byte)comparison);
+
+            int jumpBytePosition = (int)ms.Position;
+
+            bw.Write((byte)0);
+
+            openBlocks.Push(new OpenBlock(lineNumber, jumpBytePosition, (int)ms.Position));
+        }
+
+        private static void WriteComparisonValue(BinaryWriter bw, string token, byte source, ushort address, bool isInt, int lineNumber, string scriptName)
+        {
+            if (source != ARGUMENT_IMMEDIATE)
+            {
+                bw.Write(address);
+                return;
+            }
+
+            if (isInt)
+            {
+                if (!int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out int intValue))
+                {
+                    throw new Exception($"line {lineNumber}: {scriptName} expected a number or a $variable, got '{token}'");
+                }
+
+                bw.Write(intValue);
+                return;
+            }
+
+            if (!byte.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte byteValue))
+            {
+                throw new Exception($"line {lineNumber}: {scriptName} expected a number 0-255 or a $variable, got '{token}'");
+            }
+
+            bw.Write(byteValue);
+        }
+
+        /// <summary>
+        /// Close the innermost IF by writing back how many bytes its body occupies. The VM adds that to
+        /// the instruction pointer when the comparison fails, landing on the instruction after END_IF.
+        /// </summary>
+        private static void CloseComparison(BinaryWriter bw, MemoryStream ms, int lineNumber, Stack<OpenBlock> openBlocks)
+        {
+            if (openBlocks.Count == 0)
+            {
+                throw new Exception($"line {lineNumber}: END_IF with no IF open");
+            }
+
+            OpenBlock block = openBlocks.Pop();
+
+            bw.Flush();
+
+            int bodyLength = (int)ms.Position - block.BodyStart;
+
+            // The distance is a single byte, so a body longer than 255 bytes cannot be skipped.
+            if (bodyLength > byte.MaxValue)
+            {
+                throw new Exception($"line {lineNumber}: the IF opened on line {block.LineNumber} has a {bodyLength} byte body, more than the {byte.MaxValue} a jump distance can hold. Move some of it into another script and call that instead");
+            }
+
+            long resume = ms.Position;
+
+            ms.Position = block.JumpByteposition;
+            bw.Write((byte)bodyLength);
+            bw.Flush();
+
+            ms.Position = resume;
+        }
+
         private static void RecordJumpSite(string[] parts, int lineIndex, int instructionStart, List<JumpSite> jumpSites)
         {
             bool isAbsolute;
 
             switch (parts[0])
             {
-                case "GOTO_JUMP":      isAbsolute = false; break;
-                case "GOTO_DIRECTLY":  isAbsolute = true;  break;
-                default:                                   return;
+                case "GOTO_JUMP":
+                    isAbsolute = false;
+                    break;
+                case "GOTO_DIRECTLY":
+                    isAbsolute = true;
+                    break;
+                default:
+                    return;
             }
 
-            if (parts.Length < 2 || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int operand))
+            if (parts.Length < 2 || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int argument))
             {
-                // The switch below emits this line and will raise its own error on a bad operand.
+                // The switch below emits this line and will raise its own error on a bad argument.
                 return;
             }
 
-            jumpSites.Add(new JumpSite(parts[0], lineIndex + 1, instructionStart, operand, isAbsolute));
+            jumpSites.Add(new JumpSite(parts[0], lineIndex + 1, instructionStart, argument, isAbsolute));
         }
 
         private static void ValidateJumpTargets(List<JumpSite> jumpSites, List<int> instructionStarts, int bytecodeLength)
@@ -555,13 +724,13 @@ namespace RPGFramework.Field.Editor
 
                 if (target < 0 || target >= bytecodeLength)
                 {
-                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.Mnemonic} resolves to byte {target}, outside the script (0..{bytecodeLength - 1})");
+                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.ScriptName} resolves to byte {target}, outside the script (0..{bytecodeLength - 1})");
                     continue;
                 }
 
                 if (!validTargets.Contains(target))
                 {
-                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.Mnemonic} resolves to byte {target}, which is inside an instruction rather than at the start of one");
+                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.ScriptName} resolves to byte {target}, which is inside an instruction rather than at the start of one");
                 }
             }
 
@@ -572,43 +741,43 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Emit <c>opcode, sources, destinationAddress, operand</c>.<br /><br />
-        /// <c>sources</c> packs where each operand comes from, two nibbles to a byte: high for the
-        /// destination, low for the second operand. 0 means the value follows inline, 1..3 select
+        /// Emit <c>opcode, sources, destinationAddress, argument</c>.<br /><br />
+        /// <c>sources</c> packs where each argument comes from, two nibbles to a byte: high for the
+        /// destination, low for the second argument. 0 means the value follows inline, 1..3 select
         /// Global/Session/Temp and a ushort address follows instead.
         /// </summary>
-        private static void WriteBinaryOperands(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, ref VariableMapAsset variableMap, bool is16Bit)
+        private static void WriteBinaryArguments(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, ref VariableMapAsset variableMap, bool is16Bit)
         {
             if (parts.Length < 3)
             {
-                throw new Exception($"{parts[0]} needs a destination variable and an operand, for example '{parts[0]} $myVariable 1'");
+                throw new Exception($"{parts[0]} needs a destination variable and an argument, for example '{parts[0]} $myVariable 1'");
             }
 
             VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, is16Bit);
 
-            bool   operandIsVariable = IsVariableToken(parts[2]);
-            byte   operandSource     = OPERAND_IMMEDIATE;
-            ushort operandAddress    = 0;
+            bool   argumentIsVariable = IsVariableToken(parts[2]);
+            byte   argumentSource     = ARGUMENT_IMMEDIATE;
+            ushort argumentAddress    = 0;
 
-            if (operandIsVariable)
+            if (argumentIsVariable)
             {
-                // The operand's width only has to match when it is the same size as the destination;
-                // SET_BIT and GET_RANDOM take a byte-sized operand whatever the destination is.
-                VariableDefinition operand = ResolveVariable(parts[2], parts[0], ref variableMap, is16Bit);
+                // The argument's width only has to match when it is the same size as the destination;
+                // SET_BIT and GET_RANDOM take a byte-sized argument whatever the destination is.
+                VariableDefinition argument = ResolveVariable(parts[2], parts[0], ref variableMap, is16Bit);
 
-                operandSource  = ToOperandSource(operand.Bank);
-                operandAddress = (ushort)operand.Offset;
+                argumentSource  = ToArgumentSource(argument.Bank);
+                argumentAddress = (ushort)argument.Offset;
             }
 
-            byte sources = (byte)((ToOperandSource(destination.Bank) << 4) | operandSource);
+            byte sources = (byte)((ToArgumentSource(destination.Bank) << 4) | argumentSource);
 
             bw.Write((ushort)opCode);
             bw.Write(sources);
             bw.Write((ushort)destination.Offset);
 
-            if (operandIsVariable)
+            if (argumentIsVariable)
             {
-                bw.Write(operandAddress);
+                bw.Write(argumentAddress);
                 return;
             }
 
@@ -633,7 +802,7 @@ namespace RPGFramework.Field.Editor
 
             VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, is16Bit);
 
-            byte sources = (byte)(ToOperandSource(destination.Bank) << 4);
+            byte sources = (byte)(ToArgumentSource(destination.Bank) << 4);
 
             bw.Write((ushort)opCode);
             bw.Write(sources);
@@ -652,11 +821,11 @@ namespace RPGFramework.Field.Editor
         /// width matches the opcode being used. This is the whole point of the variable map: a script names
         /// what it means and the offset is resolved at build time.
         /// </summary>
-        private static VariableDefinition ResolveVariable(string token, string mnemonic, ref VariableMapAsset variableMap, bool is16Bit)
+        private static VariableDefinition ResolveVariable(string token, string scriptName, ref VariableMapAsset variableMap, bool is16Bit)
         {
             if (!IsVariableToken(token))
             {
-                throw new Exception($"{mnemonic} expected a variable name prefixed with '{VARIABLE_PREFIX}', got '{token}'");
+                throw new Exception($"{scriptName} expected a variable name prefixed with '{VARIABLE_PREFIX}', got '{token}'");
             }
 
             variableMap ??= LoadVariableMap();
@@ -665,7 +834,7 @@ namespace RPGFramework.Field.Editor
 
             if (!variableMap.TryGetVariable(name, out VariableDefinition definition))
             {
-                throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(ResolveVariable)} No variable named '{name}' in the variable map, required by [{mnemonic}]");
+                throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(ResolveVariable)} No variable named '{name}' in the variable map, required by [{scriptName}]");
             }
 
             bool definitionIs16Bit = definition.Width == VariableWidth.UShort;
@@ -673,16 +842,16 @@ namespace RPGFramework.Field.Editor
             if (is16Bit != definitionIs16Bit)
             {
                 string expected = is16Bit ? "a 16 bit" : "an 8 bit";
-                throw new Exception($"[{mnemonic}] needs {expected} variable but '{name}' is declared as {definition.Width}");
+                throw new Exception($"[{scriptName}] needs {expected} variable but '{name}' is declared as {definition.Width}");
             }
 
             return definition;
         }
 
         /// <summary>
-        /// Bank as the VM's operand source nibble: 0 is reserved for immediates, so Global is 1.
+        /// Bank as the VM's argument source nibble: 0 is reserved for immediates, so Global is 1.
         /// </summary>
-        private static byte ToOperandSource(MemoryBank bank)
+        private static byte ToArgumentSource(MemoryBank bank)
         {
             byte source = (byte)((int)bank + 1);
 
