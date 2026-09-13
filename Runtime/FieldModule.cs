@@ -57,7 +57,6 @@ namespace RPGFramework.Field
         private FieldContext                           m_FieldContext;
         private SpawnPoint                             m_InitialPlayerSpawn;
         private Dictionary<int, FieldEntityComponents> m_Entities;
-        private HashSet<int>                           m_ActiveInteractionTriggerIds;
         private int                                    m_PlayerEntityId;
 
         private FieldArgs          m_FieldArgs;
@@ -332,9 +331,7 @@ namespace RPGFramework.Field
                 if (interactionTrigger != null)
                 {
                     entityComponents.SetInteractionTrigger(interactionTrigger);
-                    interactionTrigger.OnInteracted     += OnInteractionTriggered;
-                    interactionTrigger.OnTriggerEntered += OnInteractionTriggerEntered;
-                    interactionTrigger.OnTriggerExited  += OnInteractionTriggerExited;
+                    interactionTrigger.OnInteracted += OnInteractionTriggered;
                 }
 
                 List<ScriptEntry> scripts          = entity.ScriptDefinition.Scripts;
@@ -476,9 +473,7 @@ namespace RPGFramework.Field
                 if (interactionTrigger != null)
                 {
                     entityComponents.SetInteractionTrigger(interactionTrigger);
-                    interactionTrigger.OnInteracted     += OnInteractionTriggered;
-                    interactionTrigger.OnTriggerEntered += OnInteractionTriggerEntered;
-                    interactionTrigger.OnTriggerExited  += OnInteractionTriggerExited;
+                    interactionTrigger.OnInteracted += OnInteractionTriggered;
                 }
             }
 
@@ -512,8 +507,6 @@ namespace RPGFramework.Field
 
         private async Task PostFieldLoadAsync()
         {
-            m_ActiveInteractionTriggerIds = new HashSet<int>();
-
             m_MainMenuAccessible = true;
 
             UpdateManager.RegisterUpdatable(this);
@@ -538,7 +531,6 @@ namespace RPGFramework.Field
 
             UnsubscribeVm();
 
-            m_ActiveInteractionTriggerIds.Clear();
 #if UNITY_EDITOR
             m_DebugOverlay?.RemoveFromHierarchy();
             m_DebugOverlay = null;
@@ -548,9 +540,7 @@ namespace RPGFramework.Field
             {
                 if (entity.Value.InteractionTrigger != null)
                 {
-                    entity.Value.InteractionTrigger.OnTriggerExited  -= OnInteractionTriggerExited;
-                    entity.Value.InteractionTrigger.OnTriggerEntered -= OnInteractionTriggerEntered;
-                    entity.Value.InteractionTrigger.OnInteracted     -= OnInteractionTriggered;
+                    entity.Value.InteractionTrigger.OnInteracted -= OnInteractionTriggered;
                 }
 
                 if (entity.Value.GatewayTrigger != null)
@@ -623,16 +613,6 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.DEFAULT_PRIORITY);
         }
 
-        private void OnInteractionTriggerEntered(int entityId)
-        {
-            m_ActiveInteractionTriggerIds.Add(entityId);
-        }
-
-        private void OnInteractionTriggerExited(int entityId)
-        {
-            m_ActiveInteractionTriggerIds.Remove(entityId);
-        }
-
         private bool IsPlayerFacingEntity(int entityId)
         {
             FieldEntity player = m_Entities[m_FieldContext.PlayerEntity.EntityId].Entity;
@@ -690,11 +670,6 @@ namespace RPGFramework.Field
 
         private FieldInteractionTrigger GetBestInteractionTrigger()
         {
-            if (m_ActiveInteractionTriggerIds.Count == 0)
-            {
-                return null;
-            }
-
             FieldEntity player          = m_Entities[m_FieldContext.PlayerEntity.EntityId].Entity;
             Transform   playerTransform = player.transform;
 
@@ -705,9 +680,16 @@ namespace RPGFramework.Field
             FieldInteractionTrigger best      = null;
             float                   bestScore = float.MinValue;
 
-            foreach (int entityId in m_ActiveInteractionTriggerIds)
+            foreach (FieldEntityComponents entity in m_Entities.Values)
             {
-                FieldInteractionTrigger entity = m_Entities[entityId].InteractionTrigger;
+                FieldInteractionTrigger trigger = entity.InteractionTrigger;
+
+                if (trigger == null || !trigger.IsActive || !IsInInteractionRange(playerPos, entity))
+                {
+                    continue;
+                }
+
+                int entityId = trigger.Entity.EntityId;
 
                 if (!IsPlayerFacingEntity(entityId))
                 {
@@ -719,7 +701,7 @@ namespace RPGFramework.Field
                     continue;
                 }
 
-                Vector3 toEntity = entity.transform.position - playerPos;
+                Vector3 toEntity = entity.Entity.transform.position - playerPos;
                 toEntity = Vector3.ProjectOnPlane(toEntity, m_FieldModuleMonoBehaviour.Up);
 
                 float distance = toEntity.magnitude;
@@ -737,11 +719,21 @@ namespace RPGFramework.Field
                 if (score > bestScore)
                 {
                     bestScore = score;
-                    best      = entity;
+                    best      = trigger;
                 }
             }
 
             return best;
+        }
+
+        private bool IsInInteractionRange(Vector3 playerPos, FieldEntityComponents entity)
+        {
+            Vector3 toEntity = Vector3.ProjectOnPlane(entity.Entity.transform.position - playerPos, m_FieldModuleMonoBehaviour.Up);
+            float   range    = entity.InteractionTrigger.InteractionRange;
+
+            bool inRange = toEntity.sqrMagnitude <= range * range;
+
+            return inRange;
         }
 
         // TODO: when we have the main menu/party menu, it should load that instead

@@ -1,152 +1,35 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace RPGFramework.Field
 {
     public sealed class FieldInteractionTrigger : MonoBehaviour
     {
-        private const string PLAYER_TAG = "Player";
-
         public event Action<int, int> OnInteracted;
-        public event Action<int>      OnTriggerEntered;
-        public event Action<int>      OnTriggerExited;
 
-        public float InteractionAngle => m_InteractionAngle;
+        public float       InteractionAngle => m_InteractionAngle;
+        public float       InteractionRange => m_InteractionRange;
+        public bool        IsActive         => m_IsActive;
+        public FieldEntity Entity           => m_Entity;
 
         [SerializeField]
         [Range(0f, 360f)]
         private float m_InteractionAngle = 360f;
 
-        private Collider    m_Collider;
+        [SerializeField]
+        [Min(0f)]
+        [Tooltip("How far from the entity the player can be to interact with it")]
+        private float m_InteractionRange = 1f;
+
         private FieldEntity m_Entity;
         private bool        m_IsActive;
         private int         m_EntityId;
-
-        private static readonly Dictionary<Type, Func<Component, Action<float>>> m_ResizeStrategies
-                = new Dictionary<Type, Func<Component, Action<float>>>
-                  {
-                          {
-                                  typeof(SphereCollider), c =>
-                                                          {
-                                                              SphereCollider col = (SphereCollider)c;
-                                                              return size => col.radius = size;
-                                                          }
-                          },
-                          {
-                                  typeof(CapsuleCollider), c =>
-                                                           {
-                                                               CapsuleCollider col = (CapsuleCollider)c;
-                                                               return size => col.radius = size;
-                                                           }
-                          },
-                          {
-                                  typeof(BoxCollider), c =>
-                                                       {
-                                                           BoxCollider col = (BoxCollider)c;
-                                                           return size => col.size = Vector3.one * size;
-                                                       }
-                          },
-                          {
-                                  typeof(CircleCollider2D), c =>
-                                                            {
-                                                                CircleCollider2D col = (CircleCollider2D)c;
-                                                                return size => col.radius = size;
-                                                            }
-                          },
-                          {
-                                  typeof(CapsuleCollider2D), c =>
-                                                             {
-                                                                 CapsuleCollider2D col = (CapsuleCollider2D)c;
-                                                                 return size => col.size = Vector2.one * size;
-                                                             }
-                          },
-                          {
-                                  typeof(BoxCollider2D), c =>
-                                                         {
-                                                             BoxCollider2D col = (BoxCollider2D)c;
-                                                             return size => col.size = Vector2.one * size;
-                                                         }
-                          }
-                  };
-
-        private Action<float> m_ResizeAction;
 
         private void Awake()
         {
             m_Entity   = GetComponentInParent<FieldEntity>();
             m_IsActive = true;
             m_EntityId = m_Entity.EntityId;
-
-            Component interactionCollider = GetComponent<Collider>() as Component ?? GetComponent<Collider2D>();
-
-            if (interactionCollider == null)
-            {
-                throw new MissingComponentException($"{nameof(FieldInteractionTrigger)}::{nameof(Awake)} No collider found for {gameObject.name}.");
-            }
-
-            Type type = interactionCollider.GetType();
-
-            if (m_ResizeStrategies.TryGetValue(type, out Func<Component, Action<float>> factory))
-            {
-                m_ResizeAction = factory(interactionCollider);
-            }
-            else
-            {
-                throw new MissingComponentException($"{nameof(FieldInteractionTrigger)}::{nameof(Awake)} No supported collider found for {gameObject.name}.");
-            }
-        }
-
-        private void OnTriggerEnter(Collider other)
-        {
-            TriggerEnterLogic(other);
-        }
-
-        private void OnTriggerEnter2D(Collider2D other)
-        {
-            TriggerEnterLogic(other);
-        }
-
-        private void OnTriggerExit(Collider other)
-        {
-            TriggerExitLogic(other);
-        }
-
-        private void OnTriggerExit2D(Collider2D other)
-        {
-            TriggerExitLogic(other);
-        }
-
-        private void TriggerEnterLogic(Component other)
-        {
-            if (!m_IsActive)
-            {
-                return;
-            }
-
-            // TODO: don't want to rely on tag, need to know player entity ID
-            if (!other.CompareTag(PLAYER_TAG))
-            {
-                return;
-            }
-
-            OnTriggerEntered?.Invoke(m_EntityId);
-        }
-
-        private void TriggerExitLogic(Component other)
-        {
-            if (!m_IsActive)
-            {
-                return;
-            }
-
-            // TODO: don't want to rely on tag, need to know player entity ID
-            if (!other.CompareTag(PLAYER_TAG))
-            {
-                return;
-            }
-
-            OnTriggerExited?.Invoke(m_EntityId);
         }
 
         public void TryInteract()
@@ -171,37 +54,23 @@ namespace RPGFramework.Field
 
         public void SetInteractionRange(float range)
         {
-            m_ResizeAction(range);
+            m_InteractionRange = range;
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
-            // TODO: this doesn't scale with adjusting the collider radius/size
-            const float distance = 0.5f;
-            Vector3     forward  = transform.forward;
-            Vector3     position = transform.position;
+            FieldEntity entity          = m_Entity != null ? m_Entity : GetComponentInParent<FieldEntity>();
+            Transform   entityTransform = entity   != null ? entity.transform : transform;
+            Vector3     position        = entityTransform.position;
+            Vector3     arcStart        = Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * entityTransform.forward;
 
             UnityEditor.Handles.color = new Color(0, 1, 0, 0.25f);
-            UnityEditor.Handles.DrawSolidArc(position,
-                                             Vector3.up,
-                                             Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * forward,
-                                             m_InteractionAngle,
-                                             distance);
+            UnityEditor.Handles.DrawSolidArc(position, Vector3.up, arcStart, m_InteractionAngle, m_InteractionRange);
 
             UnityEditor.Handles.color = Color.green;
-            UnityEditor.Handles.DrawWireArc(position,
-                                            Vector3.up,
-                                            Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * forward,
-                                            m_InteractionAngle,
-                                            distance);
-            
-            Vector3 leftBoundary  = Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * forward;
-            Vector3 rightBoundary = Quaternion.Euler(0, m_InteractionAngle  / 2, 0) * forward;
-
-            Gizmos.color = Color.green;
-            Gizmos.DrawLine(position, position + leftBoundary  * distance);
-            Gizmos.DrawLine(position, position + rightBoundary * distance);
+            UnityEditor.Handles.DrawWireArc(position, Vector3.up, arcStart, m_InteractionAngle, m_InteractionRange);
+            UnityEditor.Handles.DrawWireDisc(position, Vector3.up, m_InteractionRange);
         }
 #endif
     }
