@@ -10,7 +10,6 @@ namespace RPGFramework.Field
         private Transform       m_Transform;
         private Tilemap         m_Tilemap;
         private float           m_Speed;
-        private IMovementDriver m_This;
         private Vector3         m_Target;
         private bool            m_Moving;
         private RotationState   m_RotationState;
@@ -20,7 +19,6 @@ namespace RPGFramework.Field
             m_Transform     = entityTransform;
             m_Tilemap       = tilemap;
             m_Speed         = speed;
-            m_This          = this;
             m_RotationState = default;
         }
 
@@ -60,6 +58,11 @@ namespace RPGFramework.Field
         {
             HandleMovement(deltaTime);
             HandleRotation(deltaTime);
+        }
+
+        void IMovementDriver.PhysicsTick(float fixedDeltaTime)
+        {
+            // noop - this driver moves a transform, which is per-frame work.
         }
 
         void IMovementDriver.SetPosition(Vector3 position)
@@ -143,11 +146,6 @@ namespace RPGFramework.Field
             }
 
             return target;
-        }
-
-        private void Update()
-        {
-            m_This.Tick(Time.deltaTime);
         }
 
         private void HandleMovement(float deltaTime)

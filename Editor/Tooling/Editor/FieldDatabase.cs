@@ -134,6 +134,26 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
+        /// A field entity's rigidbody has to be kinematic.<br /><br />
+        /// Entities are never moved by the physics simulation: the movement drivers sweep a kinematic body
+        /// along its path and slide it along what it meets. A dynamic body instead takes momentum from every
+        /// collision — walk into one and both float away, with nothing to slow them — so it is refused here,
+        /// where it can be fixed, rather than discovered in play.
+        /// </summary>
+        private static void ValidateEntityPhysics(FieldEntity entity, string entityName, List<string> problems)
+        {
+            if (entity.TryGetComponent(out Rigidbody body) && !body.isKinematic)
+            {
+                problems.Add($"{entityName} has a dynamic {nameof(Rigidbody)}. Field entities must be kinematic, so collisions cannot push them — tick Is Kinematic");
+            }
+
+            if (entity.TryGetComponent(out Rigidbody2D body2D) && body2D.bodyType != RigidbodyType2D.Kinematic)
+            {
+                problems.Add($"{entityName} has a {body2D.bodyType} {nameof(Rigidbody2D)}. Field entities must be kinematic, so collisions cannot push them — set Body Type to Kinematic");
+            }
+        }
+
+        /// <summary>
         /// Everything about one entity that has to be true before its field is exported, and that cannot
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
@@ -156,6 +176,8 @@ namespace RPGFramework.Field.Editor
             {
                 problems.Add($"{entityName} reuses entity id [{scriptDefinition.EntityId}], which another entity in this field already has");
             }
+
+            ValidateEntityPhysics(entity, entityName, problems);
 
             if (scriptDefinition.Scripts == null || scriptDefinition.Scripts.Count == 0)
             {

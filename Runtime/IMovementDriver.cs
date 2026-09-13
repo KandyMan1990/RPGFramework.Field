@@ -8,6 +8,7 @@ namespace RPGFramework.Field
         void          SetMoveInput(Vector3                     worldMove);
         void          SetMoveSpeed(float                       speed);
         void          Tick(float                               deltaTime);
+        void          PhysicsTick(float                        fixedDeltaTime);
         void          SetPosition(Vector3                      position);
         void          SetRotation(Quaternion                   rotation);
         void          StartRotation(SetEntityRotationAsyncArgs args);

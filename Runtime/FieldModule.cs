@@ -28,7 +28,7 @@ using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field
 {
-    public class FieldModule : IFieldModule, IUpdatable
+    public class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
     {
         private readonly ICoreModule                        m_CoreModule;
         private readonly IDIResolver                        m_DIResolver;
@@ -154,6 +154,13 @@ namespace RPGFramework.Field
                 entity.Update(m_FieldContext.VM);
             }
 
+            float deltaTime = Time.deltaTime;
+
+            foreach (FieldEntityComponents entity in m_Entities.Values)
+            {
+                entity.MovementDriver?.Tick(deltaTime);
+            }
+
             if (m_FieldTransitionRequested)
             {
                 TriggerFieldTransitionAsync().FireAndForget();
@@ -169,6 +176,16 @@ namespace RPGFramework.Field
             if (m_BattleTransitionRequested)
             {
                 TriggerBattleTransitionAsync().FireAndForget();
+            }
+        }
+
+        void IFixedUpdatable.FixedUpdate()
+        {
+            float fixedDeltaTime = Time.fixedDeltaTime;
+
+            foreach (FieldEntityComponents entity in m_Entities.Values)
+            {
+                entity.MovementDriver?.PhysicsTick(fixedDeltaTime);
             }
         }
 
@@ -429,7 +446,7 @@ namespace RPGFramework.Field
                 playerFieldEntity.transform.SetPositionAndRotation(m_InitialPlayerSpawn.Position, m_InitialPlayerSpawn.Rotation);
             }
 
-            m_PlayerMovementDriver = MovementDriverFactory.Create(playerFieldEntity.gameObject, 3f);
+            m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
         }
 
         private async Task ResumeFieldAsync()
@@ -464,7 +481,7 @@ namespace RPGFramework.Field
             SubscribeVm();
 
             m_PlayerEntityId       = m_FieldContext.PlayerEntity.EntityId;
-            m_PlayerMovementDriver = MovementDriverFactory.Create(m_Entities[m_PlayerEntityId].Entity.gameObject, 3f);
+            m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
 
             foreach ((int entityId, Vector3 position) in m_FieldContext.EntityPositions)
             {
@@ -496,6 +513,7 @@ namespace RPGFramework.Field
             m_MainMenuAccessible = true;
 
             UpdateManager.RegisterUpdatable(this);
+            UpdateManager.RegisterFixedUpdatable(this);
 
             m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
             m_InputRouter.Push(m_CurrentInputContext);
@@ -512,6 +530,7 @@ namespace RPGFramework.Field
             m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
 
             UpdateManager.UnregisterUpdatable(this);
+            UpdateManager.UnregisterFixedUpdatable(this);
 
             UnsubscribeVm();
 
