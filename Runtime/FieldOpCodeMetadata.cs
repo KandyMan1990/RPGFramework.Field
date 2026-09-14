@@ -1,4 +1,5 @@
 ﻿using System;
+using RPGFramework.Core.Memory;
 
 namespace RPGFramework.Field
 {
@@ -19,9 +20,11 @@ namespace RPGFramework.Field
     public enum ArgumentLayout
     {
         /// <summary>
-        /// Arguments written in order, each at its type's fixed width.
+        /// Arguments written in order. Every argument that can come from a variable is preceded by a sources
+        /// byte shared with the next such argument, high nibble first, and is written as an immediate at its
+        /// type's width or as a ushort bank address.
         /// </summary>
-        Literal,
+        Sequential,
 
         /// <summary>
         /// A sources byte, a destination address, then one argument that is either an immediate or a
@@ -59,6 +62,12 @@ namespace RPGFramework.Field
         Int,
         Float,
         Bool,
+
+        /// <summary>A jump relative to the next instruction. Always literal, so the compiler can check where it lands.</summary>
+        JumpDistance,
+
+        /// <summary>A jump to an absolute position in the script. Always literal, for the same reason.</summary>
+        JumpTarget,
 
         /// <summary>An entity in the current field.</summary>
         EntityId,
@@ -118,6 +127,12 @@ namespace RPGFramework.Field
 
         /// <summary>A 32 bit value: either an immediate or a variable to read.</summary>
         ValueInt,
+
+        /// <summary>A bool variable being written to.</summary>
+        VariableBool,
+
+        /// <summary>A bool value: <c>true</c>, <c>false</c>, or a variable to read.</summary>
+        ValueBool,
 
         /// <summary>How an IF compares its two values — see <see cref="ScriptComparison" />.</summary>
         Comparison
@@ -179,6 +194,74 @@ namespace RPGFramework.Field
             Index = index;
             Name  = name;
             Type  = type;
+        }
+    }
+
+    public static class ArgumentTypes
+    {
+        /// <summary>
+        /// Whether an argument of this type can be written as a variable, and the variable width it needs.
+        /// </summary>
+        public static bool TryGetVariableWidth(ArgumentType type, out VariableWidth width)
+        {
+            switch (type)
+            {
+                case ArgumentType.Bool:
+                case ArgumentType.VariableBool:
+                case ArgumentType.ValueBool:
+                    width = VariableWidth.Bool;
+                    return true;
+
+                case ArgumentType.Byte:
+                case ArgumentType.EntityId:
+                case ArgumentType.Priority:
+                case ArgumentType.Variable8:
+                case ArgumentType.Value8:
+                    width = VariableWidth.Byte;
+                    return true;
+
+                case ArgumentType.UShort:
+                case ArgumentType.EventId:
+                case ArgumentType.Variable16:
+                case ArgumentType.Value16:
+                    width = VariableWidth.UShort;
+                    return true;
+
+                case ArgumentType.Int:
+                case ArgumentType.SpawnId:
+                case ArgumentType.ValueInt:
+                    width = VariableWidth.Int;
+                    return true;
+
+                case ArgumentType.Float:
+                    width = VariableWidth.Float;
+                    return true;
+
+                default:
+                    width = default;
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Whether a <see cref="ArgumentLayout.Sequential" /> argument of this type carries a source nibble.
+        /// The bank layouts encode their own sources, so their variable types are not included.
+        /// </summary>
+        public static bool TakesSource(ArgumentType type)
+        {
+            bool takesSource = type switch
+                               {
+                                   ArgumentType.Variable8    => false,
+                                   ArgumentType.Variable16   => false,
+                                   ArgumentType.VariableBool => false,
+                                   ArgumentType.Value8       => false,
+                                   ArgumentType.Value16      => false,
+                                   ArgumentType.ValueInt     => false,
+                                   ArgumentType.ValueBool    => false,
+                                   _                         => TryGetVariableWidth(type, out _)
+                               };
+
+            return takesSource;
         }
     }
 }

@@ -301,11 +301,14 @@ namespace RPGFramework.Field.Editor
 
             row.Add(control);
 
-            // A variable-shaped argument gets a picker beside it, so a name never has to be remembered
-            // or typed. Everything else is a plain field.
-            if (IsVariableShaped(argument.Type))
+            if (ArgumentTypes.TryGetVariableWidth(argument.Type, out _))
             {
                 row.Add(MakeSmallButton("▼", "Choose a variable", () => ShowVariablePicker(block, argumentIndex, argument)));
+            }
+
+            if (HasLiteralControl(argument.Type) && IsVariableToken(block, argumentIndex))
+            {
+                row.Add(MakeSmallButton("#", "Use a value instead", () => Set(block, argumentIndex, FieldScriptBlock.DefaultFor(argument.Type), true)));
             }
 
             return row;
@@ -315,9 +318,18 @@ namespace RPGFramework.Field.Editor
         {
             string current = argumentIndex < block.Arguments.Count ? block.Arguments[argumentIndex] : string.Empty;
 
+            if (HasLiteralControl(argument.Type) && IsVariableToken(block, argumentIndex))
+            {
+                TextField variable = new TextField(label) { value = current };
+                variable.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue));
+
+                return variable;
+            }
+
             switch (argument.Type)
             {
                 case ArgumentType.Bool:
+                case ArgumentType.ValueBool:
                 {
                     Toggle toggle = new Toggle(label) { value = current == "true" };
                     toggle.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue ? "true" : "false"));
@@ -427,8 +439,20 @@ namespace RPGFramework.Field.Editor
                     // are discoverable instead of having to be known.
                     List<string> choices = new List<string>();
 
+                    bool comparesBools = false;
+
+                    foreach (FieldArgumentInfo other in block.OpCode.Arguments)
+                    {
+                        comparesBools |= other.Type == ArgumentType.ValueBool;
+                    }
+
                     foreach (ScriptComparison comparison in Enum.GetValues(typeof(ScriptComparison)))
                     {
+                        if (comparesBools && comparison != ScriptComparison.Equal && comparison != ScriptComparison.NotEqual)
+                        {
+                            continue;
+                        }
+
                         choices.Add(comparison.ToScriptText());
                     }
 
@@ -449,20 +473,22 @@ namespace RPGFramework.Field.Editor
             }
         }
 
-        private static bool IsVariableShaped(ArgumentType type)
+        private static bool HasLiteralControl(ArgumentType type)
         {
-            bool isVariableShaped = type == ArgumentType.Variable8  ||
-                                    type == ArgumentType.Variable16 ||
-                                    type == ArgumentType.Value8     ||
-                                    type == ArgumentType.Value16    ||
-                                    type == ArgumentType.ValueInt;
+            bool hasLiteralControl = ArgumentTypes.TakesSource(type) || type == ArgumentType.ValueBool;
 
-            return isVariableShaped;
+            return hasLiteralControl;
+        }
+
+        private static bool IsVariableToken(FieldScriptBlock block, int argumentIndex)
+        {
+            bool isVariable = argumentIndex < block.Arguments.Count && block.Arguments[argumentIndex].StartsWith("$");
+
+            return isVariable;
         }
 
         /// <summary>
-        /// Offer the variables the map declares, filtered to the ones this argument can actually hold —
-        /// a byte-wide argument cannot take a 16 bit variable.
+        /// Offer the variables the map declares whose width this argument takes.
         /// </summary>
         private void ShowVariablePicker(FieldScriptBlock block, int argumentIndex, FieldArgumentInfo argument)
         {
@@ -480,14 +506,13 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            bool wants16Bit = argument.Type == ArgumentType.Variable16 || argument.Type == ArgumentType.Value16;
-            int  offered    = 0;
+            ArgumentTypes.TryGetVariableWidth(argument.Type, out VariableWidth width);
+
+            int offered = 0;
 
             foreach (VariableDefinition variable in m_VariableMap.Variables)
             {
-                bool is16Bit = variable.Width == VariableWidth.UShort;
-
-                if (is16Bit != wants16Bit)
+                if (variable.Width != width)
                 {
                     continue;
                 }
@@ -501,7 +526,7 @@ namespace RPGFramework.Field.Editor
 
             if (offered == 0)
             {
-                menu.AddDisabledItem(new GUIContent($"No {(wants16Bit ? "16 bit" : "byte")} variables declared"));
+                menu.AddDisabledItem(new GUIContent($"No {width} variables declared"));
             }
 
             menu.ShowAsContext();

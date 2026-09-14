@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
@@ -446,15 +445,7 @@ namespace RPGFramework.Field.Editor
             {
                 byte[] bytecode = FieldScriptCompiler.Compile(m_SelectedScriptSource.ScriptText);
 
-                FieldCompiledScript compiled = CreateInstance<FieldCompiledScript>();
-                compiled.ScriptId      = m_SelectedScriptSource.ScriptId;
-                compiled.FormatVersion = FieldCompiledScript.CURRENT_FORMAT_VERSION;
-                compiled.Bytecode      = bytecode;
-
-                string path = Path.ChangeExtension(AssetDatabase.GetAssetPath(m_SelectedScriptSource), ".compiled.asset");
-
-                AssetDatabase.CreateAsset(compiled, path);
-                AssetDatabase.SaveAssets();
+                FieldCompiledScriptAssets.Write(m_SelectedScriptSource, bytecode);
 
                 Debug.Log($"{nameof(FieldDesignerWindow)} compiled '{m_SelectedScriptSource.name}' to {bytecode.Length} bytes");
             }

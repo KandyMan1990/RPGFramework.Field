@@ -80,11 +80,12 @@ namespace RPGFramework.Field.Editor
             return block;
         }
 
-        private static string DefaultFor(ArgumentType type)
+        internal static string DefaultFor(ArgumentType type)
         {
             switch (type)
             {
                 case ArgumentType.Bool:
+                case ArgumentType.ValueBool:
                     return "false";
 
                 case ArgumentType.Float:
@@ -92,6 +93,7 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.Variable8:
                 case ArgumentType.Variable16:
+                case ArgumentType.VariableBool:
                     // A destination has to be a variable, so it starts with the marker already there.
                     return "$";
 

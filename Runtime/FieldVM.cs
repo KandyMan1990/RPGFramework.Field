@@ -57,6 +57,254 @@ namespace RPGFramework.Field
 
             m_MemoryService = memoryService;
         }
+        
+        // TODO: once op codes are implemented, convert from dictionary to an array
+        private Dictionary<FieldScriptOpCode, OpcodeHandler> BuildOpcodeHandlersArray()
+        {
+            return new Dictionary<FieldScriptOpCode, OpcodeHandler>
+                   {
+                       // Script flow and control
+                       { FieldScriptOpCode.Return, ReturnOpcodeHandler },
+                       { FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy, RunAnotherEntityScriptUnlessBusyOpcodeHandler },
+                       { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted, RunAnotherEntityScriptWaitUntilStartedOpcodeHandler },
+                       { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished, RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler },
+                       { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
+                       { FieldScriptOpCode.GotoJump, GotoOpcodeHandler },
+                       { FieldScriptOpCode.GotoDirectly, GotoDirectlyOpcodeHandler },
+                       { FieldScriptOpCode.CompareTwoByteValues, CompareTwoByteValuesOpcodeHandler },
+                       { FieldScriptOpCode.CompareTwoIntValues, CompareTwoIntValuesOpcodeHandler },
+                       { FieldScriptOpCode.Yield, YieldOpcodeHandler },
+                       { FieldScriptOpCode.WaitSeconds, WaitSecondsOpcodeHandler },
+                       // { FieldScriptOpCode.IfKeyIsDown, IfKeyIsDownOpcodeHandler },
+                       // { FieldScriptOpCode.IfKeyWasJustPressed, IfKeyWasJustPressedOpcodeHandler },
+                       // { FieldScriptOpCode.IfKeyWasJustReleased, IfKeyWasJustReleasedOpcodeHandler },
+                       { FieldScriptOpCode.DoNothing, DoNothingOpcodeHandler },
+                       // { FieldScriptOpCode.IfCharacterIsInParty, IfCharacterIsInPartyOpcodeHandler },
+                       // { FieldScriptOpCode.IfCharacterIsAvailable, IfCharacterIsAvailableOpcodeHandler },
+                       // { FieldScriptOpCode.DebugLog, DebugLogOpcodeHandler },
+                       { FieldScriptOpCode.CompareTwoBoolValues, CompareTwoBoolValuesOpcodeHandler },
+
+                       // System and module control
+                       // { FieldScriptOpCode.SpecialOp, SpecialOpOpcodeHandler },
+                       // { FieldScriptOpCode.RunMinigame, RunMinigameOpcodeHandler },
+                       { FieldScriptOpCode.SetBattleModeOptions, SetBattleModeOptionsOpcodeHandler },
+                       // { FieldScriptOpCode.LoadResultOfLastBattle, LoadResultOfLastBattleOpcodeHandler },
+                       // { FieldScriptOpCode.SetBattleEncounterTable, SetBattleEncounterTableOpcodeHandler },
+                       { FieldScriptOpCode.JumpToAnotherMap, JumpToAnotherMapOpcodeHandler },
+                       // { FieldScriptOpCode.GetLastFieldMap, GetLastFieldMapOpcodeHandler },
+                       // { FieldScriptOpCode.SetJumpFieldID, SetJumpFieldIDOpcodeHandler },
+                       { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
+                       // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
+                       { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
+                       // { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
+                       // { FieldScriptOpCode.WorldMapJump, WorldMapJumpOpcodeHandler },
+                       // { FieldScriptOpCode.SetSaveEnabled, SetSaveEnabledOpcodeHandler },
+
+                       // Assignment and mathematics
+                       { FieldScriptOpCode.AssignValue8Bit, AssignValue8BitOpcodeHandler },
+                       { FieldScriptOpCode.AssignValue16Bit, AssignValue16BitOpcodeHandler },
+                       { FieldScriptOpCode.SetBit, SetBitOpcodeHandler },
+                       { FieldScriptOpCode.UnsetBit, UnsetBitOpcodeHandler },
+                       { FieldScriptOpCode.Addition8Bit, Addition8BitOpcodeHandler },
+                       { FieldScriptOpCode.Addition16Bit, Addition16BitOpcodeHandler },
+                       { FieldScriptOpCode.Addition8BitClamped, Addition8BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.Addition16BitClamped, Addition16BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.Subtraction8Bit, Subtraction8BitOpcodeHandler },
+                       { FieldScriptOpCode.Subtraction16Bit, Subtraction16BitOpcodeHandler },
+                       { FieldScriptOpCode.Subtraction8BitClamped, Subtraction8BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.Subtraction16BitClamped, Subtraction16BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.Multiplication8Bit, Multiplication8BitOpcodeHandler },
+                       { FieldScriptOpCode.Multiplication16Bit, Multiplication16BitOpcodeHandler },
+                       { FieldScriptOpCode.Division8Bit, Division8BitOpcodeHandler },
+                       { FieldScriptOpCode.Division16Bit, Division16BitOpcodeHandler },
+                       { FieldScriptOpCode.Remainder8Bit, Remainder8BitOpcodeHandler },
+                       { FieldScriptOpCode.Remainder16Bit, Remainder16BitOpcodeHandler },
+                       { FieldScriptOpCode.BitwiseAnd8Bit, BitwiseAnd8BitOpcodeHandler },
+                       { FieldScriptOpCode.BitwiseAnd16Bit, BitwiseAnd16BitOpcodeHandler },
+                       { FieldScriptOpCode.BitwiseOr8Bit, BitwiseOr8BitOpcodeHandler },
+                       { FieldScriptOpCode.BitwiseOr16Bit, BitwiseOr16BitOpcodeHandler },
+                       { FieldScriptOpCode.BitwiseXor8Bit, BitwiseXor8BitOpcodeHandler },
+                       { FieldScriptOpCode.BitwiseXor16Bit, BitwiseXor16BitOpcodeHandler },
+                       { FieldScriptOpCode.Increment8Bit, Increment8BitOpcodeHandler },
+                       { FieldScriptOpCode.Increment16Bit, Increment16BitOpcodeHandler },
+                       { FieldScriptOpCode.Increment8BitClamped, Increment8BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.Increment16BitClamped, Increment16BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.Decrement8Bit, Decrement8BitOpcodeHandler },
+                       { FieldScriptOpCode.Decrement16Bit, Decrement16BitOpcodeHandler },
+                       { FieldScriptOpCode.Decrement8BitClamped, Decrement8BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.Decrement16BitClamped, Decrement16BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.GetRandomNumber, GetRandomNumberOpcodeHandler },
+                       { FieldScriptOpCode.RandomNumberSeed, RandomNumberSeedOpcodeHandler },
+                       // { FieldScriptOpCode.GetLowByte, GetLowByteOpcodeHandler },
+                       // { FieldScriptOpCode.GetHighByte, GetHighByteOpcodeHandler },
+                       // { FieldScriptOpCode.GetTwoBytes, GetTwoBytesOpcodeHandler },
+                       // { FieldScriptOpCode.Sine, SineOpcodeHandler },
+                       // { FieldScriptOpCode.Cosine, CosineOpcodeHandler },
+                       { FieldScriptOpCode.AssignValueBool, AssignValueBoolOpcodeHandler },
+
+                       // Windowing and menu
+                       // { FieldScriptOpCode.RunTutorial, RunTutorialOpcodeHandler },
+                       // { FieldScriptOpCode.CloseWindow, CloseWindowOpcodeHandler },
+                       // { FieldScriptOpCode.ResizeWindow, ResizeWindowOpcodeHandler },
+                       // { FieldScriptOpCode.CreateSpecialWindow, CreateSpecialWindowOpcodeHandler },
+                       // { FieldScriptOpCode.SetNumberInWindow, SetNumberInWindowOpcodeHandler },
+                       // { FieldScriptOpCode.SetTimeInWindow, SetTimeInWindowOpcodeHandler },
+                       { FieldScriptOpCode.ShowDialogueWindow, ShowDialogueWindowOpcodeHandler },
+                       // { FieldScriptOpCode.SetWindowTextValue, SetWindowTextValueOpcodeHandler },
+                       // { FieldScriptOpCode.SetWindowTextValue16Bit, SetWindowTextValue16BitOpcodeHandler },
+                       // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
+                       { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
+                       // { FieldScriptOpCode.MenuOperations, MenuOperationsOpcodeHandler },
+                       { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
+                       { FieldScriptOpCode.CreateDialogueWindow, CreateDialogueWindowOpcodeHandler },
+                       // { FieldScriptOpCode.SetWindowPosition, SetWindowPositionOpcodeHandler },
+                       // { FieldScriptOpCode.SetWindowModes, SetWindowModesOpcodeHandler },
+                       // { FieldScriptOpCode.ResetWindow, ResetWindowOpcodeHandler },
+                       // { FieldScriptOpCode.SetNumberOfRowsInWindow, SetNumberOfRowsInWindowOpcodeHandler },
+                       // { FieldScriptOpCode.SetMessageSpeed, SetMessageSpeedOpcodeHandler },
+
+                       // Party and inventory
+                       // { FieldScriptOpCode.ChangePartyMembers, ChangePartyMembersOpcodeHandler },
+                       // { FieldScriptOpCode.StorePartyMembers, StorePartyMembersOpcodeHandler },
+                       // { FieldScriptOpCode.IncreaseGil, IncreaseGilOpcodeHandler },
+                       // { FieldScriptOpCode.DecreaseGil, DecreaseGilOpcodeHandler },
+                       // { FieldScriptOpCode.GetGilAmount, GetGilAmountOpcodeHandler },
+                       // { FieldScriptOpCode.RestoreHPMP, RestoreHPMPOpcodeHandler },
+                       // { FieldScriptOpCode.IncreaseMP, IncreaseMPOpcodeHandler },
+                       // { FieldScriptOpCode.DecreaseMP, DecreaseMPOpcodeHandler },
+                       // { FieldScriptOpCode.IncreaseHP, IncreaseHPOpcodeHandler },
+                       // { FieldScriptOpCode.DecreaseHP, DecreaseHPOpcodeHandler },
+                       // { FieldScriptOpCode.AddItemToInventory, AddItemToInventoryOpcodeHandler },
+                       // { FieldScriptOpCode.RemoveItemFromInventory, RemoveItemFromInventoryOpcodeHandler },
+                       // { FieldScriptOpCode.GetItemCountFromInventory, GetItemCountFromInventoryOpcodeHandler },
+                       // { FieldScriptOpCode.GetPartyMembersIdentity, GetPartyMembersIdentityOpcodeHandler },
+                       // { FieldScriptOpCode.AddCharacterToParty, AddCharacterToPartyOpcodeHandler },
+                       // { FieldScriptOpCode.RemoveCharacterFromParty, RemoveCharacterFromPartyOpcodeHandler },
+                       // { FieldScriptOpCode.SetAllPartyCharacters, SetAllPartyCharactersOpcodeHandler },
+                       // { FieldScriptOpCode.SetCharacterAvailability, SetCharacterAvailabilityOpcodeHandler },
+                       // { FieldScriptOpCode.LockPartyMember, LockPartyMemberOpcodeHandler },
+                       // { FieldScriptOpCode.UnlockPartyMember, UnlockPartyMemberOpcodeHandler },
+
+                       // Field models and animation
+                       // { FieldScriptOpCode.JoinPartyToLeader, JoinPartyToLeaderOpcodeHandler },
+                       // { FieldScriptOpCode.SplitPartyFromLeader, SplitPartyFromLeaderOpcodeHandler },
+                       // { FieldScriptOpCode.CharacterGraphicsOp, CharacterGraphicsOpOpcodeHandler },
+                       // { FieldScriptOpCode.WaitForGraphicsOp, WaitForGraphicsOpOpcodeHandler },
+                       // { FieldScriptOpCode.MoveToPartyMember, MoveToPartyMemberOpcodeHandler },
+                       // { FieldScriptOpCode.SlipAgainstWalls, SlipAgainstWallsOpcodeHandler },
+                       { FieldScriptOpCode.LockInput, LockInputOpcodeHandler },
+                       // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
+                       // { FieldScriptOpCode.CollisionDetection, CollisionDetectionOpcodeHandler },
+                       // { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
+                       // { FieldScriptOpCode.GetPartyMemberPosition, GetPartyMemberPositionOpcodeHandler },
+                       { FieldScriptOpCode.InteractionTriggerActivation, InteractabilityOpcodeHandler },
+                       { FieldScriptOpCode.InitAsCharacter, InitAsCharacterOpcodeHandler },
+                       // { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
+                       // { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
+                       { FieldScriptOpCode.SetEntityPosition, SetEntityPositionOpcodeHandler },
+                       // { FieldScriptOpCode.MoveEntityToXYWalkAnimation, MoveEntityToXYWalkAnimationOpcodeHandler },
+                       // { FieldScriptOpCode.MoveEntityToXYNoAnimation, MoveEntityToXYNoAnimationOpcodeHandler },
+                       // { FieldScriptOpCode.MoveEntityToAnotherEntity, MoveEntityToAnotherEntityOpcodeHandler },
+                       // { FieldScriptOpCode.TurnEntityToAnotherEntity, TurnEntityToAnotherEntityOpcodeHandler },
+                       // { FieldScriptOpCode.WaitForAnimation, WaitForAnimationOpcodeHandler },
+                       // { FieldScriptOpCode.MoveFieldObject, MoveFieldObjectOpcodeHandler },
+                       // { FieldScriptOpCode.PlayAnimationAsync, PlayAnimationAsyncOpcodeHandler },
+                       // { FieldScriptOpCode.PlayAnimationOnceAsync, PlayAnimationOnceAsyncOpcodeHandler },
+                       // { FieldScriptOpCode.PlayPartialAnimation, PlayPartialAnimationOpcodeHandler },
+                       { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
+                       { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
+                       { FieldScriptOpCode.SetEntityRotationAsync, SetEntityRotationAsyncOpcodeHandler },
+                       { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
+                       // { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
+                       // { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
+                       // { FieldScriptOpCode.SetAnimationSpeed, SetAnimationSpeedOpcodeHandler },
+                       // { FieldScriptOpCode.SetEntityAsControllableCharacter, SetEntityAsControllableCharacterOpcodeHandler },
+                       // { FieldScriptOpCode.MakeEntityJump, MakeEntityJumpOpcodeHandler },
+                       // { FieldScriptOpCode.GetEntityPosition, GetEntityPositionXYZIOpcodeHandler },
+                       // { FieldScriptOpCode.ClimbLadder, ClimbLadderOpcodeHandler },
+                       // { FieldScriptOpCode.TransposeObjectVisualizationOnly, TransposeObjectVisualizationOnlyOpcodeHandler },
+                       // { FieldScriptOpCode.WaitForTranspose, WaitForTransposeOpcodeHandler },
+                       { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
+                       // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
+                       // { FieldScriptOpCode.Collidability, CollidabilityOpcodeHandler },
+                       // { FieldScriptOpCode.LineTriggerInitialization, LineTriggerInitializationOpcodeHandler },
+                       // { FieldScriptOpCode.LineTriggerActivation, LineTriggerActivationOpcodeHandler },
+                       // { FieldScriptOpCode.SetLine, SetLineOpcodeHandler },
+                       // { FieldScriptOpCode.FixFacingForward, FixFacingForwardOpcodeHandler },
+                       // { FieldScriptOpCode.SetAnimationID, SetAnimationIDOpcodeHandler },
+                       // { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
+                       // { FieldScriptOpCode.FlushMovement, FlushMovementOpcodeHandler },
+                       // { FieldScriptOpCode.SetRunningEnabled, SetRunningEnabledOpcodeHandler },
+                       // { FieldScriptOpCode.SetFootstepSound, SetFootstepSoundOpcodeHandler },
+                       // { FieldScriptOpCode.LockWalkmeshRegion, LockWalkmeshRegionOpcodeHandler },
+                       // { FieldScriptOpCode.UnlockWalkmeshRegion, UnlockWalkmeshRegionOpcodeHandler },
+                       // { FieldScriptOpCode.InitialiseHeadFacing, InitialiseHeadFacingOpcodeHandler },
+                       // { FieldScriptOpCode.SetHeadFacingEntity, SetHeadFacingEntityOpcodeHandler },
+                       // { FieldScriptOpCode.SetHeadFacingPlayer, SetHeadFacingPlayerOpcodeHandler },
+                       // { FieldScriptOpCode.SetHeadFacingLimit, SetHeadFacingLimitOpcodeHandler },
+                       // { FieldScriptOpCode.SetHeadPose, SetHeadPoseOpcodeHandler },
+                       // { FieldScriptOpCode.StopHeadFacing, StopHeadFacingOpcodeHandler },
+
+                       // Background and screen tint
+                       // { FieldScriptOpCode.SetBackgroundDepth, SetBackgroundDepthOpcodeHandler },
+                       // { FieldScriptOpCode.ScrollBackground, ScrollBackgroundOpcodeHandler },
+                       // { FieldScriptOpCode.BackgroundOn, BackgroundOnOpcodeHandler },
+                       // { FieldScriptOpCode.BackgroundOff, BackgroundOffOpcodeHandler },
+                       // { FieldScriptOpCode.BackgroundRollForward, BackgroundRollForwardOpcodeHandler },
+                       // { FieldScriptOpCode.BackgroundRollBackward, BackgroundRollBackwardOpcodeHandler },
+                       // { FieldScriptOpCode.BackgroundClear, BackgroundClearOpcodeHandler },
+                       // { FieldScriptOpCode.SetShadeLevel, SetShadeLevelOpcodeHandler },
+                       // { FieldScriptOpCode.SubtractiveScreenFade, SubtractiveScreenFadeOpcodeHandler },
+
+                       // Camera and screen movement
+                       // { FieldScriptOpCode.FadeScreen, FadeScreenOpcodeHandler },
+                       // { FieldScriptOpCode.FadeScreenWait, FadeScreenWaitOpcodeHandler },
+                       // { FieldScriptOpCode.WaitForFade, WaitForFadeOpcodeHandler },
+                       // { FieldScriptOpCode.ShakeScreen, ShakeScreenOpcodeHandler },
+                       // { FieldScriptOpCode.ScrollScreen, ScrollScreenOpcodeHandler },
+                       // { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
+                       // { FieldScriptOpCode.ScrollScreenToPosition, ScrollScreenToPositionOpcodeHandler },
+                       // { FieldScriptOpCode.ScrollScreenToLeader, ScrollScreenToLeaderOpcodeHandler },
+                       // { FieldScriptOpCode.ScrollToPartyMember, ScrollToPartyMemberOpcodeHandler },
+                       // { FieldScriptOpCode.StartTheScreenToPositionEaseInOut, StartTheScreenToPositionEaseInOutOpcodeHandler },
+                       // { FieldScriptOpCode.StartTheScreenToPositionLinear, StartTheScreenToPositionLinearOpcodeHandler },
+                       // { FieldScriptOpCode.WaitForScrolling, WaitForScrollingOpcodeHandler },
+
+                       // Audio
+                       // { FieldScriptOpCode.MusicOperation, MusicOperationOpcodeHandler },
+                       { FieldScriptOpCode.PlayMusic, PlayMusicOpcodeHandler },
+                       { FieldScriptOpCode.PlaySound, PlaySoundOpcodeHandler },
+                       // { FieldScriptOpCode.MusicLockMode, MusicLockModeOpcodeHandler },
+                       // { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
+                       // { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
+                       // { FieldScriptOpCode.PlayAmbientLoop, PlayAmbientLoopOpcodeHandler },
+                       // { FieldScriptOpCode.StopSound, StopSoundOpcodeHandler },
+                       // { FieldScriptOpCode.PreserveSoundChannel, PreserveSoundChannelOpcodeHandler },
+                       // { FieldScriptOpCode.SetSoundVolume, SetSoundVolumeOpcodeHandler },
+                       // { FieldScriptOpCode.FadeSoundVolume, FadeSoundVolumeOpcodeHandler },
+                       // { FieldScriptOpCode.SetSoundPan, SetSoundPanOpcodeHandler },
+                       // { FieldScriptOpCode.FadeSoundPan, FadeSoundPanOpcodeHandler },
+                       // { FieldScriptOpCode.SetAllSoundVolume, SetAllSoundVolumeOpcodeHandler },
+                       // { FieldScriptOpCode.FadeAllSoundVolume, FadeAllSoundVolumeOpcodeHandler },
+                       // { FieldScriptOpCode.SetAllSoundPan, SetAllSoundPanOpcodeHandler },
+                       // { FieldScriptOpCode.FadeAllSoundPan, FadeAllSoundPanOpcodeHandler },
+                       { FieldScriptOpCode.SetMusicStemState, SetMusicStemStateOpcodeHandler },
+
+                       // Video
+                       // { FieldScriptOpCode.PrepareMovie, PrepareMovieOpcodeHandler },
+                       // { FieldScriptOpCode.PlayMovie, PlayMovieOpcodeHandler },
+                       // { FieldScriptOpCode.WaitForMovie, WaitForMovieOpcodeHandler },
+
+                       // Timer
+                       // { FieldScriptOpCode.SetCountdownTimer, SetCountdownTimerOpcodeHandler },
+                       // { FieldScriptOpCode.ShowCountdownTimer, ShowCountdownTimerOpcodeHandler },
+
+                       // Input and haptics
+                       // { FieldScriptOpCode.SetVibration, SetVibrationOpcodeHandler },
+                       // { FieldScriptOpCode.SetKeyEnabled, SetKeyEnabledOpcodeHandler },
+                   };
+        }
 
         internal void RegisterEntity(int entityId, FieldEntityRuntime entity)
         {
@@ -180,7 +428,9 @@ namespace RPGFramework.Field
 
         private static FieldScriptOpCode FetchOpcode(ScriptExecutionContext ctx)
         {
-            return (FieldScriptOpCode)ReadUshort(ctx);
+            FieldScriptOpCode opcode = (FieldScriptOpCode)ReadUshort(ctx);
+
+            return opcode;
         }
 
         // Argument sources are packed two to a byte: the high nibble selects where the first argument
@@ -273,9 +523,104 @@ namespace RPGFramework.Field
             return value;
         }
 
+        private float ReadArgumentFloat(ScriptExecutionContext ctx, byte source)
+        {
+            if (source == ARGUMENT_IMMEDIATE)
+            {
+                float immediate = ReadFloat(ctx);
+
+                return immediate;
+            }
+
+            ushort address = ReadUshort(ctx);
+            float  value   = m_MemoryService.ReadFloat(ToMemoryBank(source), address);
+
+            return value;
+        }
+
+        private bool ReadArgumentBool(ScriptExecutionContext ctx, byte source)
+        {
+            if (source == ARGUMENT_IMMEDIATE)
+            {
+                bool immediate = ReadBool(ctx);
+
+                return immediate;
+            }
+
+            ushort address = ReadUshort(ctx);
+            bool   value   = m_MemoryService.ReadBool(ToMemoryBank(source), address);
+
+            return value;
+        }
+
         /// <summary>
-        /// Decode the common shape of every opcode that reads a destination variable, combines it with a
-        /// second argument and writes the result back: sources byte, destination address, then the argument.
+        /// The sources of a <see cref="ArgumentLayout.Sequential" /> opcode's arguments. A sources byte precedes
+        /// every pair of arguments that can come from a variable, so the second argument of a pair uses the low
+        /// nibble left over from the first.
+        /// </summary>
+        private struct SequentialSources
+        {
+            internal bool HasPending;
+            internal byte Pending;
+        }
+
+        private static byte NextSource(ScriptExecutionContext ctx, ref SequentialSources sources)
+        {
+            if (sources.HasPending)
+            {
+                sources.HasPending = false;
+
+                return sources.Pending;
+            }
+
+            byte packed = ReadByte(ctx);
+
+            sources.Pending    = GetSecondArgumentSource(packed);
+            sources.HasPending = true;
+
+            byte source = GetFirstArgumentSource(packed);
+
+            return source;
+        }
+
+        private byte ReadArgumentByte(ScriptExecutionContext ctx, ref SequentialSources sources)
+        {
+            byte value = ReadArgumentByte(ctx, NextSource(ctx, ref sources));
+
+            return value;
+        }
+
+        private ushort ReadArgumentUshort(ScriptExecutionContext ctx, ref SequentialSources sources)
+        {
+            ushort value = ReadArgumentUshort(ctx, NextSource(ctx, ref sources));
+
+            return value;
+        }
+
+        private int ReadArgumentInt(ScriptExecutionContext ctx, ref SequentialSources sources)
+        {
+            int value = ReadArgumentInt(ctx, NextSource(ctx, ref sources));
+
+            return value;
+        }
+
+        private float ReadArgumentFloat(ScriptExecutionContext ctx, ref SequentialSources sources)
+        {
+            float value = ReadArgumentFloat(ctx, NextSource(ctx, ref sources));
+
+            return value;
+        }
+
+        private bool ReadArgumentBool(ScriptExecutionContext ctx, ref SequentialSources sources)
+        {
+            bool value = ReadArgumentBool(ctx, NextSource(ctx, ref sources));
+
+            return value;
+        }
+
+        /// <summary>
+        /// Decode a destination variable and one byte argument: sources byte, destination address, then the
+        /// argument as an immediate or a bank address.
         /// </summary>
         private void ReadBinaryArgumentsByte(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress, out byte argument)
         {
@@ -304,6 +649,42 @@ namespace RPGFramework.Field
 
             destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
             destinationAddress = ReadUshort(ctx);
+        }
+
+        /// <summary>
+        /// Decode the arguments shared by the three request opcodes and resolve the target entity.
+        /// </summary>
+        private bool TryReadScriptRequest(ScriptExecutionContext ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
+        {
+            SequentialSources sources        = default;
+            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
+            ushort            targetEventId;
+
+            priority      = ReadArgumentByte(ctx, ref sources);
+            targetEventId = ReadArgumentUshort(ctx, ref sources);
+
+            targetScriptId = 0;
+
+            if (!m_Entities.TryGetValue(targetEntityId, out target))
+            {
+                return false;
+            }
+
+            if (priority >= FieldEntityRuntime.PRIORITY_COUNT)
+            {
+                target = null;
+                return false;
+            }
+
+            // The request names an event id relative to the target entity, which the entity resolves to
+            // the field-wide script id the VM holds bytecode under.
+            if (!target.TryGetScriptId(targetEventId, out targetScriptId))
+            {
+                target = null;
+                return false;
+            }
+
+            return true;
         }
 
         private static byte ReadByte(ScriptExecutionContext ctx)
@@ -353,9 +734,10 @@ namespace RPGFramework.Field
 
         private static float ReadFloat(ScriptExecutionContext ctx)
         {
-            int value = ReadInt(ctx);
+            int   bits  = ReadInt(ctx);
+            float value = BitConverter.Int32BitsToSingle(bits);
 
-            return BitConverter.Int32BitsToSingle(value);
+            return value;
         }
 
         private static ulong ReadUlong(ScriptExecutionContext ctx)
@@ -376,221 +758,9 @@ namespace RPGFramework.Field
             return value;
         }
 
-        private static byte[] ReadFieldStringBytes(ScriptExecutionContext ctx)
-        {
-            byte[] result = new byte[FieldNameUtils.FIELD_NAME_SIZE];
-            Array.Copy(ctx.Bytecode, ctx.InstructionPointer, result, 0, FieldNameUtils.FIELD_NAME_SIZE);
-
-            ctx.InstructionPointer += FieldNameUtils.FIELD_NAME_SIZE;
-
-            return result;
-        }
-
-        // TODO: once op codes are implemented, convert from dictionary to an array
-        private Dictionary<FieldScriptOpCode, OpcodeHandler> BuildOpcodeHandlersArray()
-        {
-            return new Dictionary<FieldScriptOpCode, OpcodeHandler>
-                   {
-                       // Script Flow and Control
-                       { FieldScriptOpCode.Return, ReturnOpcodeHandler },
-                       { FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy, RunAnotherEntityScriptUnlessBusyOpcodeHandler },
-                       { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted, RunAnotherEntityScriptWaitUntilStartedOpcodeHandler },
-                       { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished, RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler },
-                       { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
-                       { FieldScriptOpCode.GotoJump, GotoOpcodeHandler },
-                       { FieldScriptOpCode.GotoDirectly, GotoDirectlyOpcodeHandler },
-                       { FieldScriptOpCode.CompareTwoByteValues, CompareTwoByteValuesOpcodeHandler },
-                       { FieldScriptOpCode.CompareTwoIntValues, CompareTwoIntValuesOpcodeHandler },
-                       { FieldScriptOpCode.Yield, YieldOpcodeHandler },
-                       { FieldScriptOpCode.WaitSeconds, WaitSecondsOpcodeHandler },
-                       // { FieldScriptOpCode.IfKeyIsDown, IfKeyIsDownOpcodeHandler },
-                       // { FieldScriptOpCode.IfKeyWasJustPressed, IfKeyWasJustPressedOpcodeHandler },
-                       // { FieldScriptOpCode.IfKeyWasJustReleased, IfKeyWasJustReleasedOpcodeHandler },
-                       { FieldScriptOpCode.DoNothing, DoNothingOpcodeHandler },
-                       // { FieldScriptOpCode.IfCharacterIsInParty, IfCharacterIsInPartyOpcodeHandler },
-                       // { FieldScriptOpCode.IfCharacterIsAvailable, IfCharacterIsAvailableOpcodeHandler },
-
-                       // System and Module Control
-                       // { FieldScriptOpCode.SpecialOp, SpecialOpOpcodeHandler },
-                       // { FieldScriptOpCode.RunMinigame, RunMinigameOpcodeHandler },
-                       { FieldScriptOpCode.SetBattleModeOptions, SetBattleModeOptionsOpcodeHandler },
-                       // { FieldScriptOpCode.LoadResultOfLastBattle, LoadResultOfLastBattleOpcodeHandler },
-                       // { FieldScriptOpCode.SetBattleEncounterTable, SetBattleEncounterTableOpcodeHandler },
-                       { FieldScriptOpCode.JumpToAnotherMap, JumpToAnotherMapOpcodeHandler },
-                       // { FieldScriptOpCode.GetLastFieldMap, GetLastFieldMapOpcodeHandler },
-                       { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
-                       // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
-                       { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
-                       // { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
-
-                       // Assignment and Mathematics
-                       { FieldScriptOpCode.Addition8BitClamped, Addition8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Addition16BitClamped, Addition16BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction8BitClamped, Subtraction8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction16BitClamped, Subtraction16BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Increment8BitClamped, Increment8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Increment16BitClamped, Increment16BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Decrement8BitClamped, Decrement8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Decrement16BitClamped, Decrement16BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.RandomNumberSeed, RandomNumberSeedOpcodeHandler },
-                       { FieldScriptOpCode.AssignValue8Bit, AssignValue8BitOpcodeHandler },
-                       { FieldScriptOpCode.AssignValue16Bit, AssignValue16BitOpcodeHandler },
-                       { FieldScriptOpCode.SetBit, SetBitOpcodeHandler },
-                       { FieldScriptOpCode.UnsetBit, UnsetBitOpcodeHandler },
-                       { FieldScriptOpCode.Addition8Bit, Addition8BitOpcodeHandler },
-                       { FieldScriptOpCode.Addition16Bit, Addition16BitOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction8Bit, Subtraction8BitOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction16Bit, Subtraction16BitOpcodeHandler },
-                       { FieldScriptOpCode.Multiplication8Bit, Multiplication8BitOpcodeHandler },
-                       { FieldScriptOpCode.Multiplication16Bit, Multiplication16BitOpcodeHandler },
-                       { FieldScriptOpCode.Division8Bit, Division8BitOpcodeHandler },
-                       { FieldScriptOpCode.Division16Bit, Division16BitOpcodeHandler },
-                       { FieldScriptOpCode.Remainder8Bit, Remainder8BitOpcodeHandler },
-                       { FieldScriptOpCode.Remainder16Bit, Remainder16BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseAnd8Bit, BitwiseAnd8BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseAnd16Bit, BitwiseAnd16BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseOr8Bit, BitwiseOr8BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseOr16Bit, BitwiseOr16BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseXor8Bit, BitwiseXor8BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseXor16Bit, BitwiseXor16BitOpcodeHandler },
-                       { FieldScriptOpCode.Increment8Bit, Increment8BitOpcodeHandler },
-                       { FieldScriptOpCode.Increment16Bit, Increment16BitOpcodeHandler },
-                       { FieldScriptOpCode.Decrement8Bit, Decrement8BitOpcodeHandler },
-                       { FieldScriptOpCode.Decrement16Bit, Decrement16BitOpcodeHandler },
-                       { FieldScriptOpCode.GetRandomNumber, GetRandomNumberOpcodeHandler },
-                       // { FieldScriptOpCode.GetLowByte, GetLowByteOpcodeHandler },
-                       // { FieldScriptOpCode.GetHighByte, GetHighByteOpcodeHandler },
-                       // { FieldScriptOpCode.GetTwoBytes, GetTwoBytesOpcodeHandler },
-                       // { FieldScriptOpCode.Sine, SineOpcodeHandler },
-                       // { FieldScriptOpCode.Cosine, CosineOpcodeHandler },
-
-                       // Windowing and Menu
-                       // { FieldScriptOpCode.RunTutorial, RunTutorialOpcodeHandler },
-                       // { FieldScriptOpCode.CloseWindow, CloseWindowOpcodeHandler },
-                       // { FieldScriptOpCode.ResizeWindow, ResizeWindowOpcodeHandler },
-                       // { FieldScriptOpCode.CreateSpecialWindow, CreateSpecialWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetNumberInWindow, SetNumberInWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetTimeInWindow, SetTimeInWindowOpcodeHandler },
-                       { FieldScriptOpCode.ShowDialogueWindow, ShowDialogueWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowTextValue, SetWindowTextValueOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowTextValue16Bit, SetWindowTextValue16BitOpcodeHandler },
-                       // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
-                       { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
-                       // { FieldScriptOpCode.MenuOperations, MenuOperationsOpcodeHandler },
-                       { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
-                       { FieldScriptOpCode.CreateDialogueWindow, CreateDialogueWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowPosition, SetWindowPositionOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowModes, SetWindowModesOpcodeHandler },
-                       // { FieldScriptOpCode.ResetWindow, ResetWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetNumberOfRowsInWindow, SetNumberOfRowsInWindowOpcodeHandler },
-
-                       // Party and Inventory
-                       // { FieldScriptOpCode.ChangePartyMembers, ChangePartyMembersOpcodeHandler },
-                       // { FieldScriptOpCode.StorePartyMembers, StorePartyMembersOpcodeHandler },
-                       // { FieldScriptOpCode.IncreaseGil, IncreaseGilOpcodeHandler },
-                       // { FieldScriptOpCode.DecreaseGil, DecreaseGilOpcodeHandler },
-                       // { FieldScriptOpCode.GetGilAmount, GetGilAmountOpcodeHandler },
-                       // { FieldScriptOpCode.RestoreHPMP, RestoreHPMPOpcodeHandler },
-                       // { FieldScriptOpCode.IncreaseMP, IncreaseMPOpcodeHandler },
-                       // { FieldScriptOpCode.DecreaseMP, DecreaseMPOpcodeHandler },
-                       // { FieldScriptOpCode.IncreaseHP, IncreaseHPOpcodeHandler },
-                       // { FieldScriptOpCode.DecreaseHP, DecreaseHPOpcodeHandler },
-                       // { FieldScriptOpCode.AddItemToInventory, AddItemToInventoryOpcodeHandler },
-                       // { FieldScriptOpCode.RemoveItemFromInventory, RemoveItemFromInventoryOpcodeHandler },
-                       // { FieldScriptOpCode.GetItemCountFromInventory, GetItemCountFromInventoryOpcodeHandler },
-                       // { FieldScriptOpCode.GetPartyMembersIdentity, GetPartyMembersIdentityOpcodeHandler },
-                       // { FieldScriptOpCode.AddCharacterToParty, AddCharacterToPartyOpcodeHandler },
-                       // { FieldScriptOpCode.RemoveCharacterFromParty, RemoveCharacterFromPartyOpcodeHandler },
-                       // { FieldScriptOpCode.SetAllPartyCharacters, SetAllPartyCharactersOpcodeHandler },
-                       // { FieldScriptOpCode.SetCharacterAvailability, SetCharacterAvailabilityOpcodeHandler },
-                       // { FieldScriptOpCode.LockPartyMember, LockPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.UnlockPartyMember, UnlockPartyMemberOpcodeHandler },
-
-                       // Field Models and Animation
-                       // { FieldScriptOpCode.JoinPartyToLeader, JoinPartyToLeaderOpcodeHandler },
-                       // { FieldScriptOpCode.SplitPartyFromLeader, SplitPartyFromLeaderOpcodeHandler },
-                       // { FieldScriptOpCode.CharacterGraphicsOp, CharacterGraphicsOpOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForGraphicsOp, WaitForGraphicsOpOpcodeHandler },
-                       // { FieldScriptOpCode.MoveToPartyMember, MoveToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.SlipAgainstWalls, SlipAgainstWallsOpcodeHandler },
-                       { FieldScriptOpCode.LockInput, LockInputOpcodeHandler },
-                       // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.CollisionDetection, CollisionDetectionOpcodeHandler },
-                       // { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
-                       // { FieldScriptOpCode.GetPartyMemberPosition, GetPartyMemberPositionOpcodeHandler },
-                       { FieldScriptOpCode.InteractionTriggerActivation, InteractabilityOpcodeHandler },
-                       { FieldScriptOpCode.InitAsCharacter, InitAsCharacterOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
-                       { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
-                       { FieldScriptOpCode.SetEntityPosition, SetEntityPositionOpcodeHandler },
-                       // { FieldScriptOpCode.MoveEntityToXYWalkAnimation, MoveEntityToXYWalkAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.MoveEntityToXYNoAnimation, MoveEntityToXYNoAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.MoveEntityToAnotherEntity, MoveEntityToAnotherEntityOpcodeHandler },
-                       // { FieldScriptOpCode.TurnEntityToAnotherEntity, TurnEntityToAnotherEntityOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForAnimation, WaitForAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.MoveFieldObject, MoveFieldObjectOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationAsync, PlayAnimationAsyncOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationOnceAsync, PlayAnimationOnceAsyncOpcodeHandler },
-                       // { FieldScriptOpCode.PlayPartialAnimation, PlayPartialAnimationOpcodeHandler },
-                       { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
-                       { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
-                       { FieldScriptOpCode.SetEntityRotationAsync, SetEntityRotationAsyncOpcodeHandler },
-                       { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
-                       // { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
-                       // { FieldScriptOpCode.SetAnimationSpeed, SetAnimationSpeedOpcodeHandler },
-                       // { FieldScriptOpCode.SetEntityAsControllableCharacter, SetEntityAsControllableCharacterOpcodeHandler },
-                       // { FieldScriptOpCode.MakeEntityJump, MakeEntityJumpOpcodeHandler },
-                       // { FieldScriptOpCode.GetEntityPosition, GetEntityPositionXYZIOpcodeHandler },
-                       // { FieldScriptOpCode.ClimbLadder, ClimbLadderOpcodeHandler },
-                       // { FieldScriptOpCode.TransposeObjectVisualizationOnly, TransposeObjectVisualizationOnlyOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForTranspose, WaitForTransposeOpcodeHandler },
-                       { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
-                       // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
-                       // { FieldScriptOpCode.Collidability, CollidabilityOpcodeHandler },
-                       // { FieldScriptOpCode.LineTriggerInitialization, LineTriggerInitializationOpcodeHandler },
-                       // { FieldScriptOpCode.LineTriggerActivation, LineTriggerActivationOpcodeHandler },
-                       // { FieldScriptOpCode.SetLine, SetLineOpcodeHandler },
-                       // { FieldScriptOpCode.FixFacingForward, FixFacingForwardOpcodeHandler },
-                       // { FieldScriptOpCode.SetAnimationID, SetAnimationIDOpcodeHandler },
-                       // { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
-
-                       // Background and Palette
-                       // { FieldScriptOpCode.SetBackgroundDepth, SetBackgroundDepthOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollBackground, ScrollBackgroundOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundOn, BackgroundOnOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundOff, BackgroundOffOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundRollForward, BackgroundRollForwardOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundRollBackward, BackgroundRollBackwardOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundClear, BackgroundClearOpcodeHandler },
-
-                       // Camera, Audio and Video
-                       // { FieldScriptOpCode.FadeScreen, FadeScreenOpcodeHandler },
-                       // { FieldScriptOpCode.ShakeScreen, ShakeScreenOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollScreen, ScrollScreenOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollScreenToPosition, ScrollScreenToPositionOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollScreenToLeader, ScrollScreenToLeaderOpcodeHandler },
-                       // { FieldScriptOpCode.StartTheScreenToPositionEaseInOut, StartTheScreenToPositionEaseInOutOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForScrolling, WaitForScrollingOpcodeHandler },
-                       // { FieldScriptOpCode.StartTheScreenToPositionLinear, StartTheScreenToPositionLinearOpcodeHandler },
-                       // { FieldScriptOpCode.FadeScreenWait, FadeScreenWaitOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForFade, WaitForFadeOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollToPartyMember, ScrollToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.MusicOperation, MusicOperationOpcodeHandler },
-                       { FieldScriptOpCode.PlayMusic, PlayMusicOpcodeHandler },
-                       { FieldScriptOpCode.PlaySound, PlaySoundOpcodeHandler },
-                       { FieldScriptOpCode.SetMusicStemState, SetMusicStemStateOpcodeHandler },
-                       // { FieldScriptOpCode.MusicLockMode, MusicLockModeOpcodeHandler },
-                       // { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
-                       // { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
-
-                       // Uncategorized
-                       // { FieldScriptOpCode.SetJumpFieldID, SetJumpFieldIDOpcodeHandler },
-                   };
-        }
-
+        /// <summary>
+        /// End the script. Execute frees the slot once this has run, so there is nothing to do here.
+        /// </summary>
         private static void ReturnOpcodeHandler(ScriptExecutionContext ctx)
         {
             // noop
@@ -603,7 +773,7 @@ namespace RPGFramework.Field
         /// </summary>
         private void RunAnotherEntityScriptUnlessBusyOpcodeHandler(ScriptExecutionContext ctx)
         {
-            if (!TryReadScriptRequest(ctx, nameof(RunAnotherEntityScriptUnlessBusyOpcodeHandler), out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            if (!TryReadScriptRequest(ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
             {
                 return;
             }
@@ -616,7 +786,7 @@ namespace RPGFramework.Field
         /// </summary>
         private void RunAnotherEntityScriptWaitUntilStartedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            if (!TryReadScriptRequest(ctx, nameof(RunAnotherEntityScriptWaitUntilStartedOpcodeHandler), out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            if (!TryReadScriptRequest(ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
             {
                 return;
             }
@@ -630,7 +800,7 @@ namespace RPGFramework.Field
         /// </summary>
         private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            if (!TryReadScriptRequest(ctx, nameof(RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler), out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            if (!TryReadScriptRequest(ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
             {
                 return;
             }
@@ -644,7 +814,8 @@ namespace RPGFramework.Field
         /// </summary>
         private void ReturnToAnotherScriptOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ushort targetEventId = ReadUshort(ctx);
+            SequentialSources sources       = default;
+            ushort            targetEventId = ReadArgumentUshort(ctx, ref sources);
 
             FieldEntityRuntime entity = m_Entities[ctx.EntityId];
 
@@ -659,52 +830,26 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Decode the arguments shared by the three request opcodes and resolve the target entity.
+        /// Move the instruction pointer by a signed offset, counted from the end of this instruction.
         /// </summary>
-        private bool TryReadScriptRequest(ScriptExecutionContext ctx, string caller, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
-        {
-            byte   targetEntityId = ReadByte(ctx);
-            ushort targetEventId;
-
-            priority      = ReadByte(ctx);
-            targetEventId = ReadUshort(ctx);
-
-            targetScriptId = 0;
-
-            if (!m_Entities.TryGetValue(targetEntityId, out target))
-            {
-                return false;
-            }
-
-            if (priority >= FieldEntityRuntime.PRIORITY_COUNT)
-            {
-                target = null;
-                return false;
-            }
-
-            // The request names an event id relative to the target entity, which the entity resolves to
-            // the field-wide script id the VM holds bytecode under.
-            if (!target.TryGetScriptId(targetEventId, out targetScriptId))
-            {
-                target = null;
-                return false;
-            }
-
-            return true;
-        }
-
-        private void GotoOpcodeHandler(ScriptExecutionContext ctx)
+        private static void GotoOpcodeHandler(ScriptExecutionContext ctx)
         {
             int offset = ReadInt(ctx);
             ctx.InstructionPointer += offset;
         }
 
-        private void GotoDirectlyOpcodeHandler(ScriptExecutionContext ctx)
+        /// <summary>
+        /// Move the instruction pointer to an absolute position in the script.
+        /// </summary>
+        private static void GotoDirectlyOpcodeHandler(ScriptExecutionContext ctx)
         {
-            int offset = ReadInt(ctx);
-            ctx.InstructionPointer = offset;
+            int target = ReadInt(ctx);
+            ctx.InstructionPointer = target;
         }
 
+        /// <summary>
+        /// Compare two bytes, skipping the IF body when the comparison fails.
+        /// </summary>
         private void CompareTwoByteValuesOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte sources = ReadByte(ctx);
@@ -737,6 +882,9 @@ namespace RPGFramework.Field
             }
         }
 
+        /// <summary>
+        /// Compare two ints, skipping the IF body when the comparison fails.
+        /// </summary>
         private void CompareTwoIntValuesOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte sources = ReadByte(ctx);
@@ -769,6 +917,108 @@ namespace RPGFramework.Field
             }
         }
 
+        /// <summary>
+        /// Stop running this script until the next frame.
+        /// </summary>
+        private static void YieldOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ctx.Block(new WaitForFrameBlock());
+        }
+
+        /// <summary>
+        /// Block this script for a number of seconds.
+        /// </summary>
+        private void WaitSecondsOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            float             seconds = ReadArgumentFloat(ctx, ref sources);
+            ctx.Block(new WaitSecondsBlock(seconds));
+        }
+
+        /// <summary>
+        /// Do nothing.
+        /// </summary>
+        private static void DoNothingOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            // noop
+        }
+
+        /// <summary>
+        /// Compare two bools with == or !=, skipping the IF body when the comparison fails.
+        /// </summary>
+        private void CompareTwoBoolValuesOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            byte sources = ReadByte(ctx);
+
+            bool a = ReadArgumentBool(ctx, GetFirstArgumentSource(sources));
+            bool b = ReadArgumentBool(ctx, GetSecondArgumentSource(sources));
+
+            byte comparisonType = ReadByte(ctx);
+            byte jumpAmount     = ReadByte(ctx);
+
+            bool result = (ScriptComparison)comparisonType switch
+                          {
+                              ScriptComparison.Equal    => a == b,
+                              ScriptComparison.NotEqual => a != b,
+                              _ => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoBoolValuesOpcodeHandler)} Unknown comparison [{comparisonType}]")
+                          };
+
+            if (!result)
+            {
+                ctx.InstructionPointer += jumpAmount;
+            }
+        }
+
+        /// <summary>
+        /// Set the arena, enemy group, flags and enemy level for the next battle.
+        /// </summary>
+        private void SetBattleModeOptionsOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources     = default;
+            ushort            arena       = ReadArgumentUshort(ctx, ref sources);
+            ushort            enemyGroup  = ReadArgumentUshort(ctx, ref sources);
+            ushort            battleFlags = ReadArgumentUshort(ctx, ref sources);
+            byte              enemyLevel  = ReadArgumentByte(ctx, ref sources);
+
+            BattleArgs args = new BattleArgs(arena, enemyGroup, (BattleFlags)battleFlags, enemyLevel);
+
+            RequestSetBattleModeOptions?.Invoke(args);
+        }
+
+        /// <summary>
+        /// Ask for a transition to another field, entering at one of its spawn points.
+        /// </summary>
+        private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources       = default;
+            ulong             fieldNameHash = ReadUlong(ctx);
+            int               spawnId       = ReadArgumentInt(ctx, ref sources);
+
+            FieldArgs args = new FieldArgs(fieldNameHash, spawnId);
+            RequestFieldTransition?.Invoke(args);
+        }
+
+        /// <summary>
+        /// Ask for the battle set up by SET_BATTLE_MODE_OPTIONS to begin.
+        /// </summary>
+        private void StartBattleOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestStartBattle?.Invoke();
+        }
+
+        /// <summary>
+        /// Turn every gateway trigger in the field on or off.
+        /// </summary>
+        private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            RequestSetGatewayTriggersActive?.Invoke(enabled);
+        }
+
+        /// <summary>
+        /// Write a byte to a variable.
+        /// </summary>
         private void AssignValue8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
@@ -776,6 +1026,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteByte(bank, address, argument);
         }
 
+        /// <summary>
+        /// Write a ushort to a variable.
+        /// </summary>
         private void AssignValue16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
@@ -783,230 +1036,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteUshort(bank, address, argument);
         }
 
-        private void Addition8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current + argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void Addition16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current + argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void Addition8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            int  current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)Math.Min(current + argument, byte.MaxValue);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void Addition16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            int    current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)Math.Min(current + argument, ushort.MaxValue);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void Subtraction8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current - argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void Subtraction16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current - argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void Subtraction8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            int  current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)Math.Max(current - argument, 0);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void Subtraction16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            int    current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)Math.Max(current - argument, 0);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void Multiplication8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current * argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void Multiplication16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current * argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void Division8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            if (argument == 0)
-            {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Division8BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
-                return;
-            }
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current / argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void Division16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            if (argument == 0)
-            {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Division16BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
-                return;
-            }
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current / argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void Remainder8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            if (argument == 0)
-            {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder8BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
-                return;
-            }
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current % argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void Remainder16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            if (argument == 0)
-            {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder16BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
-                return;
-            }
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current % argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void BitwiseAnd8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current & argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void BitwiseAnd16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current & argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void BitwiseOr8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current | argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void BitwiseOr16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current | argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
-        private void BitwiseXor8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = m_MemoryService.ReadByte(bank, address);
-            byte result  = (byte)(current ^ argument);
-
-            m_MemoryService.WriteByte(bank, address, result);
-        }
-
-        private void BitwiseXor16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = m_MemoryService.ReadUshort(bank, address);
-            ushort result  = (ushort)(current ^ argument);
-
-            m_MemoryService.WriteUshort(bank, address, result);
-        }
-
+        /// <summary>
+        /// Set one bit of a byte variable. A bit index above 7 is logged and the variable left unchanged.
+        /// </summary>
         private void SetBitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
@@ -1023,6 +1055,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteByte(bank, address, result);
         }
 
+        /// <summary>
+        /// Clear one bit of a byte variable. A bit index above 7 is logged and the variable left unchanged.
+        /// </summary>
         private void UnsetBitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
@@ -1039,6 +1074,293 @@ namespace RPGFramework.Field
             m_MemoryService.WriteByte(bank, address, result);
         }
 
+        /// <summary>
+        /// Add to a byte variable, wrapping on overflow.
+        /// </summary>
+        private void Addition8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current + argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Add to a ushort variable, wrapping on overflow.
+        /// </summary>
+        private void Addition16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current + argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Add to a byte variable, stopping at 255.
+        /// </summary>
+        private void Addition8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            int  current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)Math.Min(current + argument, byte.MaxValue);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Add to a ushort variable, stopping at 65535.
+        /// </summary>
+        private void Addition16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            int    current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)Math.Min(current + argument, ushort.MaxValue);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Subtract from a byte variable, wrapping below zero.
+        /// </summary>
+        private void Subtraction8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current - argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Subtract from a ushort variable, wrapping below zero.
+        /// </summary>
+        private void Subtraction16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current - argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Subtract from a byte variable, stopping at 0.
+        /// </summary>
+        private void Subtraction8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            int  current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)Math.Max(current - argument, 0);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Subtract from a ushort variable, stopping at 0.
+        /// </summary>
+        private void Subtraction16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            int    current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)Math.Max(current - argument, 0);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Multiply a byte variable, wrapping on overflow.
+        /// </summary>
+        private void Multiplication8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current * argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Multiply a ushort variable, wrapping on overflow.
+        /// </summary>
+        private void Multiplication16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current * argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Divide a byte variable. Dividing by zero is logged and the variable left unchanged.
+        /// </summary>
+        private void Division8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            if (argument == 0)
+            {
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(Division8BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
+                return;
+            }
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current / argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Divide a ushort variable. Dividing by zero is logged and the variable left unchanged.
+        /// </summary>
+        private void Division16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            if (argument == 0)
+            {
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(Division16BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
+                return;
+            }
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current / argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Replace a byte variable with its remainder. A zero divisor is logged and the variable left unchanged.
+        /// </summary>
+        private void Remainder8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            if (argument == 0)
+            {
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder8BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
+                return;
+            }
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current % argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Replace a ushort variable with its remainder. A zero divisor is logged and the variable left unchanged.
+        /// </summary>
+        private void Remainder16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            if (argument == 0)
+            {
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder16BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
+                return;
+            }
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current % argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Bitwise AND a byte variable with the argument.
+        /// </summary>
+        private void BitwiseAnd8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current & argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Bitwise AND a ushort variable with the argument.
+        /// </summary>
+        private void BitwiseAnd16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current & argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Bitwise OR a byte variable with the argument.
+        /// </summary>
+        private void BitwiseOr8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current | argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Bitwise OR a ushort variable with the argument.
+        /// </summary>
+        private void BitwiseOr16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current | argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Bitwise XOR a byte variable with the argument.
+        /// </summary>
+        private void BitwiseXor8BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+
+            byte current = m_MemoryService.ReadByte(bank, address);
+            byte result  = (byte)(current ^ argument);
+
+            m_MemoryService.WriteByte(bank, address, result);
+        }
+
+        /// <summary>
+        /// Bitwise XOR a ushort variable with the argument.
+        /// </summary>
+        private void BitwiseXor16BitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+
+            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort result  = (ushort)(current ^ argument);
+
+            m_MemoryService.WriteUshort(bank, address, result);
+        }
+
+        /// <summary>
+        /// Add one to a byte variable, wrapping on overflow.
+        /// </summary>
         private void Increment8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1049,6 +1371,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteByte(bank, address, result);
         }
 
+        /// <summary>
+        /// Add one to a ushort variable, wrapping on overflow.
+        /// </summary>
         private void Increment16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1059,6 +1384,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
+        /// <summary>
+        /// Add one to a byte variable, stopping at 255.
+        /// </summary>
         private void Increment8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1069,6 +1397,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteByte(bank, address, result);
         }
 
+        /// <summary>
+        /// Add one to a ushort variable, stopping at 65535.
+        /// </summary>
         private void Increment16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1079,6 +1410,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
+        /// <summary>
+        /// Subtract one from a byte variable, wrapping below zero.
+        /// </summary>
         private void Decrement8BitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1089,6 +1423,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteByte(bank, address, result);
         }
 
+        /// <summary>
+        /// Subtract one from a ushort variable, wrapping below zero.
+        /// </summary>
         private void Decrement16BitOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1099,6 +1436,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteUshort(bank, address, result);
         }
 
+        /// <summary>
+        /// Subtract one from a byte variable, stopping at 0.
+        /// </summary>
         private void Decrement8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1109,6 +1449,9 @@ namespace RPGFramework.Field
             m_MemoryService.WriteByte(bank, address, result);
         }
 
+        /// <summary>
+        /// Subtract one from a ushort variable, stopping at 0.
+        /// </summary>
         private void Decrement16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
@@ -1121,7 +1464,7 @@ namespace RPGFramework.Field
 
         /// <summary>
         /// Write a random byte in <c>[0, argument)</c> to the destination. An argument of 0 is treated as a
-        /// full byte range, so GET_RANDOM_NUMBER with no sensible bound still produces a value.
+        /// full byte range, so GET_RANDOM with no sensible bound still produces a value.
         /// </summary>
         private void GetRandomNumberOpcodeHandler(ScriptExecutionContext ctx)
         {
@@ -1144,32 +1487,38 @@ namespace RPGFramework.Field
             m_Random = new System.Random(seed);
         }
 
-        private static void YieldOpcodeHandler(ScriptExecutionContext ctx)
+        /// <summary>
+        /// Write a bool to a variable.
+        /// </summary>
+        private void AssignValueBoolOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ctx.Block(new WaitForFrameBlock());
+            byte sources = ReadByte(ctx);
+
+            MemoryBank bank    = ToMemoryBank(GetFirstArgumentSource(sources));
+            ushort     address = ReadUshort(ctx);
+            bool       value   = ReadArgumentBool(ctx, GetSecondArgumentSource(sources));
+
+            m_MemoryService.WriteBool(bank, address, value);
         }
 
-        private static void WaitSecondsOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            float seconds = ReadFloat(ctx);
-            ctx.Block(new WaitSecondsBlock(seconds));
-        }
-
-        private static void DoNothingOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            // noop
-        }
-
+        /// <summary>
+        /// Show a dialogue window and block until it closes.
+        /// </summary>
         private void ShowDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ulong dialogueId    = ReadUlong(ctx);
-            bool  blockMovement = ReadBool(ctx);
+            SequentialSources sources       = default;
+            ulong             dialogueId    = ReadUlong(ctx);
+            bool              blockMovement = ReadArgumentBool(ctx, ref sources);
 
             RequestShowDialogueWindow?.Invoke(dialogueId, blockMovement);
 
             ctx.Block(new WaitUntilBlock(() => !IsDialogueWindowOpen(dialogueId)));
         }
 
+        /// <summary>
+        /// Ask the player to pick one of several answers and block until they have. The listener writes
+        /// the chosen answer to the destination variable.
+        /// </summary>
         private void AskPlayerToMakeAChoiceOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte    bank                 = ReadByte(ctx);
@@ -1188,122 +1537,145 @@ namespace RPGFramework.Field
             ctx.Block(new WaitUntilBlock(() => !IsPlayerMakingAChoice(dialogueId)));
         }
 
+        /// <summary>
+        /// Allow or block opening the main menu.
+        /// </summary>
         private void MainMenuAccessibilityOpcodeHandler(ScriptExecutionContext ctx)
         {
-            bool enabled = ReadBool(ctx);
+            SequentialSources sources = default;
+            bool              enabled = ReadArgumentBool(ctx, ref sources);
             RequestSetMainMenuAccessibility?.Invoke(enabled);
         }
 
+        /// <summary>
+        /// Create a dialogue window at a position and size, without showing it.
+        /// </summary>
         private void CreateDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ulong   dialogueId = ReadUlong(ctx);
-            int     x          = ReadInt(ctx);
-            int     y          = ReadInt(ctx);
-            int     width      = ReadInt(ctx);
-            int     height     = ReadInt(ctx);
-            RectInt rect       = new RectInt(x, y, width, height);
+            SequentialSources sources    = default;
+            ulong             dialogueId = ReadUlong(ctx);
+            int               x          = ReadArgumentInt(ctx, ref sources);
+            int               y          = ReadArgumentInt(ctx, ref sources);
+            int               width      = ReadArgumentInt(ctx, ref sources);
+            int               height     = ReadArgumentInt(ctx, ref sources);
+            RectInt           rect       = new RectInt(x, y, width, height);
             RequestCreateDialogueWindow?.Invoke(new DialogueWindowArgs(dialogueId, rect));
         }
 
+        /// <summary>
+        /// Lock or unlock player input.
+        /// </summary>
         private void LockInputOpcodeHandler(ScriptExecutionContext ctx)
         {
-            bool inputLocked = ReadBool(ctx);
+            SequentialSources sources     = default;
+            bool              inputLocked = ReadArgumentBool(ctx, ref sources);
             RequestInputLock?.Invoke(inputLocked);
         }
 
-        private void SetBattleModeOptionsOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ushort arena       = ReadUshort(ctx);
-            ushort enemyGroup  = ReadUshort(ctx);
-            ushort battleFlags = ReadUshort(ctx);
-            byte   enemyLevel  = ReadByte(ctx);
-
-            BattleArgs args = new BattleArgs(arena, enemyGroup, (BattleFlags)battleFlags, enemyLevel);
-
-            RequestSetBattleModeOptions?.Invoke(args);
-        }
-
-        private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ulong fieldNameHash = ReadUlong(ctx);
-            int   spawnId       = ReadInt(ctx);
-
-            FieldArgs args = new FieldArgs(fieldNameHash, spawnId);
-            RequestFieldTransition?.Invoke(args);
-        }
-
-        private void StartBattleOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            RequestStartBattle?.Invoke();
-        }
-
-        private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            bool enabled = ReadBool(ctx);
-            RequestSetGatewayTriggersActive?.Invoke(enabled);
-        }
-
+        /// <summary>
+        /// Turn this entity's interaction trigger on or off.
+        /// </summary>
         private void InteractabilityOpcodeHandler(ScriptExecutionContext ctx)
         {
-            bool enabled = ReadBool(ctx);
+            SequentialSources sources = default;
+            bool              enabled = ReadArgumentBool(ctx, ref sources);
             RequestSetInteractionTriggerActive?.Invoke(ctx.EntityId, enabled);
         }
 
+        /// <summary>
+        /// Make this entity the player character.
+        /// </summary>
         private void InitAsCharacterOpcodeHandler(ScriptExecutionContext ctx)
         {
             RequestSetPlayerEntity?.Invoke(m_Entities[ctx.EntityId]);
         }
 
+        /// <summary>
+        /// Show or hide this entity.
+        /// </summary>
         private void VisibilityOpcodeHandler(ScriptExecutionContext ctx)
         {
-            bool isVisible = ReadBool(ctx);
+            SequentialSources sources   = default;
+            bool              isVisible = ReadArgumentBool(ctx, ref sources);
             RequestSetEntityVisible?.Invoke(ctx.EntityId, isVisible);
         }
 
+        /// <summary>
+        /// Place this entity at a position immediately.
+        /// </summary>
         private void SetEntityPositionOpcodeHandler(ScriptExecutionContext ctx)
         {
-            Vector3 position = new Vector3(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
+            SequentialSources sources  = default;
+            Vector3           position = new Vector3(ReadArgumentFloat(ctx, ref sources), ReadArgumentFloat(ctx, ref sources), ReadArgumentFloat(ctx, ref sources));
             RequestSetEntityPosition?.Invoke(ctx.EntityId, position);
         }
 
+        /// <summary>
+        /// Set how fast this entity moves.
+        /// </summary>
         private void SetMovementSpeedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            float movementSpeed = ReadFloat(ctx);
+            SequentialSources sources       = default;
+            float             movementSpeed = ReadArgumentFloat(ctx, ref sources);
             RequestSetEntityMovementSpeed?.Invoke(ctx.EntityId, movementSpeed);
         }
 
+        /// <summary>
+        /// Set this entity's rotation immediately, from Euler angles.
+        /// </summary>
         private void SetEntityRotationOpcodeHandler(ScriptExecutionContext ctx)
         {
-            Quaternion rotation = Quaternion.Euler(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
-            RequestSetEntityRotation?.Invoke(ctx.EntityId, rotation);
+            SequentialSources sources = default;
+            float             x       = ReadArgumentFloat(ctx, ref sources);
+            float             y       = ReadArgumentFloat(ctx, ref sources);
+            float             z       = ReadArgumentFloat(ctx, ref sources);
+
+            RequestSetEntityRotation?.Invoke(ctx.EntityId, Quaternion.Euler(x, y, z));
         }
 
+        /// <summary>
+        /// Turn this entity to a rotation over time and block until it finishes.
+        /// </summary>
         private void SetEntityRotationAsyncOpcodeHandler(ScriptExecutionContext ctx)
         {
-            Quaternion            rotation     = Quaternion.Euler(ReadFloat(ctx), ReadFloat(ctx), ReadFloat(ctx));
-            RotationDirection     direction    = (RotationDirection)ReadByte(ctx);
-            float                 duration     = ReadFloat(ctx);
-            RotationInterpolation rotationType = (RotationInterpolation)ReadByte(ctx);
+            SequentialSources     sources      = default;
+            float                 x            = ReadArgumentFloat(ctx, ref sources);
+            float                 y            = ReadArgumentFloat(ctx, ref sources);
+            float                 z            = ReadArgumentFloat(ctx, ref sources);
+            RotationDirection     direction    = (RotationDirection)ReadArgumentByte(ctx, ref sources);
+            float                 duration     = ReadArgumentFloat(ctx, ref sources);
+            RotationInterpolation rotationType = (RotationInterpolation)ReadArgumentByte(ctx, ref sources);
 
-            SetEntityRotationAsyncArgs args = new SetEntityRotationAsyncArgs(rotation, direction, duration, rotationType);
+            SetEntityRotationAsyncArgs args = new SetEntityRotationAsyncArgs(Quaternion.Euler(x, y, z), direction, duration, rotationType);
 
             RequestSetEntityRotationAsync?.Invoke(ctx.EntityId, args);
 
             ctx.Block(new WaitUntilBlock(() => !IsEntityRotating(ctx.EntityId)));
         }
 
+        /// <summary>
+        /// Turn this entity to face another entity.
+        /// </summary>
         private void SetDirectionToFaceEntityOpcodeHandler(ScriptExecutionContext ctx)
         {
-            byte targetEntityId = ReadByte(ctx);
+            SequentialSources sources        = default;
+            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
             RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, targetEntityId);
         }
 
+        /// <summary>
+        /// Set the radius around this entity within which the player can interact with it.
+        /// </summary>
         private void SetInteractionRangeOpcodeHandler(ScriptExecutionContext ctx)
         {
-            float radius = ReadFloat(ctx);
+            SequentialSources sources = default;
+            float             radius  = ReadArgumentFloat(ctx, ref sources);
             RequestSetInteractionRange?.Invoke(ctx.EntityId, radius);
         }
 
+        /// <summary>
+        /// Play a music track, starting in one of its stem states.
+        /// </summary>
         private void PlayMusicOpcodeHandler(ScriptExecutionContext ctx)
         {
             ulong nameHash      = ReadUlong(ctx);
@@ -1312,16 +1684,23 @@ namespace RPGFramework.Field
             RequestMusic?.Invoke(nameHash, stateNameHash);
         }
 
+        /// <summary>
+        /// Play a sound effect once.
+        /// </summary>
         private void PlaySoundOpcodeHandler(ScriptExecutionContext ctx)
         {
             ulong nameHash = ReadUlong(ctx);
             RequestSfx?.Invoke(nameHash);
         }
 
+        /// <summary>
+        /// Switch the playing music to one of its stem states, fading over the given number of seconds.
+        /// </summary>
         private void SetMusicStemStateOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ulong stateNameHash = ReadUlong(ctx);
-            float fadeSeconds   = ReadFloat(ctx);
+            SequentialSources sources       = default;
+            ulong             stateNameHash = ReadUlong(ctx);
+            float             fadeSeconds   = ReadArgumentFloat(ctx, ref sources);
 
             RequestMusicStemState?.Invoke(stateNameHash, fadeSeconds);
         }

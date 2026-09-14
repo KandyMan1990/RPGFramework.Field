@@ -60,26 +60,16 @@ namespace RPGFramework.Field.Editor
 
                 switch (parts[0])
                 {
-                    case "RETURN":
-                        bw.Write((ushort)FieldScriptOpCode.Return);
-                        break;
-
-                    case "GOTO_JUMP":
-                        bw.Write((ushort)FieldScriptOpCode.GotoJump);
-                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "GOTO_DIRECTLY":
-                        bw.Write((ushort)FieldScriptOpCode.GotoDirectly);
-                        bw.Write(int.Parse(parts[1], CultureInfo.InvariantCulture));
-                        break;
-
                     case "IF_BYTE":
-                        WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoByteValues, parts, lineIndex + 1, false, ref variableMap, openBlocks);
+                        WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoByteValues, parts, lineIndex + 1, VariableWidth.Byte, ref variableMap, openBlocks);
                         break;
 
                     case "IF_INT":
-                        WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoIntValues, parts, lineIndex + 1, true, ref variableMap, openBlocks);
+                        WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoIntValues, parts, lineIndex + 1, VariableWidth.Int, ref variableMap, openBlocks);
+                        break;
+
+                    case "IF_BOOL":
+                        WriteComparison(bw, ms, FieldScriptOpCode.CompareTwoBoolValues, parts, lineIndex + 1, VariableWidth.Bool, ref variableMap, openBlocks);
                         break;
 
                     case "ELSE":
@@ -90,324 +80,163 @@ namespace RPGFramework.Field.Editor
                         CloseComparison(bw, ms, lineIndex + 1, openBlocks);
                         break;
 
-                    case "NOP":
-                        bw.Write((ushort)FieldScriptOpCode.DoNothing);
-                        break;
-
-                    case "YIELD":
-                        bw.Write((ushort)FieldScriptOpCode.Yield);
-                        break;
-
-                    case "WAIT_SECONDS":
-                        bw.Write((ushort)FieldScriptOpCode.WaitSeconds);
-                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "SET_BATTLE_MODE_OPTIONS":
-                        bw.Write((ushort)FieldScriptOpCode.SetBattleModeOptions);
-                        bw.Write(ushort.Parse(parts[1], CultureInfo.InvariantCulture));
-                        bw.Write(ushort.Parse(parts[2], CultureInfo.InvariantCulture));
-                        bw.Write(ushort.Parse(parts[3], CultureInfo.InvariantCulture));
-                        bw.Write(byte.Parse(parts[4], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "JUMP_TO_MAP":
-                        int spawnId = int.Parse(parts[2], CultureInfo.InvariantCulture);
-
-                        bw.Write((ushort)FieldScriptOpCode.JumpToAnotherMap);
-                        bw.Write(HashFieldName(parts[1], lineIndex + 1));
-                        bw.Write(spawnId);
-                        break;
-
-                    case "START_BATTLE":
-                        bw.Write((ushort)FieldScriptOpCode.StartBattle);
-                        break;
-
-                    case "GATEWAY_TRIGGER_ACTIVATION":
-                        bool gatewayTriggerActivation = bool.Parse(parts[1]);
-
-                        bw.Write((ushort)FieldScriptOpCode.GatewayTriggerActivation);
-                        bw.Write(gatewayTriggerActivation);
-                        break;
-
-                    case "SHOW_DIALOGUE_WINDOW":
-                        bw.Write((ushort)FieldScriptOpCode.ShowDialogueWindow);
-                        bw.Write(HashDialogueKey(parts, 1, lineIndex + 1));
-                        bw.Write(bool.Parse(parts[2]));
-                        break;
-
                     case "ASK_PLAYER_TO_MAKE_A_CHOICE":
-                        bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
-                        bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
-                        bw.Write(ushort.Parse(parts[2], CultureInfo.InvariantCulture));
-                        bw.Write(HashDialogueKey(parts, 3, lineIndex + 1));
-
-                        if (parts.Length < 5)
+                        if (parts.Length < 4)
                         {
                             throw new Exception($"line {lineIndex + 1}: ASK_PLAYER_TO_MAKE_A_CHOICE needs at least one answer key after the question key");
                         }
 
-                        byte count = (byte)(parts.Length - 4);
+                        VariableDefinition choice = ResolveVariable(parts[1], parts[0], ref variableMap, VariableWidth.Byte);
+
+                        bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
+                        bw.Write((byte)choice.Bank);
+                        bw.Write((ushort)choice.Offset);
+                        bw.Write(HashDialogueKey(parts, 2, lineIndex + 1));
+
+                        byte count = (byte)(parts.Length - 3);
                         bw.Write(count);
 
-                        for (int i = 4; i < parts.Length; i++)
+                        for (int i = 3; i < parts.Length; i++)
                         {
                             bw.Write(HashDialogueKey(parts, i, lineIndex + 1));
                         }
 
                         break;
 
-                    case "MAIN_MENU_ACCESSIBILITY":
-                        bw.Write((ushort)FieldScriptOpCode.MainMenuAccessibility);
-                        bw.Write(bool.Parse(parts[1]));
-                        break;
-
-                    case "CREATE_DIALOGUE_WINDOW":
-                        bw.Write((ushort)FieldScriptOpCode.CreateDialogueWindow);
-                        bw.Write(Fnv1a64.Hash(parts[1]));
-                        bw.Write(int.Parse(parts[2], CultureInfo.InvariantCulture));
-                        bw.Write(int.Parse(parts[3], CultureInfo.InvariantCulture));
-                        bw.Write(int.Parse(parts[4], CultureInfo.InvariantCulture));
-                        bw.Write(int.Parse(parts[5], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "LOCK_INPUT":
-                        bool lockInput = bool.Parse(parts[1]);
-
-                        bw.Write((ushort)FieldScriptOpCode.LockInput);
-                        bw.Write(lockInput);
-                        break;
-
-                    case "INTERACTION_TRIGGER_ACTIVATION":
-                        bool interactionTriggerActivation = bool.Parse(parts[1]);
-
-                        bw.Write((ushort)FieldScriptOpCode.InteractionTriggerActivation);
-                        bw.Write(interactionTriggerActivation);
-                        break;
-
-                    case "INIT_CHARACTER":
-                        bw.Write((ushort)FieldScriptOpCode.InitAsCharacter);
-                        break;
-
-                    case "VISIBILITY":
-                        bool visibility = bool.Parse(parts[1]);
-
-                        bw.Write((ushort)FieldScriptOpCode.Visibility);
-                        bw.Write(visibility);
-                        break;
-
-                    case "SET_ENTITY_POSITION":
-                        bw.Write((ushort)FieldScriptOpCode.SetEntityPosition);
-                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
-                        bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
-                        bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "SET_MOVEMENT_SPEED":
-                        bw.Write((ushort)FieldScriptOpCode.SetMovementSpeed);
-                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "SET_ENTITY_ROTATION":
-                        bw.Write((ushort)FieldScriptOpCode.SetEntityRotation);
-                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
-                        bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
-                        bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "SET_ENTITY_ROTATION_ASYNC":
-                        bw.Write((ushort)FieldScriptOpCode.SetEntityRotationAsync);
-                        bw.Write(float.Parse(parts[1], CultureInfo.InvariantCulture));
-                        bw.Write(float.Parse(parts[2], CultureInfo.InvariantCulture));
-                        bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
-                        bw.Write(byte.Parse(parts[4], CultureInfo.InvariantCulture));
-                        bw.Write(float.Parse(parts[5], CultureInfo.InvariantCulture));
-                        bw.Write(byte.Parse(parts[6], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "SET_DIRECTION_TO_FACE_ENTITY":
-                        bw.Write((ushort)FieldScriptOpCode.SetDirectionToFaceEntity);
-                        bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "SET_INTERACTION_RANGE":
-                        float interactionTriggerSize = float.Parse(parts[1], CultureInfo.InvariantCulture);
-
-                        bw.Write((ushort)FieldScriptOpCode.SetInteractionRange);
-                        bw.Write(interactionTriggerSize);
-                        break;
-
-                    case "PLAY_MUSIC":
-                        bw.Write((ushort)FieldScriptOpCode.PlayMusic);
-                        bw.Write(Fnv1a64.Hash(parts[1]));
-                        bw.Write(Fnv1a64.Hash(parts[2]));
-                        break;
-
-                    // parts[1] is the track the author had in mind. It is not emitted: the opcode applies
-                    // to whatever is playing, and it is in the script only so the editor can offer that
-                    // track's states rather than every track's.
-                    case "MUSIC_STEM_STATE":
-                        bw.Write((ushort)FieldScriptOpCode.SetMusicStemState);
-                        bw.Write(Fnv1a64.Hash(parts[2]));
-                        bw.Write(float.Parse(parts[3], CultureInfo.InvariantCulture));
-                        break;
-
-                    case "PLAY_SOUND":
-                        bw.Write((ushort)FieldScriptOpCode.PlaySound);
-                        bw.Write(Fnv1a64.Hash(parts[1]));
-                        break;
-
                     case "ASSIGN_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.AssignValue8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.AssignValue8Bit, parts, ref variableMap, VariableWidth.Byte);
+                        break;
+
+                    case "SET_BOOL":
+                        WriteBinaryArguments(bw, FieldScriptOpCode.AssignValueBool, parts, ref variableMap, VariableWidth.Bool);
                         break;
 
                     case "ASSIGN_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.AssignValue16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.AssignValue16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "ADD_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "ADD_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "ADD_BYTE_CLAMPED":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition8BitClamped, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition8BitClamped, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "ADD_SHORT_CLAMPED":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition16BitClamped, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Addition16BitClamped, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "SUB_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "SUB_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "SUB_BYTE_CLAMPED":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction8BitClamped, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction8BitClamped, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "SUB_SHORT_CLAMPED":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction16BitClamped, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Subtraction16BitClamped, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "MUL_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Multiplication8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Multiplication8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "MUL_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Multiplication16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Multiplication16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "DIV_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Division8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Division8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "DIV_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Division16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Division16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "MOD_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Remainder8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Remainder8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "MOD_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.Remainder16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.Remainder16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "AND_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseAnd8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseAnd8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "AND_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseAnd16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseAnd16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "OR_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseOr8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseOr8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "OR_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseOr16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseOr16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "XOR_BYTE":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseXor8Bit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseXor8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "XOR_SHORT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseXor16Bit, parts, ref variableMap, true);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.BitwiseXor16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
-
                     case "SET_BIT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.SetBit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.SetBit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "UNSET_BIT":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.UnsetBit, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.UnsetBit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "GET_RANDOM":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.GetRandomNumber, parts, ref variableMap, false);
+                        WriteBinaryArguments(bw, FieldScriptOpCode.GetRandomNumber, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "INC_BYTE":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment8Bit, parts, ref variableMap, false);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "INC_SHORT":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment16Bit, parts, ref variableMap, true);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "INC_BYTE_CLAMPED":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment8BitClamped, parts, ref variableMap, false);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment8BitClamped, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "INC_SHORT_CLAMPED":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment16BitClamped, parts, ref variableMap, true);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Increment16BitClamped, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "DEC_BYTE":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement8Bit, parts, ref variableMap, false);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement8Bit, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "DEC_SHORT":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16Bit, parts, ref variableMap, true);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16Bit, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "DEC_BYTE_CLAMPED":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement8BitClamped, parts, ref variableMap, false);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement8BitClamped, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "DEC_SHORT_CLAMPED":
-                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16BitClamped, parts, ref variableMap, true);
-                        break;
-
-                    case "REQUEST_SCRIPT":
-                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy, parts, lineIndex + 1);
-                        break;
-                    case "REQUEST_SCRIPT_WAIT_START":
-                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted, parts, lineIndex + 1);
-                        break;
-                    case "REQUEST_SCRIPT_WAIT_END":
-                        WriteScriptRequest(bw, FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished, parts, lineIndex + 1);
-                        break;
-
-                    case "RETURN_TO_SCRIPT":
-                        if (parts.Length < 2)
-                        {
-                            throw new Exception($"line {lineIndex + 1}: RETURN_TO_SCRIPT needs an event id");
-                        }
-
-                        bw.Write((ushort)FieldScriptOpCode.ReturnToAnotherScript);
-                        bw.Write(ushort.Parse(parts[1], CultureInfo.InvariantCulture));
+                        WriteDestinationOnly(bw, FieldScriptOpCode.Decrement16BitClamped, parts, ref variableMap, VariableWidth.UShort);
                         break;
 
                     case "RANDOM_SEED":
@@ -417,7 +246,13 @@ namespace RPGFramework.Field.Editor
                         break;
 
                     default:
-                        throw new Exception($"Unknown opcode '{parts[0]}'");
+                        if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || opCode.Layout != ArgumentLayout.Sequential)
+                        {
+                            throw new Exception($"Unknown opcode '{parts[0]}'");
+                        }
+
+                        WriteSequential(bw, ms, opCode, parts, lineIndex + 1, ref variableMap);
+                        break;
                 }
             }
 
@@ -536,27 +371,141 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Emit <c>opcode, targetEntityId, priority, targetScriptId</c>, the shape shared by the three
-        /// request opcodes.
+        /// Encode an opcode from its argument attributes. See <see cref="ArgumentLayout.Sequential" /> for the layout.
         /// </summary>
-        private static void WriteScriptRequest(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, int lineNumber)
+        private static void WriteSequential(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref VariableMapAsset variableMap)
         {
-            if (parts.Length < 4)
+            bw.Write((ushort)opCode.OpCode);
+
+            int sourcesPosition = -1;
+
+            for (int i = 0; i < opCode.Arguments.Count; i++)
             {
-                throw new Exception($"line {lineNumber}: {parts[0]} needs a target entity id, a priority (0-7) and an event id, for example '{parts[0]} 3 0 1' to run entity 3's second script");
+                FieldArgumentInfo argument = opCode.Arguments[i];
+                int               part     = i + 1;
+
+                if (ArgumentTypes.TakesSource(argument.Type))
+                {
+                    WriteSourcedArgument(bw, ms, argument.Type, parts[part], parts[0], lineNumber, ref sourcesPosition, ref variableMap);
+                }
+                else
+                {
+                    WriteUnsourcedArgument(bw, argument.Type, parts, part, lineNumber);
+                }
+            }
+        }
+
+        private static void WriteSourcedArgument(BinaryWriter bw, MemoryStream ms, ArgumentType type, string token, string scriptName, int lineNumber, ref int sourcesPosition, ref VariableMapAsset variableMap)
+        {
+            byte   source  = ARGUMENT_IMMEDIATE;
+            ushort address = 0;
+
+            if (IsVariableToken(token))
+            {
+                ArgumentTypes.TryGetVariableWidth(type, out VariableWidth width);
+
+                VariableDefinition variable = ResolveVariable(token, scriptName, ref variableMap, width);
+
+                source  = ToArgumentSource(variable.Bank);
+                address = (ushort)variable.Offset;
             }
 
-            byte priority = byte.Parse(parts[2], CultureInfo.InvariantCulture);
-
-            if (priority >= SCRIPT_PRIORITY_COUNT)
+            if (sourcesPosition < 0)
             {
-                throw new Exception($"line {lineNumber}: {parts[0]} priority [{priority}] is outside 0..{SCRIPT_PRIORITY_COUNT - 1}");
+                sourcesPosition = (int)ms.Position;
+                bw.Write((byte)(source << 4));
+            }
+            else
+            {
+                bw.Flush();
+
+                long resume = ms.Position;
+
+                ms.Position = sourcesPosition;
+                int firstSource = ms.ReadByte();
+
+                ms.Position = sourcesPosition;
+                bw.Write((byte)(firstSource | source));
+                bw.Flush();
+
+                ms.Position     = resume;
+                sourcesPosition = -1;
             }
 
-            bw.Write((ushort)opCode);
-            bw.Write(byte.Parse(parts[1], CultureInfo.InvariantCulture));
-            bw.Write(priority);
-            bw.Write(ushort.Parse(parts[3], CultureInfo.InvariantCulture));
+            if (source != ARGUMENT_IMMEDIATE)
+            {
+                bw.Write(address);
+                return;
+            }
+
+            switch (type)
+            {
+                case ArgumentType.Bool:
+                    bw.Write(bool.Parse(token));
+                    break;
+
+                case ArgumentType.Byte:
+                case ArgumentType.EntityId:
+                    bw.Write(byte.Parse(token, CultureInfo.InvariantCulture));
+                    break;
+
+                case ArgumentType.Priority:
+                    byte priority = byte.Parse(token, CultureInfo.InvariantCulture);
+
+                    if (priority >= SCRIPT_PRIORITY_COUNT)
+                    {
+                        throw new Exception($"line {lineNumber}: {scriptName} priority [{priority}] is outside 0..{SCRIPT_PRIORITY_COUNT - 1}");
+                    }
+
+                    bw.Write(priority);
+                    break;
+
+                case ArgumentType.UShort:
+                case ArgumentType.EventId:
+                    bw.Write(ushort.Parse(token, CultureInfo.InvariantCulture));
+                    break;
+
+                case ArgumentType.Int:
+                case ArgumentType.SpawnId:
+                    bw.Write(int.Parse(token, CultureInfo.InvariantCulture));
+                    break;
+
+                case ArgumentType.Float:
+                    bw.Write(float.Parse(token, CultureInfo.InvariantCulture));
+                    break;
+            }
+        }
+
+        private static void WriteUnsourcedArgument(BinaryWriter bw, ArgumentType type, string[] parts, int part, int lineNumber)
+        {
+            switch (type)
+            {
+                case ArgumentType.JumpDistance:
+                case ArgumentType.JumpTarget:
+                    bw.Write(int.Parse(parts[part], CultureInfo.InvariantCulture));
+                    break;
+
+                case ArgumentType.FieldName:
+                    bw.Write(HashFieldName(parts[part], lineNumber));
+                    break;
+
+                case ArgumentType.MusicName:
+                case ArgumentType.SoundName:
+                case ArgumentType.MusicStateName:
+                    bw.Write(Fnv1a64.Hash(parts[part]));
+                    break;
+
+                // Named so the editor can offer the right states; the opcode applies to whatever is playing.
+                case ArgumentType.MusicNameHint:
+                    break;
+
+                case ArgumentType.LocalisationKey:
+                    bw.Write(HashDialogueKey(parts, part, lineNumber));
+                    break;
+
+                default:
+                    throw new Exception($"line {lineNumber}: {parts[0]} has a {type} argument, which a sequential opcode cannot encode");
+            }
         }
 
         /// <summary>
@@ -586,7 +535,7 @@ namespace RPGFramework.Field.Editor
         /// distance written here is the number of bytes to skip when the comparison does not hold — so
         /// it is filled in by <see cref="CloseComparison" /> rather than written by an author.
         /// </summary>
-        private static void WriteComparison(BinaryWriter bw, MemoryStream ms, FieldScriptOpCode opCode, string[] parts, int lineNumber, bool isInt, ref VariableMapAsset variableMap, Stack<OpenBlock> openBlocks)
+        private static void WriteComparison(BinaryWriter bw, MemoryStream ms, FieldScriptOpCode opCode, string[] parts, int lineNumber, VariableWidth width, ref VariableMapAsset variableMap, Stack<OpenBlock> openBlocks)
         {
             if (parts.Length < 4)
             {
@@ -598,6 +547,11 @@ namespace RPGFramework.Field.Editor
                 throw new Exception($"line {lineNumber}: '{parts[2]}' is not a comparison. Use == != > < >= <= & ^ | bit_set bit_clear");
             }
 
+            if (width == VariableWidth.Bool && comparison != ScriptComparison.Equal && comparison != ScriptComparison.NotEqual)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} can only compare with == or !=, not '{parts[2]}'");
+            }
+
             byte   aSource  = ARGUMENT_IMMEDIATE;
             byte   bSource  = ARGUMENT_IMMEDIATE;
             ushort aAddress = 0;
@@ -605,14 +559,14 @@ namespace RPGFramework.Field.Editor
 
             if (IsVariableToken(parts[1]))
             {
-                VariableDefinition a = ResolveVariable(parts[1], parts[0], ref variableMap, isInt);
+                VariableDefinition a = ResolveVariable(parts[1], parts[0], ref variableMap, width);
                 aSource  = ToArgumentSource(a.Bank);
                 aAddress = (ushort)a.Offset;
             }
 
             if (IsVariableToken(parts[3]))
             {
-                VariableDefinition b = ResolveVariable(parts[3], parts[0], ref variableMap, isInt);
+                VariableDefinition b = ResolveVariable(parts[3], parts[0], ref variableMap, width);
                 bSource  = ToArgumentSource(b.Bank);
                 bAddress = (ushort)b.Offset;
             }
@@ -620,8 +574,8 @@ namespace RPGFramework.Field.Editor
             bw.Write((ushort)opCode);
             bw.Write((byte)((aSource << 4) | bSource));
 
-            WriteComparisonValue(bw, parts[1], aSource, aAddress, isInt, lineNumber, parts[0]);
-            WriteComparisonValue(bw, parts[3], bSource, bAddress, isInt, lineNumber, parts[0]);
+            WriteComparisonValue(bw, parts[1], aSource, aAddress, width, lineNumber, parts[0]);
+            WriteComparisonValue(bw, parts[3], bSource, bAddress, width, lineNumber, parts[0]);
 
             bw.Write((byte)comparison);
 
@@ -632,7 +586,7 @@ namespace RPGFramework.Field.Editor
             openBlocks.Push(new OpenBlock(lineNumber, jumpBytePosition, (int)ms.Position));
         }
 
-        private static void WriteComparisonValue(BinaryWriter bw, string token, byte source, ushort address, bool isInt, int lineNumber, string scriptName)
+        private static void WriteComparisonValue(BinaryWriter bw, string token, byte source, ushort address, VariableWidth width, int lineNumber, string scriptName)
         {
             if (source != ARGUMENT_IMMEDIATE)
             {
@@ -640,23 +594,35 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            if (isInt)
+            switch (width)
             {
-                if (!int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out int intValue))
-                {
-                    throw new Exception($"line {lineNumber}: {scriptName} expected a number or a $variable, got '{token}'");
-                }
+                case VariableWidth.Int:
+                    if (!int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out int intValue))
+                    {
+                        throw new Exception($"line {lineNumber}: {scriptName} expected a number or a $variable, got '{token}'");
+                    }
 
-                bw.Write(intValue);
-                return;
+                    bw.Write(intValue);
+                    return;
+
+                case VariableWidth.Bool:
+                    if (!bool.TryParse(token, out bool boolValue))
+                    {
+                        throw new Exception($"line {lineNumber}: {scriptName} expected true, false or a $variable, got '{token}'");
+                    }
+
+                    bw.Write(boolValue);
+                    return;
+
+                default:
+                    if (!byte.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte byteValue))
+                    {
+                        throw new Exception($"line {lineNumber}: {scriptName} expected a number 0-255 or a $variable, got '{token}'");
+                    }
+
+                    bw.Write(byteValue);
+                    return;
             }
-
-            if (!byte.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte byteValue))
-            {
-                throw new Exception($"line {lineNumber}: {scriptName} expected a number 0-255 or a $variable, got '{token}'");
-            }
-
-            bw.Write(byteValue);
         }
 
         /// <summary>
@@ -792,14 +758,14 @@ namespace RPGFramework.Field.Editor
         /// destination, low for the second argument. 0 means the value follows inline, 1..3 select
         /// Global/Session/Temp and a ushort address follows instead.
         /// </summary>
-        private static void WriteBinaryArguments(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, ref VariableMapAsset variableMap, bool is16Bit)
+        private static void WriteBinaryArguments(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, ref VariableMapAsset variableMap, VariableWidth width)
         {
             if (parts.Length < 3)
             {
                 throw new Exception($"{parts[0]} needs a destination variable and an argument, for example '{parts[0]} $myVariable 1'");
             }
 
-            VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, is16Bit);
+            VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, width);
 
             bool   argumentIsVariable = IsVariableToken(parts[2]);
             byte   argumentSource     = ARGUMENT_IMMEDIATE;
@@ -807,9 +773,7 @@ namespace RPGFramework.Field.Editor
 
             if (argumentIsVariable)
             {
-                // The argument's width only has to match when it is the same size as the destination;
-                // SET_BIT and GET_RANDOM take a byte-sized argument whatever the destination is.
-                VariableDefinition argument = ResolveVariable(parts[2], parts[0], ref variableMap, is16Bit);
+                VariableDefinition argument = ResolveVariable(parts[2], parts[0], ref variableMap, width);
 
                 argumentSource  = ToArgumentSource(argument.Bank);
                 argumentAddress = (ushort)argument.Offset;
@@ -827,26 +791,33 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            if (is16Bit)
+            switch (width)
             {
-                bw.Write(ushort.Parse(parts[2], CultureInfo.InvariantCulture));
-                return;
-            }
+                case VariableWidth.UShort:
+                    bw.Write(ushort.Parse(parts[2], CultureInfo.InvariantCulture));
+                    return;
 
-            bw.Write(byte.Parse(parts[2], CultureInfo.InvariantCulture));
+                case VariableWidth.Bool:
+                    bw.Write(bool.Parse(parts[2]));
+                    return;
+
+                default:
+                    bw.Write(byte.Parse(parts[2], CultureInfo.InvariantCulture));
+                    return;
+            }
         }
 
         /// <summary>
         /// Emit <c>opcode, sources, destinationAddress</c> for opcodes that only name a destination.
         /// </summary>
-        private static void WriteDestinationOnly(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, ref VariableMapAsset variableMap, bool is16Bit)
+        private static void WriteDestinationOnly(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, ref VariableMapAsset variableMap, VariableWidth width)
         {
             if (parts.Length < 2)
             {
                 throw new Exception($"{parts[0]} needs a destination variable, for example '{parts[0]} $myVariable'");
             }
 
-            VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, is16Bit);
+            VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, width);
 
             byte sources = (byte)(ToArgumentSource(destination.Bank) << 4);
 
@@ -867,7 +838,7 @@ namespace RPGFramework.Field.Editor
         /// width matches the opcode being used. This is the whole point of the variable map: a script names
         /// what it means and the offset is resolved at build time.
         /// </summary>
-        private static VariableDefinition ResolveVariable(string token, string scriptName, ref VariableMapAsset variableMap, bool is16Bit)
+        private static VariableDefinition ResolveVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
         {
             if (!IsVariableToken(token))
             {
@@ -883,12 +854,9 @@ namespace RPGFramework.Field.Editor
                 throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(ResolveVariable)} No variable named '{name}' in the variable map, required by [{scriptName}]");
             }
 
-            bool definitionIs16Bit = definition.Width == VariableWidth.UShort;
-
-            if (is16Bit != definitionIs16Bit)
+            if (definition.Width != width)
             {
-                string expected = is16Bit ? "a 16 bit" : "an 8 bit";
-                throw new Exception($"[{scriptName}] needs {expected} variable but '{name}' is declared as {definition.Width}");
+                throw new Exception($"[{scriptName}] needs a {width} variable but '{name}' is declared as {definition.Width}");
             }
 
             return definition;

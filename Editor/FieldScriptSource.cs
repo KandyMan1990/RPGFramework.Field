@@ -1,5 +1,4 @@
-﻿using System.IO;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -73,16 +72,7 @@ namespace RPGFramework.Field.Editor
             try
             {
                 byte[] bytecode = FieldScriptCompiler.Compile(m_Source.ScriptText);
-
-                FieldCompiledScript compiled = CreateInstance<FieldCompiledScript>();
-                compiled.ScriptId      = m_Source.ScriptId;
-                compiled.FormatVersion = FieldCompiledScript.CURRENT_FORMAT_VERSION;
-                compiled.Bytecode      = bytecode;
-
-                string path = Path.ChangeExtension(AssetDatabase.GetAssetPath(m_Source), ".compiled.asset");
-
-                AssetDatabase.CreateAsset(compiled, path);
-                AssetDatabase.SaveAssets();
+                string path     = FieldCompiledScriptAssets.Write(m_Source, bytecode);
 
                 ShowResult($"Compiled to {bytecode.Length} bytes at {path}", HelpBoxMessageType.Info);
             }

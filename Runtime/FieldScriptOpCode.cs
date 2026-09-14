@@ -3,37 +3,37 @@
     public enum FieldScriptOpCode : ushort
     {
         // Script flow and control (0x0000)
-        [FieldOpCode("RETURN", ArgumentLayout.Literal, Summary = "End this script and free its priority slot")]
+        [FieldOpCode("RETURN", ArgumentLayout.Sequential, Summary = "End this script and free its priority slot")]
         Return = 0x0000,
 
-        [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Literal, Summary = "Run one of another entity's scripts. Does nothing if that priority slot is busy")]
+        [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts. Does nothing if that priority slot is busy")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptUnlessBusy = 0x0001,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Literal, Summary = "Run one of another entity's scripts, waiting until the slot accepts it")]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts, waiting until the slot accepts it")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilStarted = 0x0002,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Literal, Summary = "Run one of another entity's scripts and wait for it to finish")]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilFinished = 0x0003,
 
-        [FieldOpCode("RETURN_TO_SCRIPT", ArgumentLayout.Literal, Summary = "Hand this priority slot to another of this entity's scripts")]
+        [FieldOpCode("RETURN_TO_SCRIPT", ArgumentLayout.Sequential, Summary = "Hand this priority slot to another of this entity's scripts")]
         [Argument(0, "targetEventId", ArgumentType.EventId)]
         ReturnToAnotherScript = 0x0004,
 
-        [FieldOpCode("GOTO_JUMP", ArgumentLayout.Literal, Summary = "Jump to another instruction, relative to this one")]
-        [Argument(0, "offset", ArgumentType.Int, Description = "relative to the byte after this instruction")]
+        [FieldOpCode("GOTO_JUMP", ArgumentLayout.Sequential, Summary = "Jump forwards or backwards, counted from the end of this instruction")]
+        [Argument(0, "offset", ArgumentType.JumpDistance, Description = "relative to the byte after this instruction")]
         GotoJump = 0x0005,
 
-        [FieldOpCode("GOTO_DIRECTLY", ArgumentLayout.Literal, Summary = "Jump to an absolute position in this script")]
-        [Argument(0, "target", ArgumentType.Int, Description = "absolute byte offset")]
+        [FieldOpCode("GOTO_DIRECTLY", ArgumentLayout.Sequential, Summary = "Jump to an absolute position in this script")]
+        [Argument(0, "target", ArgumentType.JumpTarget, Description = "absolute byte offset")]
         GotoDirectly = 0x0006,
 
         [FieldOpCode("IF_BYTE", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
@@ -48,10 +48,10 @@
         [Argument(2, "b",          ArgumentType.ValueInt)]
         CompareTwoIntValues = 0x0008,
 
-        [FieldOpCode("YIELD", ArgumentLayout.Literal, Summary = "Give up the rest of this frame and resume next frame")]
+        [FieldOpCode("YIELD", ArgumentLayout.Sequential, Summary = "Give up the rest of this frame and resume next frame")]
         Yield = 0x0009,
 
-        [FieldOpCode("WAIT_SECONDS", ArgumentLayout.Literal, Summary = "Pause this script for a length of time")]
+        [FieldOpCode("WAIT_SECONDS", ArgumentLayout.Sequential, Summary = "Pause this script for a length of time")]
         [Argument(0, "seconds", ArgumentType.Float)]
         WaitSeconds = 0x000A,
 
@@ -59,18 +59,24 @@
         IfKeyWasJustPressed  = 0x000C,
         IfKeyWasJustReleased = 0x000D,
 
-        [FieldOpCode("NOP", ArgumentLayout.Literal, Summary = "Does nothing. Useful as a placeholder while authoring")]
+        [FieldOpCode("NOP", ArgumentLayout.Sequential, Summary = "Does nothing. Useful as a placeholder while authoring")]
         DoNothing = 0x000E,
 
         IfCharacterIsInParty   = 0x000F,
         IfCharacterIsAvailable = 0x0010,
         DebugLog               = 0x0011, // ulong messageId - authoring aid, writes to the console
 
+        [FieldOpCode("IF_BOOL", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
+        [Argument(0, "a",          ArgumentType.ValueBool)]
+        [Argument(1, "comparison", ArgumentType.Comparison, Description = "== or !=")]
+        [Argument(2, "b",          ArgumentType.ValueBool)]
+        CompareTwoBoolValues = 0x0012,
+
         // System and module control (0x0100)
         SpecialOp   = 0x0100,
         RunMinigame = 0x0101,
 
-        [FieldOpCode("SET_BATTLE_MODE_OPTIONS", ArgumentLayout.Literal, Summary = "Choose the arena, enemies and rules for the next battle")]
+        [FieldOpCode("SET_BATTLE_MODE_OPTIONS", ArgumentLayout.Sequential, Summary = "Choose the arena, enemies and rules for the next battle")]
         [Argument(0, "arena",      ArgumentType.UShort)]
         [Argument(1, "enemyGroup", ArgumentType.UShort)]
         [Argument(2, "flags",      ArgumentType.UShort)]
@@ -80,7 +86,7 @@
         LoadResultOfLastBattle  = 0x0103,
         SetBattleEncounterTable = 0x0104,
 
-        [FieldOpCode("JUMP_TO_MAP", ArgumentLayout.Literal, Summary = "Leave for another field, entering at one of its spawn points")]
+        [FieldOpCode("JUMP_TO_MAP", ArgumentLayout.Sequential, Summary = "Leave for another field, entering at one of its spawn points")]
         [Argument(0, "field",      ArgumentType.FieldName)]
         [Argument(1, "spawnPoint", ArgumentType.SpawnId, Description = "the id on a SpawnPoint in the field being entered")]
         JumpToAnotherMap = 0x0105,
@@ -88,12 +94,12 @@
         GetLastFieldMap = 0x0106,
         SetJumpFieldID  = 0x0107,
 
-        [FieldOpCode("START_BATTLE", ArgumentLayout.Literal, Summary = "Begin the battle set up by SET_BATTLE_MODE_OPTIONS")]
+        [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin the battle set up by SET_BATTLE_MODE_OPTIONS")]
         StartBattle = 0x0108,
 
         RandomEncounters = 0x0109,
 
-        [FieldOpCode("GATEWAY_TRIGGER_ACTIVATION", ArgumentLayout.Literal, Summary = "Turn this field's gateway triggers on or off")]
+        [FieldOpCode("GATEWAY_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this field's gateway triggers on or off")]
         [Argument(0, "active", ArgumentType.Bool)]
         GatewayTriggerActivation = 0x010A,
 
@@ -172,22 +178,22 @@
         [Argument(1, "value",       ArgumentType.Value16)]
         Multiplication16Bit = 0x020D,
 
-        [FieldOpCode("DIV_BYTE", ArgumentLayout.BankBinary, Summary = "Divide a byte variable, wrapping if it overflows")]
+        [FieldOpCode("DIV_BYTE", ArgumentLayout.BankBinary, Summary = "Divide a byte variable, rounding down. Dividing by zero leaves it unchanged")]
         [Argument(0, "destination", ArgumentType.Variable8)]
         [Argument(1, "value",       ArgumentType.Value8)]
         Division8Bit = 0x020E,
 
-        [FieldOpCode("DIV_SHORT", ArgumentLayout.BankBinary, Summary = "Divide a short variable, wrapping if it overflows")]
+        [FieldOpCode("DIV_SHORT", ArgumentLayout.BankBinary, Summary = "Divide a short variable, rounding down. Dividing by zero leaves it unchanged")]
         [Argument(0, "destination", ArgumentType.Variable16)]
         [Argument(1, "value",       ArgumentType.Value16)]
         Division16Bit = 0x020F,
 
-        [FieldOpCode("MOD_BYTE", ArgumentLayout.BankBinary, Summary = "Take the remainder of a byte variable, wrapping if it overflows")]
+        [FieldOpCode("MOD_BYTE", ArgumentLayout.BankBinary, Summary = "Replace a byte variable with its remainder after dividing. Dividing by zero leaves it unchanged")]
         [Argument(0, "destination", ArgumentType.Variable8)]
         [Argument(1, "value",       ArgumentType.Value8)]
         Remainder8Bit = 0x0210,
 
-        [FieldOpCode("MOD_SHORT", ArgumentLayout.BankBinary, Summary = "Take the remainder of a short variable, wrapping if it overflows")]
+        [FieldOpCode("MOD_SHORT", ArgumentLayout.BankBinary, Summary = "Replace a short variable with its remainder after dividing. Dividing by zero leaves it unchanged")]
         [Argument(0, "destination", ArgumentType.Variable16)]
         [Argument(1, "value",       ArgumentType.Value16)]
         Remainder16Bit = 0x0211,
@@ -269,6 +275,11 @@
         Sine        = 0x0225,
         Cosine      = 0x0226,
 
+        [FieldOpCode("SET_BOOL", ArgumentLayout.BankBinary, Summary = "Set a bool variable")]
+        [Argument(0, "destination", ArgumentType.VariableBool)]
+        [Argument(1, "value",       ArgumentType.ValueBool)]
+        AssignValueBool = 0x0227,
+
         // Windowing and menu (0x0300)
         RunTutorial         = 0x0300,
         CloseWindow         = 0x0301,
@@ -277,7 +288,7 @@
         SetNumberInWindow   = 0x0304,
         SetTimeInWindow     = 0x0305,
 
-        [FieldOpCode("SHOW_DIALOGUE_WINDOW", ArgumentLayout.Literal, Summary = "Show a line of dialogue and wait for the player to dismiss it")]
+        [FieldOpCode("SHOW_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Show a line of dialogue and wait for the player to dismiss it")]
         [Argument(0, "dialogue",      ArgumentType.LocalisationKey)]
         [Argument(1, "blockMovement", ArgumentType.Bool)]
         ShowDialogueWindow = 0x0306,
@@ -286,7 +297,7 @@
         SetWindowTextValue16Bit = 0x0308,
         SetMapNameInMenu        = 0x0309,
 
-        [FieldOpCode("ASK_PLAYER_TO_MAKE_A_CHOICE", ArgumentLayout.Literal, Summary = "Ask a question and store which answer the player chose")]
+        [FieldOpCode("ASK_PLAYER_TO_MAKE_A_CHOICE", ArgumentLayout.Sequential, Summary = "Ask a question and store which answer the player chose")]
         [Argument(0, "destination", ArgumentType.Variable8)]
         [Argument(1, "question",    ArgumentType.LocalisationKey)]
         [Argument(2, "answers",     ArgumentType.LocalisationKeyList)]
@@ -294,11 +305,11 @@
 
         MenuOperations = 0x030B,
 
-        [FieldOpCode("MAIN_MENU_ACCESSIBILITY", ArgumentLayout.Literal, Summary = "Allow or block the player opening the main menu")]
+        [FieldOpCode("MAIN_MENU_ACCESSIBILITY", ArgumentLayout.Sequential, Summary = "Allow or block the player opening the main menu")]
         [Argument(0, "enabled", ArgumentType.Bool)]
         MainMenuAccessibility = 0x030C,
 
-        [FieldOpCode("CREATE_DIALOGUE_WINDOW", ArgumentLayout.Literal, Summary = "Create a dialogue window at a position and size, without showing it")]
+        [FieldOpCode("CREATE_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Create a dialogue window at a position and size, without showing it")]
         [Argument(0, "dialogue", ArgumentType.LocalisationKey)]
         [Argument(1, "x",        ArgumentType.Int)]
         [Argument(2, "y",        ArgumentType.Int)]
@@ -342,7 +353,7 @@
         MoveToPartyMember    = 0x0504,
         SlipAgainstWalls     = 0x0505,
 
-        [FieldOpCode("LOCK_INPUT", ArgumentLayout.Literal, Summary = "Take control away from the player, or give it back")]
+        [FieldOpCode("LOCK_INPUT", ArgumentLayout.Sequential, Summary = "Take control away from the player, or give it back")]
         [Argument(0, "locked", ArgumentType.Bool)]
         LockInput = 0x0506,
 
@@ -351,21 +362,21 @@
         GetPartyMemberDirection = 0x0509,
         GetPartyMemberPosition  = 0x050A,
 
-        [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Literal, Summary = "Turn this entity's interaction trigger on or off")]
+        [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off")]
         [Argument(0, "enabled", ArgumentType.Bool)]
         InteractionTriggerActivation = 0x050B,
 
-        [FieldOpCode("INIT_CHARACTER", ArgumentLayout.Literal, Summary = "Mark this entity as the player character")]
+        [FieldOpCode("INIT_CHARACTER", ArgumentLayout.Sequential, Summary = "Mark this entity as the player character")]
         InitAsCharacter = 0x050C,
 
         PlayAnimationLooping     = 0x050D,
         PlayAnimationOnceAndWait = 0x050E,
 
-        [FieldOpCode("VISIBILITY", ArgumentLayout.Literal, Summary = "Show or hide this entity")]
+        [FieldOpCode("VISIBILITY", ArgumentLayout.Sequential, Summary = "Show or hide this entity")]
         [Argument(0, "isVisible", ArgumentType.Bool)]
         Visibility = 0x050F,
 
-        [FieldOpCode("SET_ENTITY_POSITION", ArgumentLayout.Literal, Summary = "Move this entity immediately, with no animation")]
+        [FieldOpCode("SET_ENTITY_POSITION", ArgumentLayout.Sequential, Summary = "Move this entity immediately, with no animation")]
         [Argument(0, "x", ArgumentType.Float)]
         [Argument(1, "y", ArgumentType.Float)]
         [Argument(2, "z", ArgumentType.Float)]
@@ -381,17 +392,17 @@
         PlayAnimationOnceAsync      = 0x0518,
         PlayPartialAnimation        = 0x0519,
 
-        [FieldOpCode("SET_MOVEMENT_SPEED", ArgumentLayout.Literal, Summary = "Set how fast this entity moves")]
+        [FieldOpCode("SET_MOVEMENT_SPEED", ArgumentLayout.Sequential, Summary = "Set how fast this entity moves")]
         [Argument(0, "movementSpeed", ArgumentType.Float)]
         SetMovementSpeed = 0x051A,
 
-        [FieldOpCode("SET_ENTITY_ROTATION", ArgumentLayout.Literal, Summary = "Face this entity in a direction immediately")]
+        [FieldOpCode("SET_ENTITY_ROTATION", ArgumentLayout.Sequential, Summary = "Face this entity in a direction immediately")]
         [Argument(0, "x", ArgumentType.Float)]
         [Argument(1, "y", ArgumentType.Float)]
         [Argument(2, "z", ArgumentType.Float)]
         SetEntityRotation = 0x051B,
 
-        [FieldOpCode("SET_ENTITY_ROTATION_ASYNC", ArgumentLayout.Literal, Summary = "Turn this entity to face a direction over time")]
+        [FieldOpCode("SET_ENTITY_ROTATION_ASYNC", ArgumentLayout.Sequential, Summary = "Turn this entity to face a direction over time")]
         [Argument(0, "x",            ArgumentType.Float)]
         [Argument(1, "y",            ArgumentType.Float)]
         [Argument(2, "z",            ArgumentType.Float)]
@@ -400,7 +411,7 @@
         [Argument(5, "rotationType", ArgumentType.Byte, Description = "0 linear, 1 smooth")]
         SetEntityRotationAsync = 0x051C,
 
-        [FieldOpCode("SET_DIRECTION_TO_FACE_ENTITY", ArgumentLayout.Literal, Summary = "Face this entity towards another")]
+        [FieldOpCode("SET_DIRECTION_TO_FACE_ENTITY", ArgumentLayout.Sequential, Summary = "Face this entity towards another")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         SetDirectionToFaceEntity = 0x051D,
 
@@ -414,8 +425,8 @@
         TransposeObjectVisualizationOnly = 0x0525,
         WaitForTranspose                 = 0x0526,
 
-        [FieldOpCode("SET_INTERACTION_RANGE", ArgumentLayout.Literal, Summary = "Set how close the player must be to interact with this entity")]
-        [Argument(0, "size", ArgumentType.Float)]
+        [FieldOpCode("SET_INTERACTION_RANGE", ArgumentLayout.Sequential, Summary = "Set how close the player must be to interact with this entity")]
+        [Argument(0, "radius", ArgumentType.Float)]
         SetInteractionRange = 0x0527,
 
         SetCollisionRadius        = 0x0528,
@@ -466,12 +477,12 @@
         // Audio (0x0800)
         MusicOperation = 0x0800,
 
-        [FieldOpCode("PLAY_MUSIC", ArgumentLayout.Literal, Summary = "Start a music track, layered as one of its stem states")]
+        [FieldOpCode("PLAY_MUSIC", ArgumentLayout.Sequential, Summary = "Start a music track, layered as one of its stem states")]
         [Argument(0, "track", ArgumentType.MusicName,      Description = "the music asset's name, as it appears in the music provider")]
         [Argument(1, "state", ArgumentType.MusicStateName, Description = "which stem state it starts on")]
         PlayMusic = 0x0801,
 
-        [FieldOpCode("PLAY_SOUND", ArgumentLayout.Literal, Summary = "Play a sound effect once")]
+        [FieldOpCode("PLAY_SOUND", ArgumentLayout.Sequential, Summary = "Play a sound effect once")]
         [Argument(0, "sound", ArgumentType.SoundName, Description = "the sound asset's name, as it appears in the SFX provider")]
         PlaySound = 0x0802,
 
@@ -490,7 +501,7 @@
         SetAllSoundPan        = 0x080F, // float pan
         FadeAllSoundPan       = 0x0810, // float pan, float duration
 
-        [FieldOpCode("MUSIC_STEM_STATE", ArgumentLayout.Literal, Summary = "Switch the music to one of the stem states its asset declares")]
+        [FieldOpCode("MUSIC_STEM_STATE", ArgumentLayout.Sequential, Summary = "Switch the music to one of the stem states its asset declares")]
         [Argument(0, "track",       ArgumentType.MusicNameHint,  Description = "which track's states to choose from — not compiled, it applies to whatever is playing")]
         [Argument(1, "state",       ArgumentType.MusicStateName, Description = "the state's name on the music asset")]
         [Argument(2, "fadeSeconds", ArgumentType.Float,          Description = "0 changes immediately")]
