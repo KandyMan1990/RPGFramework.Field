@@ -12,13 +12,13 @@
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptUnlessBusy = 0x0001,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts, waiting until the slot accepts it")]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait until it starts. Does nothing if that priority slot is busy")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilStarted = 0x0002,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish")]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish. Does nothing if that priority slot is busy")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]

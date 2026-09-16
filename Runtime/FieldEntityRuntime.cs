@@ -24,6 +24,8 @@
 
         internal const byte INTERACTION_PRIORITY = 7;
 
+        internal const int NO_PRIORITY = -1;
+
         private const int NO_SCRIPT = -1;
 
         internal int  EntityId { get; }
@@ -72,10 +74,38 @@
             return isSlotOccupied;
         }
 
+        internal bool HoldsScript(int scriptId, byte priority)
+        {
+            bool holdsScript = m_ScriptIdBySlot[priority] == scriptId;
+
+            return holdsScript;
+        }
+
+        /// <summary>
+        /// The slot this entity runs: its most urgent occupied one, or <see cref="NO_PRIORITY" />.
+        /// </summary>
+        internal int RunningPriority
+        {
+            get
+            {
+                int runningPriority = NO_PRIORITY;
+
+                for (int priority = PRIORITY_COUNT - 1; priority >= 0; priority--)
+                {
+                    if (m_ScriptIdBySlot[priority] != NO_SCRIPT)
+                    {
+                        runningPriority = priority;
+                        break;
+                    }
+                }
+
+                return runningPriority;
+            }
+        }
+
         /// <summary>
         /// Place a script in a priority slot, unless something is already there.<br /><br />
-        /// A request that finds its slot busy is refused rather than replacing what is running. A caller
-        /// that must not be refused retries — see <see cref="BlockState.RequestScriptBlock" />.
+        /// A request that finds its slot busy is refused rather than replacing what is running.
         /// </summary>
         /// <returns>False when the slot was occupied and the request was refused.</returns>
         internal bool TryRequestScript(int scriptId, byte priority)
@@ -102,10 +132,11 @@
 
         /// <summary>
         /// Advance this entity by one frame.<br /><br />
-        /// <b>Only the highest-priority occupied slot runs.</b> An entity is one actor and runs one
-        /// script at a time; the slots below hold their scripts and their instruction pointers
-        /// untouched, and the next one down resumes where it left off once the script above it returns.
-        /// Occupying a slot is what marks a script pending, and returning is what releases it.<br /><br />
+        /// <b>Only the most urgent occupied slot runs.</b> An entity is one actor and runs one script at a
+        /// time; the slots below hold their scripts and their instruction pointers untouched. The frame's
+        /// instruction budget is the entity's: when the running script returns or is preempted, the next slot
+        /// runs straight away on what is left of it. Occupying a slot is what marks a script pending, and
+        /// returning is what releases it.<br /><br />
         /// A script that is waiting still holds the entity — nothing below it runs while it waits. Only
         /// a <b>more urgent</b> priority arriving takes over, which is the point of the ordering: a trigger
         /// preempts a Main script at <see cref="MAIN_PRIORITY" /> however long that Main script has been
@@ -118,18 +149,23 @@
                 return;
             }
 
-            for (int priority = PRIORITY_COUNT - 1; priority >= 0; priority--)
-            {
-                int scriptId = m_ScriptIdBySlot[priority];
+            int instructionBudget = FieldVM.INSTRUCTIONS_PER_ENTITY_PER_FRAME;
 
-                if (scriptId == NO_SCRIPT)
+            while (true)
+            {
+                int priority = RunningPriority;
+
+                if (priority == NO_PRIORITY)
                 {
-                    continue;
+                    return;
                 }
 
-                vm.Execute(EntityId, (byte)priority, scriptId, this, FieldVM.INSTRUCTIONS_PER_SLOT_PER_FRAME);
+                ScriptRunOutcome outcome = vm.Execute(EntityId, (byte)priority, m_ScriptIdBySlot[priority], this, ref instructionBudget);
 
-                return;
+                if (outcome != ScriptRunOutcome.Ended && outcome != ScriptRunOutcome.Preempted)
+                {
+                    return;
+                }
             }
         }
 
@@ -140,8 +176,9 @@
         /// </summary>
         internal ScriptRunOutcome RunInitScript(FieldVM vm)
         {
-            int              scriptId = m_ScriptIdBySlot[MAIN_PRIORITY];
-            ScriptRunOutcome outcome  = vm.Execute(EntityId, MAIN_PRIORITY, scriptId, this, FieldVM.INIT_INSTRUCTION_CEILING);
+            int              scriptId          = m_ScriptIdBySlot[MAIN_PRIORITY];
+            int              instructionBudget = FieldVM.INIT_INSTRUCTION_CEILING;
+            ScriptRunOutcome outcome           = vm.Execute(EntityId, MAIN_PRIORITY, scriptId, this, ref instructionBudget);
 
             return outcome;
         }

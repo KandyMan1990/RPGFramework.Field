@@ -393,6 +393,13 @@ namespace RPGFramework.Field
                 return;
             }
 
+            if (outcome == ScriptRunOutcome.Preempted)
+            {
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script requested a more urgent script on its own entity, so init was stopped there and nothing after the request ran. Request it from {nameof(FieldScriptType.Main)} instead");
+
+                return;
+            }
+
             if (outcome == ScriptRunOutcome.Waiting)
             {
                 Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script waited or yielded, so it was stopped there and nothing after that ran. Init runs straight through before the field is shown and cannot wait — move the wait, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");

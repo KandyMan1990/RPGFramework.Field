@@ -5,8 +5,11 @@
     /// </summary>
     internal enum ScriptRunOutcome
     {
-        /// <summary>The script returned, or could not run, and its slot is free.</summary>
+        /// <summary>The script returned, handed its slot to another script, or could not run.</summary>
         Ended,
+
+        /// <summary>A more urgent slot on the same entity was filled, so that slot runs next.</summary>
+        Preempted,
 
         /// <summary>The script is waiting on something, or yielded the rest of the frame.</summary>
         Waiting,

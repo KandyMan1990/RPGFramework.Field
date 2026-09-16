@@ -348,7 +348,11 @@ namespace RPGFramework.Field
             entity.TryRequestScript(scriptId, priority);
         }
 
-        internal const int INSTRUCTIONS_PER_SLOT_PER_FRAME = 16;
+        /// <summary>
+        /// Shared by an entity's slots within a frame: a script that returns, or is preempted, leaves the rest
+        /// for the slot that runs after it.
+        /// </summary>
+        internal const int INSTRUCTIONS_PER_ENTITY_PER_FRAME = 16;
 
         /// <summary>
         /// Init runs until it returns, however many instructions that takes. This only stops one that
@@ -375,7 +379,7 @@ namespace RPGFramework.Field
             entity.ClearSlot(FieldEntityRuntime.MAIN_PRIORITY);
         }
 
-        internal ScriptRunOutcome Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity, int instructionBudget)
+        internal ScriptRunOutcome Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity, ref int instructionBudget)
         {
             (int entityId, byte priority) key = (entityId, priority);
 
@@ -407,16 +411,14 @@ namespace RPGFramework.Field
                 return ScriptRunOutcome.Waiting;
             }
 
-            int instructionsRun = 0;
-
             while (!ctx.IsBlocked())
             {
-                if (instructionsRun == instructionBudget)
+                if (instructionBudget == 0)
                 {
                     return ScriptRunOutcome.OutOfInstructions;
                 }
 
-                instructionsRun++;
+                instructionBudget--;
 
                 FieldScriptOpCode opcode = FetchOpcode(ctx);
 
@@ -440,6 +442,17 @@ namespace RPGFramework.Field
                 {
                     ctx.YieldRequested = false;
                     return ScriptRunOutcome.Waiting;
+                }
+
+                // The slot was handed to another script, which runs next on what is left of the budget.
+                if (!m_Contexts.TryGetValue(key, out ScriptExecutionContext current) || current != ctx)
+                {
+                    return ScriptRunOutcome.Ended;
+                }
+
+                if (entity.RunningPriority > priority)
+                {
+                    return ScriptRunOutcome.Preempted;
                 }
             }
 
@@ -751,13 +764,13 @@ namespace RPGFramework.Field
         /// <summary>
         /// Decode the arguments shared by the three request opcodes and resolve the target entity.
         /// </summary>
-        private bool TryReadScriptRequest(ScriptExecutionContext ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
+        private bool TryReadScriptRequest(ScriptExecutionContext ctx, out byte targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
         {
-            SequentialSources sources        = default;
-            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
+            SequentialSources sources = default;
             ushort            targetEventId;
 
-            priority      = ReadArgumentByte(ctx, ref sources);
+            targetEntityId = ReadArgumentByte(ctx, ref sources);
+            priority       = ReadArgumentByte(ctx, ref sources);
             targetEventId = ReadArgumentUshort(ctx, ref sources);
 
             targetScriptId = 0;
@@ -864,45 +877,70 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Queue a script in another entity's priority slot and carry on. If the slot is busy the
-        /// request is refused and the caller does not learn of it — use the waiting variants when the
-        /// request must land.
+        /// Put a script in an entity's priority slot and carry on; refused if the slot is busy. A request on
+        /// another entity ends this script's frame. One on this entity for a more urgent slot takes over
+        /// straight away.
         /// </summary>
         private void RunAnotherEntityScriptUnlessBusyOpcodeHandler(ScriptExecutionContext ctx)
         {
-            if (!TryReadScriptRequest(ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            if (TryReadScriptRequest(ctx, out byte targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
             {
-                return;
+                target.TryRequestScript(targetScriptId, priority);
             }
 
-            target.TryRequestScript(targetScriptId, priority);
+            if (targetEntityId != ctx.EntityId)
+            {
+                ctx.YieldRequested = true;
+            }
         }
 
         /// <summary>
-        /// Retry until the slot accepts the script, then continue without waiting for it to finish.
+        /// Request a script once. If the slot is busy, carry on. If it is accepted, wait until the entity is
+        /// running it — or has already run it to its return, which would otherwise leave this waiting for
+        /// good.
         /// </summary>
         private void RunAnotherEntityScriptWaitUntilStartedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            if (!TryReadScriptRequest(ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            if (!TryReadScriptRequest(ctx, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
+                !target.TryRequestScript(targetScriptId, priority))
             {
+                ctx.YieldRequested = true;
                 return;
             }
 
-            ctx.Block(new RequestScriptBlock(target, targetScriptId, priority, false));
+            bool HasStarted() => target.RunningPriority == priority || !target.HoldsScript(targetScriptId, priority);
+
+            WaitForRequest(ctx, HasStarted);
         }
 
         /// <summary>
-        /// Retry until the slot accepts the script, then wait for it to run to its return before
-        /// continuing.
+        /// Request a script once. If the slot is busy, carry on. If it is accepted, wait until the entity is
+        /// running something less urgent than it — the requested script has returned.
         /// </summary>
         private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(ScriptExecutionContext ctx)
         {
-            if (!TryReadScriptRequest(ctx, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            if (!TryReadScriptRequest(ctx, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
+                !target.TryRequestScript(targetScriptId, priority))
             {
+                ctx.YieldRequested = true;
                 return;
             }
 
-            ctx.Block(new RequestScriptBlock(target, targetScriptId, priority, true));
+            bool HasFinished() => target.RunningPriority < priority;
+
+            WaitForRequest(ctx, HasFinished);
+        }
+
+        // Already satisfied: carry on next frame. Otherwise wait, and the frame the wait ends on is spent too.
+        private static void WaitForRequest(ScriptExecutionContext ctx, Func<bool> isSatisfied)
+        {
+            if (isSatisfied())
+            {
+                ctx.YieldRequested = true;
+                return;
+            }
+
+            ctx.Block(new WaitUntilBlock(isSatisfied));
         }
 
         /// <summary>
