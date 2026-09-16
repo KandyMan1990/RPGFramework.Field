@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using RPGFramework.Core.Memory;
 
 namespace RPGFramework.Field.Editor
 {
@@ -72,7 +73,7 @@ namespace RPGFramework.Field.Editor
 
             foreach (FieldArgumentInfo argument in opCode.Arguments)
             {
-                arguments.Add(DefaultFor(argument.Type));
+                arguments.Add(DefaultFor(argument));
             }
 
             FieldScriptBlock block = new FieldScriptBlock(opCode, arguments);
@@ -80,20 +81,18 @@ namespace RPGFramework.Field.Editor
             return block;
         }
 
-        internal static string DefaultFor(ArgumentType type)
+        internal static string DefaultFor(FieldArgumentInfo argument)
         {
-            switch (type)
+            switch (argument.Type)
             {
                 case ArgumentType.Bool:
-                case ArgumentType.ValueBool:
+                case ArgumentType.Value when argument.Width == VariableWidth.Bool:
                     return "false";
 
                 case ArgumentType.Float:
                     return "0";
 
-                case ArgumentType.Variable8:
-                case ArgumentType.Variable16:
-                case ArgumentType.VariableBool:
+                case ArgumentType.Variable:
                     // A destination has to be a variable, so it starts with the marker already there.
                     return "$";
 

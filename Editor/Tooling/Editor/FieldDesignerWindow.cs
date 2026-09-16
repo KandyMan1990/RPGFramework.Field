@@ -226,14 +226,19 @@ namespace RPGFramework.Field.Editor
             m_Window.OnConfirm -= OnGenerateFieldDatabaseScriptButtonClickedCallback;
             m_Window           =  null;
 
-            List<string> problems = m_FieldDesignerData.FieldDatabase.ValidateFields();
+            List<string> problems = FieldCompiledScriptAssets.CompileAll();
+
+            if (problems.Count == 0)
+            {
+                problems = m_FieldDesignerData.FieldDatabase.ValidateFields();
+            }
 
             if (problems.Count > 0)
             {
                 string message = $"{problems.Count} problem(s) found. Nothing was exported.\n\n{string.Join("\n\n", problems)}";
 
                 Debug.LogError($"{nameof(FieldDesignerWindow)}::{nameof(OnGenerateFieldDatabaseScriptButtonClickedCallback)} {message}");
-                EditorUtility.DisplayDialog("Field validation failed", message, "OK");
+                EditorUtility.DisplayDialog("Export failed", message, "OK");
                 return;
             }
 

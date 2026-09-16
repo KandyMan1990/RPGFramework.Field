@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Reflection;
+using RPGFramework.Core.Memory;
 
 namespace RPGFramework.Field.Editor
 {
@@ -8,14 +9,16 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     public sealed class FieldArgumentInfo
     {
-        public string       Name        { get; }
-        public ArgumentType Type        { get; }
-        public string       Description { get; }
+        public string        Name        { get; }
+        public ArgumentType  Type        { get; }
+        public VariableWidth Width       { get; }
+        public string        Description { get; }
 
         internal FieldArgumentInfo(ArgumentAttribute attribute)
         {
             Name        = attribute.Name;
             Type        = attribute.Type;
+            Width       = attribute.Width;
             Description = attribute.Description;
         }
     }
@@ -145,6 +148,15 @@ namespace RPGFramework.Field.Editor
                     }
 
                     seen[argument.Index] = true;
+
+                    bool needsWidth = argument.Type == ArgumentType.Variable || argument.Type == ArgumentType.Value;
+
+                    if (needsWidth != argument.HasWidth)
+                    {
+                        problems.Add(needsWidth
+                                         ? $"'{field.Name}' argument '{argument.Name}' is a {argument.Type} with no width"
+                                         : $"'{field.Name}' argument '{argument.Name}' declares a width, which only {nameof(ArgumentType.Variable)} and {nameof(ArgumentType.Value)} use");
+                    }
                 }
             }
 

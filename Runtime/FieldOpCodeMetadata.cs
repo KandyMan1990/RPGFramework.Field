@@ -27,8 +27,8 @@ namespace RPGFramework.Field
         Sequential,
 
         /// <summary>
-        /// A sources byte, a destination address, then one argument that is either an immediate or a
-        /// second bank address.
+        /// A sources byte, a destination address, then one argument: an immediate at the argument's width, or
+        /// the width of the variable being read followed by its address.
         /// </summary>
         BankBinary,
 
@@ -39,7 +39,8 @@ namespace RPGFramework.Field
         BankUnary,
 
         /// <summary>
-        /// A sources byte, two arguments, a comparison type and a jump distance.
+        /// A sources byte, two arguments encoded as in <see cref="BankBinary" />, a comparison type and an int
+        /// jump distance.
         /// </summary>
         BankCompare,
 
@@ -113,26 +114,14 @@ namespace RPGFramework.Field
         /// <summary>A variable-length run of localisation keys, preceded by a count byte.</summary>
         LocalisationKeyList,
 
-        /// <summary>A byte-wide variable being written to. Contributes a nibble to the source's byte.</summary>
-        Variable8,
+        /// <summary>A variable being written to, of exactly the argument's width.</summary>
+        Variable,
 
-        /// <summary>A 16 bit variable being written to.</summary>
-        Variable16,
-
-        /// <summary>A byte-wide value: either an immediate or a variable to read.</summary>
-        Value8,
-
-        /// <summary>A 16 bit value: either an immediate or a variable to read.</summary>
-        Value16,
-
-        /// <summary>A 32 bit value: either an immediate or a variable to read.</summary>
-        ValueInt,
-
-        /// <summary>A bool variable being written to.</summary>
-        VariableBool,
-
-        /// <summary>A bool value: <c>true</c>, <c>false</c>, or a variable to read.</summary>
-        ValueBool,
+        /// <summary>
+        /// A value at the argument's width: an immediate, or a variable no wider than it — see
+        /// <see cref="ArgumentTypes.CanRead" />.
+        /// </summary>
+        Value,
 
         /// <summary>How an IF compares its two values — see <see cref="ScriptComparison" />.</summary>
         Comparison
@@ -179,9 +168,11 @@ namespace RPGFramework.Field
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
     public sealed class ArgumentAttribute : Attribute
     {
-        public int          Index { get; }
-        public string       Name  { get; }
-        public ArgumentType Type  { get; }
+        public int           Index    { get; }
+        public string        Name     { get; }
+        public ArgumentType  Type     { get; }
+        public VariableWidth Width    { get; }
+        public bool          HasWidth { get; }
 
         /// <summary>
         /// What the argument means, where the name alone is not enough — a range, or what a value of zero
@@ -195,41 +186,53 @@ namespace RPGFramework.Field
             Name  = name;
             Type  = type;
         }
+
+        /// <summary>
+        /// For <see cref="ArgumentType.Variable" /> and <see cref="ArgumentType.Value" />, which take their width from here.
+        /// </summary>
+        public ArgumentAttribute(int index, string name, ArgumentType type, VariableWidth width)
+        {
+            Index    = index;
+            Name     = name;
+            Type     = type;
+            Width    = width;
+            HasWidth = true;
+        }
     }
 
     public static class ArgumentTypes
     {
         /// <summary>
         /// Whether an argument of this type can be written as a variable, and the variable width it needs.
+        /// <paramref name="declaredWidth" /> is the width an <see cref="ArgumentType.Variable" /> or
+        /// <see cref="ArgumentType.Value" /> argument declares.
         /// </summary>
-        public static bool TryGetVariableWidth(ArgumentType type, out VariableWidth width)
+        public static bool TryGetVariableWidth(ArgumentType type, VariableWidth declaredWidth, out VariableWidth width)
         {
             switch (type)
             {
+                case ArgumentType.Variable:
+                case ArgumentType.Value:
+                    width = declaredWidth;
+                    return true;
+
                 case ArgumentType.Bool:
-                case ArgumentType.VariableBool:
-                case ArgumentType.ValueBool:
                     width = VariableWidth.Bool;
                     return true;
 
                 case ArgumentType.Byte:
                 case ArgumentType.EntityId:
                 case ArgumentType.Priority:
-                case ArgumentType.Variable8:
-                case ArgumentType.Value8:
                     width = VariableWidth.Byte;
                     return true;
 
                 case ArgumentType.UShort:
                 case ArgumentType.EventId:
-                case ArgumentType.Variable16:
-                case ArgumentType.Value16:
                     width = VariableWidth.UShort;
                     return true;
 
                 case ArgumentType.Int:
                 case ArgumentType.SpawnId:
-                case ArgumentType.ValueInt:
                     width = VariableWidth.Int;
                     return true;
 
@@ -249,19 +252,29 @@ namespace RPGFramework.Field
         /// </summary>
         public static bool TakesSource(ArgumentType type)
         {
-            bool takesSource = type switch
-                               {
-                                   ArgumentType.Variable8    => false,
-                                   ArgumentType.Variable16   => false,
-                                   ArgumentType.VariableBool => false,
-                                   ArgumentType.Value8       => false,
-                                   ArgumentType.Value16      => false,
-                                   ArgumentType.ValueInt     => false,
-                                   ArgumentType.ValueBool    => false,
-                                   _                         => TryGetVariableWidth(type, out _)
-                               };
+            bool takesSource = type != ArgumentType.Variable &&
+                               type != ArgumentType.Value    &&
+                               TryGetVariableWidth(type, default, out _);
 
             return takesSource;
+        }
+
+        /// <summary>
+        /// Whether a <see cref="ArgumentType.Value" /> of <paramref name="argumentWidth" /> can read a variable of
+        /// <paramref name="variableWidth" />. A bool reads only a bool. An integer reads any integer no wider than
+        /// itself, converted as a cast would convert it. A float reads a float or an integer of up to four bytes.
+        /// </summary>
+        public static bool CanRead(VariableWidth argumentWidth, VariableWidth variableWidth)
+        {
+            bool canRead = argumentWidth switch
+                           {
+                               VariableWidth.Bool  => variableWidth == VariableWidth.Bool,
+                               VariableWidth.Float => variableWidth == VariableWidth.Float ||
+                                                      (variableWidth.IsInteger() && variableWidth.GetByteCount() <= 4),
+                               _                   => variableWidth.IsInteger() && variableWidth.GetByteCount() <= argumentWidth.GetByteCount()
+                           };
+
+            return canRead;
         }
     }
 }

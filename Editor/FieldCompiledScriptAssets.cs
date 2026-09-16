@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 
@@ -28,6 +30,35 @@ namespace RPGFramework.Field.Editor
             AssetDatabase.SaveAssets();
 
             return path;
+        }
+
+        /// <summary>
+        /// Compile every script source in the project, so an export never ships bytecode built against an older
+        /// opcode table.
+        /// </summary>
+        /// <returns>A problem for each script that failed to compile.</returns>
+        internal static List<string> CompileAll()
+        {
+            List<string> problems = new List<string>();
+
+            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(FieldScriptSource)}"))
+            {
+                string            path   = AssetDatabase.GUIDToAssetPath(guid);
+                FieldScriptSource source = AssetDatabase.LoadAssetAtPath<FieldScriptSource>(path);
+
+                try
+                {
+                    byte[] bytecode = FieldScriptCompiler.Compile(source.ScriptText);
+
+                    Write(source, bytecode);
+                }
+                catch (Exception e)
+                {
+                    problems.Add($"{path}: {e.Message}");
+                }
+            }
+
+            return problems;
         }
     }
 }

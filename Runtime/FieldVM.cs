@@ -74,22 +74,24 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
                        { FieldScriptOpCode.GotoJump, GotoOpcodeHandler },
                        { FieldScriptOpCode.GotoDirectly, GotoDirectlyOpcodeHandler },
-                       { FieldScriptOpCode.CompareTwoByteValues, CompareTwoByteValuesOpcodeHandler },
-                       { FieldScriptOpCode.CompareTwoIntValues, CompareTwoIntValuesOpcodeHandler },
-                       { FieldScriptOpCode.Yield, YieldOpcodeHandler },
-                       { FieldScriptOpCode.WaitSeconds, WaitSecondsOpcodeHandler },
-                       // { FieldScriptOpCode.IfKeyIsDown, IfKeyIsDownOpcodeHandler },
-                       // { FieldScriptOpCode.IfKeyWasJustPressed, IfKeyWasJustPressedOpcodeHandler },
-                       // { FieldScriptOpCode.IfKeyWasJustReleased, IfKeyWasJustReleasedOpcodeHandler },
-                       { FieldScriptOpCode.DoNothing, DoNothingOpcodeHandler },
+                       { FieldScriptOpCode.CompareBool, ctx => CompareOpcodeHandler(ctx, VariableWidth.Bool) },
+                       { FieldScriptOpCode.CompareSByte, ctx => CompareOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.CompareByte, ctx => CompareOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.CompareShort, ctx => CompareOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.CompareUShort, ctx => CompareOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.CompareInt, ctx => CompareOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.CompareUInt, ctx => CompareOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.CompareLong, ctx => CompareOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.CompareULong, ctx => CompareOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.CompareFloat, ctx => CompareOpcodeHandler(ctx, VariableWidth.Float) },
                        // { FieldScriptOpCode.IfCharacterIsInParty, IfCharacterIsInPartyOpcodeHandler },
                        // { FieldScriptOpCode.IfCharacterIsAvailable, IfCharacterIsAvailableOpcodeHandler },
+                       { FieldScriptOpCode.Yield, YieldOpcodeHandler },
+                       { FieldScriptOpCode.WaitSeconds, WaitSecondsOpcodeHandler },
+                       { FieldScriptOpCode.DoNothing, DoNothingOpcodeHandler },
                        // { FieldScriptOpCode.DebugLog, DebugLogOpcodeHandler },
-                       { FieldScriptOpCode.CompareTwoBoolValues, CompareTwoBoolValuesOpcodeHandler },
 
                        // System and module control
-                       // { FieldScriptOpCode.SpecialOp, SpecialOpOpcodeHandler },
-                       // { FieldScriptOpCode.RunMinigame, RunMinigameOpcodeHandler },
                        { FieldScriptOpCode.SetBattleModeOptions, SetBattleModeOptionsOpcodeHandler },
                        // { FieldScriptOpCode.LoadResultOfLastBattle, LoadResultOfLastBattleOpcodeHandler },
                        // { FieldScriptOpCode.SetBattleEncounterTable, SetBattleEncounterTableOpcodeHandler },
@@ -104,66 +106,163 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetSaveEnabled, SetSaveEnabledOpcodeHandler },
 
                        // Assignment and mathematics
-                       { FieldScriptOpCode.AssignValue8Bit, AssignValue8BitOpcodeHandler },
-                       { FieldScriptOpCode.AssignValue16Bit, AssignValue16BitOpcodeHandler },
-                       { FieldScriptOpCode.SetBit, SetBitOpcodeHandler },
-                       { FieldScriptOpCode.UnsetBit, UnsetBitOpcodeHandler },
-                       { FieldScriptOpCode.Addition8Bit, Addition8BitOpcodeHandler },
-                       { FieldScriptOpCode.Addition16Bit, Addition16BitOpcodeHandler },
-                       { FieldScriptOpCode.Addition8BitClamped, Addition8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Addition16BitClamped, Addition16BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction8Bit, Subtraction8BitOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction16Bit, Subtraction16BitOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction8BitClamped, Subtraction8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Subtraction16BitClamped, Subtraction16BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Multiplication8Bit, Multiplication8BitOpcodeHandler },
-                       { FieldScriptOpCode.Multiplication16Bit, Multiplication16BitOpcodeHandler },
-                       { FieldScriptOpCode.Division8Bit, Division8BitOpcodeHandler },
-                       { FieldScriptOpCode.Division16Bit, Division16BitOpcodeHandler },
-                       { FieldScriptOpCode.Remainder8Bit, Remainder8BitOpcodeHandler },
-                       { FieldScriptOpCode.Remainder16Bit, Remainder16BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseAnd8Bit, BitwiseAnd8BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseAnd16Bit, BitwiseAnd16BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseOr8Bit, BitwiseOr8BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseOr16Bit, BitwiseOr16BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseXor8Bit, BitwiseXor8BitOpcodeHandler },
-                       { FieldScriptOpCode.BitwiseXor16Bit, BitwiseXor16BitOpcodeHandler },
-                       { FieldScriptOpCode.Increment8Bit, Increment8BitOpcodeHandler },
-                       { FieldScriptOpCode.Increment16Bit, Increment16BitOpcodeHandler },
-                       { FieldScriptOpCode.Increment8BitClamped, Increment8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Increment16BitClamped, Increment16BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Decrement8Bit, Decrement8BitOpcodeHandler },
-                       { FieldScriptOpCode.Decrement16Bit, Decrement16BitOpcodeHandler },
-                       { FieldScriptOpCode.Decrement8BitClamped, Decrement8BitClampedOpcodeHandler },
-                       { FieldScriptOpCode.Decrement16BitClamped, Decrement16BitClampedOpcodeHandler },
+                       { FieldScriptOpCode.SetBool, ctx => SetOpcodeHandler(ctx, VariableWidth.Bool) },
+                       { FieldScriptOpCode.SetSByte, ctx => SetOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.SetByte, ctx => SetOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.SetShort, ctx => SetOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.SetUShort, ctx => SetOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.SetInt, ctx => SetOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.SetUInt, ctx => SetOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.SetLong, ctx => SetOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.SetULong, ctx => SetOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.SetFloat, ctx => SetOpcodeHandler(ctx, VariableWidth.Float) },
+                       { FieldScriptOpCode.AddSByte, ctx => AddOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.AddByte, ctx => AddOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.AddShort, ctx => AddOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.AddUShort, ctx => AddOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.AddInt, ctx => AddOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.AddUInt, ctx => AddOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.AddLong, ctx => AddOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.AddULong, ctx => AddOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.AddFloat, ctx => AddOpcodeHandler(ctx, VariableWidth.Float) },
+                       { FieldScriptOpCode.AddSByteClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.AddByteClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.AddShortClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.AddUShortClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.AddIntClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.AddUIntClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.AddLongClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.AddULongClamped, ctx => AddClampedOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.SubtractSByte, ctx => SubtractOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.SubtractByte, ctx => SubtractOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.SubtractShort, ctx => SubtractOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.SubtractUShort, ctx => SubtractOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.SubtractInt, ctx => SubtractOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.SubtractUInt, ctx => SubtractOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.SubtractLong, ctx => SubtractOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.SubtractULong, ctx => SubtractOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.SubtractFloat, ctx => SubtractOpcodeHandler(ctx, VariableWidth.Float) },
+                       { FieldScriptOpCode.SubtractSByteClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.SubtractByteClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.SubtractShortClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.SubtractUShortClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.SubtractIntClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.SubtractUIntClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.SubtractLongClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.SubtractULongClamped, ctx => SubtractClampedOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.MultiplySByte, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.MultiplyByte, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.MultiplyShort, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.MultiplyUShort, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.MultiplyInt, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.MultiplyUInt, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.MultiplyLong, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.MultiplyULong, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.MultiplyFloat, ctx => MultiplyOpcodeHandler(ctx, VariableWidth.Float) },
+                       { FieldScriptOpCode.DivideSByte, ctx => DivideOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.DivideByte, ctx => DivideOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.DivideShort, ctx => DivideOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.DivideUShort, ctx => DivideOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.DivideInt, ctx => DivideOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.DivideUInt, ctx => DivideOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.DivideLong, ctx => DivideOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.DivideULong, ctx => DivideOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.DivideFloat, ctx => DivideOpcodeHandler(ctx, VariableWidth.Float) },
+                       { FieldScriptOpCode.RemainderSByte, ctx => RemainderOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.RemainderByte, ctx => RemainderOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.RemainderShort, ctx => RemainderOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.RemainderUShort, ctx => RemainderOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.RemainderInt, ctx => RemainderOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.RemainderUInt, ctx => RemainderOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.RemainderLong, ctx => RemainderOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.RemainderULong, ctx => RemainderOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.IncrementSByte, ctx => IncrementOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.IncrementByte, ctx => IncrementOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.IncrementShort, ctx => IncrementOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.IncrementUShort, ctx => IncrementOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.IncrementInt, ctx => IncrementOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.IncrementUInt, ctx => IncrementOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.IncrementLong, ctx => IncrementOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.IncrementULong, ctx => IncrementOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.IncrementSByteClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.IncrementByteClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.IncrementShortClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.IncrementUShortClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.IncrementIntClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.IncrementUIntClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.IncrementLongClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.IncrementULongClamped, ctx => IncrementClampedOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.DecrementSByte, ctx => DecrementOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.DecrementByte, ctx => DecrementOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.DecrementShort, ctx => DecrementOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.DecrementUShort, ctx => DecrementOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.DecrementInt, ctx => DecrementOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.DecrementUInt, ctx => DecrementOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.DecrementLong, ctx => DecrementOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.DecrementULong, ctx => DecrementOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.DecrementSByteClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.DecrementByteClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.DecrementShortClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.DecrementUShortClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.DecrementIntClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.DecrementUIntClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.DecrementLongClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.DecrementULongClamped, ctx => DecrementClampedOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.BitwiseAndSByte, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.BitwiseAndByte, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.BitwiseAndShort, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.BitwiseAndUShort, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.BitwiseAndInt, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.BitwiseAndUInt, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.BitwiseAndLong, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.BitwiseAndULong, ctx => BitwiseAndOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.BitwiseOrSByte, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.BitwiseOrByte, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.BitwiseOrShort, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.BitwiseOrUShort, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.BitwiseOrInt, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.BitwiseOrUInt, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.BitwiseOrLong, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.BitwiseOrULong, ctx => BitwiseOrOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.BitwiseXorSByte, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.BitwiseXorByte, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.BitwiseXorShort, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.BitwiseXorUShort, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.BitwiseXorInt, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.BitwiseXorUInt, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.BitwiseXorLong, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.BitwiseXorULong, ctx => BitwiseXorOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.SetBitSByte, ctx => SetBitOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.SetBitByte, ctx => SetBitOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.SetBitShort, ctx => SetBitOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.SetBitUShort, ctx => SetBitOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.SetBitInt, ctx => SetBitOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.SetBitUInt, ctx => SetBitOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.SetBitLong, ctx => SetBitOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.SetBitULong, ctx => SetBitOpcodeHandler(ctx, VariableWidth.ULong) },
+                       { FieldScriptOpCode.UnsetBitSByte, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.SByte) },
+                       { FieldScriptOpCode.UnsetBitByte, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.Byte) },
+                       { FieldScriptOpCode.UnsetBitShort, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.Short) },
+                       { FieldScriptOpCode.UnsetBitUShort, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.UnsetBitInt, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.Int) },
+                       { FieldScriptOpCode.UnsetBitUInt, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.UInt) },
+                       { FieldScriptOpCode.UnsetBitLong, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.Long) },
+                       { FieldScriptOpCode.UnsetBitULong, ctx => UnsetBitOpcodeHandler(ctx, VariableWidth.ULong) },
                        { FieldScriptOpCode.GetRandomNumber, GetRandomNumberOpcodeHandler },
                        { FieldScriptOpCode.RandomNumberSeed, RandomNumberSeedOpcodeHandler },
-                       // { FieldScriptOpCode.GetLowByte, GetLowByteOpcodeHandler },
-                       // { FieldScriptOpCode.GetHighByte, GetHighByteOpcodeHandler },
-                       // { FieldScriptOpCode.GetTwoBytes, GetTwoBytesOpcodeHandler },
-                       // { FieldScriptOpCode.Sine, SineOpcodeHandler },
-                       // { FieldScriptOpCode.Cosine, CosineOpcodeHandler },
-                       { FieldScriptOpCode.AssignValueBool, AssignValueBoolOpcodeHandler },
 
                        // Windowing and menu
                        // { FieldScriptOpCode.RunTutorial, RunTutorialOpcodeHandler },
                        // { FieldScriptOpCode.CloseWindow, CloseWindowOpcodeHandler },
-                       // { FieldScriptOpCode.ResizeWindow, ResizeWindowOpcodeHandler },
                        // { FieldScriptOpCode.CreateSpecialWindow, CreateSpecialWindowOpcodeHandler },
                        // { FieldScriptOpCode.SetNumberInWindow, SetNumberInWindowOpcodeHandler },
                        // { FieldScriptOpCode.SetTimeInWindow, SetTimeInWindowOpcodeHandler },
                        { FieldScriptOpCode.ShowDialogueWindow, ShowDialogueWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowTextValue, SetWindowTextValueOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowTextValue16Bit, SetWindowTextValue16BitOpcodeHandler },
                        // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
                        { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
                        // { FieldScriptOpCode.MenuOperations, MenuOperationsOpcodeHandler },
                        { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
                        { FieldScriptOpCode.CreateDialogueWindow, CreateDialogueWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowPosition, SetWindowPositionOpcodeHandler },
-                       // { FieldScriptOpCode.SetWindowModes, SetWindowModesOpcodeHandler },
-                       // { FieldScriptOpCode.ResetWindow, ResetWindowOpcodeHandler },
-                       // { FieldScriptOpCode.SetNumberOfRowsInWindow, SetNumberOfRowsInWindowOpcodeHandler },
                        // { FieldScriptOpCode.SetMessageSpeed, SetMessageSpeedOpcodeHandler },
 
                        // Party and inventory
@@ -191,10 +290,7 @@ namespace RPGFramework.Field
                        // Field models and animation
                        // { FieldScriptOpCode.JoinPartyToLeader, JoinPartyToLeaderOpcodeHandler },
                        // { FieldScriptOpCode.SplitPartyFromLeader, SplitPartyFromLeaderOpcodeHandler },
-                       // { FieldScriptOpCode.CharacterGraphicsOp, CharacterGraphicsOpOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForGraphicsOp, WaitForGraphicsOpOpcodeHandler },
                        // { FieldScriptOpCode.MoveToPartyMember, MoveToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.SlipAgainstWalls, SlipAgainstWallsOpcodeHandler },
                        { FieldScriptOpCode.LockInput, LockInputOpcodeHandler },
                        // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
                        // { FieldScriptOpCode.CollisionDetection, CollisionDetectionOpcodeHandler },
@@ -231,17 +327,12 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
                        // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
                        // { FieldScriptOpCode.Collidability, CollidabilityOpcodeHandler },
-                       // { FieldScriptOpCode.LineTriggerInitialization, LineTriggerInitializationOpcodeHandler },
-                       // { FieldScriptOpCode.LineTriggerActivation, LineTriggerActivationOpcodeHandler },
-                       // { FieldScriptOpCode.SetLine, SetLineOpcodeHandler },
                        // { FieldScriptOpCode.FixFacingForward, FixFacingForwardOpcodeHandler },
                        // { FieldScriptOpCode.SetAnimationID, SetAnimationIDOpcodeHandler },
                        // { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
                        // { FieldScriptOpCode.FlushMovement, FlushMovementOpcodeHandler },
                        // { FieldScriptOpCode.SetRunningEnabled, SetRunningEnabledOpcodeHandler },
                        // { FieldScriptOpCode.SetFootstepSound, SetFootstepSoundOpcodeHandler },
-                       // { FieldScriptOpCode.LockWalkmeshRegion, LockWalkmeshRegionOpcodeHandler },
-                       // { FieldScriptOpCode.UnlockWalkmeshRegion, UnlockWalkmeshRegionOpcodeHandler },
                        // { FieldScriptOpCode.InitialiseHeadFacing, InitialiseHeadFacingOpcodeHandler },
                        // { FieldScriptOpCode.SetHeadFacingEntity, SetHeadFacingEntityOpcodeHandler },
                        // { FieldScriptOpCode.SetHeadFacingPlayer, SetHeadFacingPlayerOpcodeHandler },
@@ -249,14 +340,7 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetHeadPose, SetHeadPoseOpcodeHandler },
                        // { FieldScriptOpCode.StopHeadFacing, StopHeadFacingOpcodeHandler },
 
-                       // Background and screen tint
-                       // { FieldScriptOpCode.SetBackgroundDepth, SetBackgroundDepthOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollBackground, ScrollBackgroundOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundOn, BackgroundOnOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundOff, BackgroundOffOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundRollForward, BackgroundRollForwardOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundRollBackward, BackgroundRollBackwardOpcodeHandler },
-                       // { FieldScriptOpCode.BackgroundClear, BackgroundClearOpcodeHandler },
+                       // Screen tint
                        // { FieldScriptOpCode.SetShadeLevel, SetShadeLevelOpcodeHandler },
                        // { FieldScriptOpCode.SubtractiveScreenFade, SubtractiveScreenFadeOpcodeHandler },
 
@@ -282,16 +366,8 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
                        // { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
                        // { FieldScriptOpCode.PlayAmbientLoop, PlayAmbientLoopOpcodeHandler },
-                       // { FieldScriptOpCode.StopSound, StopSoundOpcodeHandler },
-                       // { FieldScriptOpCode.PreserveSoundChannel, PreserveSoundChannelOpcodeHandler },
-                       // { FieldScriptOpCode.SetSoundVolume, SetSoundVolumeOpcodeHandler },
-                       // { FieldScriptOpCode.FadeSoundVolume, FadeSoundVolumeOpcodeHandler },
-                       // { FieldScriptOpCode.SetSoundPan, SetSoundPanOpcodeHandler },
-                       // { FieldScriptOpCode.FadeSoundPan, FadeSoundPanOpcodeHandler },
                        // { FieldScriptOpCode.SetAllSoundVolume, SetAllSoundVolumeOpcodeHandler },
                        // { FieldScriptOpCode.FadeAllSoundVolume, FadeAllSoundVolumeOpcodeHandler },
-                       // { FieldScriptOpCode.SetAllSoundPan, SetAllSoundPanOpcodeHandler },
-                       // { FieldScriptOpCode.FadeAllSoundPan, FadeAllSoundPanOpcodeHandler },
                        { FieldScriptOpCode.SetMusicStemState, SetMusicStemStateOpcodeHandler },
 
                        // Video
@@ -728,26 +804,80 @@ namespace RPGFramework.Field
             return value;
         }
 
-        /// <summary>
-        /// Decode a destination variable and one byte argument: sources byte, destination address, then the
-        /// argument as an immediate or a bank address.
-        /// </summary>
-        private void ReadBinaryArgumentsByte(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress, out byte argument)
+        private void WriteVariableInt(ScriptExecutionContext ctx, MemoryBank bank, ushort address, int value)
         {
-            byte sources = ReadByte(ctx);
+            if (bank == MemoryBank.Temp)
+            {
+                TempOf(ctx).WriteInt(address, value);
+                return;
+            }
 
-            destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
-            destinationAddress = ReadUshort(ctx);
-            argument           = ReadArgumentByte(ctx, GetSecondArgumentSource(sources));
+            m_MemoryService.WriteInt(bank, address, value);
         }
 
-        private void ReadBinaryArgumentsUshort(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress, out ushort argument)
+        private void WriteVariableFloat(ScriptExecutionContext ctx, MemoryBank bank, ushort address, float value)
         {
-            byte sources = ReadByte(ctx);
+            if (bank == MemoryBank.Temp)
+            {
+                TempOf(ctx).WriteFloat(address, value);
+                return;
+            }
 
-            destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
-            destinationAddress = ReadUshort(ctx);
-            argument           = ReadArgumentUshort(ctx, GetSecondArgumentSource(sources));
+            m_MemoryService.WriteFloat(bank, address, value);
+        }
+
+        private ulong ReadVariableUlong(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
+        {
+            ulong value = bank == MemoryBank.Temp ? TempOf(ctx).ReadUlong(address) : m_MemoryService.ReadUlong(bank, address);
+
+            return value;
+        }
+
+        private void WriteVariableUlong(ScriptExecutionContext ctx, MemoryBank bank, ushort address, ulong value)
+        {
+            if (bank == MemoryBank.Temp)
+            {
+                TempOf(ctx).WriteUlong(address, value);
+                return;
+            }
+
+            m_MemoryService.WriteUlong(bank, address, value);
+        }
+
+        // A variable's bits at its width, zero-extended.
+        private ulong ReadVariableBits(ScriptExecutionContext ctx, MemoryBank bank, ushort address, VariableWidth width)
+        {
+            ulong bits = width.GetByteCount() switch
+                         {
+                             1 => ReadVariableByte(ctx, bank, address),
+                             2 => ReadVariableUshort(ctx, bank, address),
+                             4 => (uint)ReadVariableInt(ctx, bank, address),
+                             _ => ReadVariableUlong(ctx, bank, address)
+                         };
+
+            return bits;
+        }
+
+        private void WriteVariableBits(ScriptExecutionContext ctx, MemoryBank bank, ushort address, VariableWidth width, ulong bits)
+        {
+            switch (width.GetByteCount())
+            {
+                case 1:
+                    WriteVariableByte(ctx, bank, address, (byte)bits);
+                    return;
+
+                case 2:
+                    WriteVariableUshort(ctx, bank, address, (ushort)bits);
+                    return;
+
+                case 4:
+                    WriteVariableInt(ctx, bank, address, unchecked((int)bits));
+                    return;
+
+                default:
+                    WriteVariableUlong(ctx, bank, address, bits);
+                    return;
+            }
         }
 
         /// <summary>
@@ -759,6 +889,161 @@ namespace RPGFramework.Field
 
             destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
             destinationAddress = ReadUshort(ctx);
+        }
+
+        /// <summary>
+        /// Decode a bank-layout destination: the sources byte and the destination's address. The value's source is
+        /// the sources byte's low nibble.
+        /// </summary>
+        private static void DecodeDestination(ScriptExecutionContext ctx, out MemoryBank bank, out ushort address, out byte valueSource)
+        {
+            byte sources = ReadByte(ctx);
+
+            bank        = ToMemoryBank(GetFirstArgumentSource(sources));
+            address     = ReadUshort(ctx);
+            valueSource = GetSecondArgumentSource(sources);
+        }
+
+        private void ApplyBinary(ScriptExecutionContext ctx, VariableWidth width, Func<ulong, ulong, VariableWidth, ulong> integer, Func<float, float, float> real)
+        {
+            DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
+
+            if (width == VariableWidth.Float)
+            {
+                float value = ReadFloatOperand(ctx, valueSource);
+
+                WriteVariableFloat(ctx, bank, address, real(ReadVariableFloat(ctx, bank, address), value));
+                return;
+            }
+
+            ulong integerValue = ReadIntegerOperand(ctx, valueSource, width);
+            ulong current      = ReadVariableBits(ctx, bank, address, width);
+
+            WriteVariableBits(ctx, bank, address, width, integer(current, integerValue, width));
+        }
+
+        private void ApplyUnary(ScriptExecutionContext ctx, VariableWidth width, Func<ulong, VariableWidth, ulong> integer)
+        {
+            ReadDestination(ctx, out MemoryBank bank, out ushort address);
+
+            ulong current = ReadVariableBits(ctx, bank, address, width);
+
+            WriteVariableBits(ctx, bank, address, width, integer(current, width));
+        }
+
+        private void ChangeBit(ScriptExecutionContext ctx, VariableWidth width, bool set, string handlerName)
+        {
+            DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte indexSource);
+
+            ulong index   = ReadIntegerOperand(ctx, indexSource, VariableWidth.Byte);
+            ulong current = ReadVariableBits(ctx, bank, address, width);
+
+            if (!ScriptArithmetic.TrySetBit(current, index, width, set, out ulong result))
+            {
+                Debug.LogError($"{nameof(FieldVM)}::{handlerName} Bit index [{index}] is out of range for a {width} at [{bank}:{address}]");
+                return;
+            }
+
+            WriteVariableBits(ctx, bank, address, width, result);
+        }
+
+        // A bank-layout value is an immediate at the argument's width, or the width of the variable it reads followed
+        // by that variable's address. A narrower variable is converted as a cast would convert it.
+        private ulong ReadIntegerOperand(ScriptExecutionContext ctx, byte source, VariableWidth width)
+        {
+            if (source == ARGUMENT_IMMEDIATE)
+            {
+                ulong immediate = ReadImmediateBits(ctx, width);
+
+                return immediate;
+            }
+
+            VariableWidth variableWidth = (VariableWidth)ReadByte(ctx);
+            ushort        address       = ReadUshort(ctx);
+
+            ulong bits  = ReadVariableBits(ctx, ToMemoryBank(source), address, variableWidth);
+            ulong value = ScriptArithmetic.Convert(bits, variableWidth, width);
+
+            return value;
+        }
+
+        private float ReadFloatOperand(ScriptExecutionContext ctx, byte source)
+        {
+            if (source == ARGUMENT_IMMEDIATE)
+            {
+                float immediate = ReadFloat(ctx);
+
+                return immediate;
+            }
+
+            VariableWidth variableWidth = (VariableWidth)ReadByte(ctx);
+            MemoryBank    bank          = ToMemoryBank(source);
+            ushort        address       = ReadUshort(ctx);
+
+            float value = variableWidth == VariableWidth.Float
+                              ? ReadVariableFloat(ctx, bank, address)
+                              : ScriptArithmetic.ToFloat(ReadVariableBits(ctx, bank, address, variableWidth), variableWidth);
+
+            return value;
+        }
+
+        private bool ReadBoolOperand(ScriptExecutionContext ctx, byte source)
+        {
+            if (source == ARGUMENT_IMMEDIATE)
+            {
+                bool immediate = ReadBool(ctx);
+
+                return immediate;
+            }
+
+            // The width byte: a bool only ever reads a bool.
+            ReadByte(ctx);
+
+            ushort address = ReadUshort(ctx);
+            bool   value   = ReadVariableBool(ctx, ToMemoryBank(source), address);
+
+            return value;
+        }
+
+        private static ulong ReadImmediateBits(ScriptExecutionContext ctx, VariableWidth width)
+        {
+            ulong bits = width.GetByteCount() switch
+                         {
+                             1 => ReadByte(ctx),
+                             2 => ReadUshort(ctx),
+                             4 => (uint)ReadInt(ctx),
+                             _ => ReadUlong(ctx)
+                         };
+
+            return bits;
+        }
+
+        private static bool CompareBools(bool a, bool b, ScriptComparison comparison)
+        {
+            bool result = comparison switch
+                          {
+                              ScriptComparison.Equal    => a == b,
+                              ScriptComparison.NotEqual => a != b,
+                              _                         => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareBools)} Unknown comparison [{comparison}]")
+                          };
+
+            return result;
+        }
+
+        private static bool CompareFloats(float a, float b, ScriptComparison comparison)
+        {
+            bool result = comparison switch
+                          {
+                              ScriptComparison.Equal              => a == b,
+                              ScriptComparison.NotEqual           => a != b,
+                              ScriptComparison.GreaterThan        => a > b,
+                              ScriptComparison.LessThan           => a < b,
+                              ScriptComparison.GreaterThanOrEqual => a >= b,
+                              ScriptComparison.LessThanOrEqual    => a <= b,
+                              _                                   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareFloats)} Unknown comparison [{comparison}]")
+                          };
+
+            return result;
         }
 
         /// <summary>
@@ -868,6 +1153,18 @@ namespace RPGFramework.Field
             return value;
         }
 
+        // Already satisfied: carry on next frame. Otherwise wait, and the frame the wait ends on is spent too.
+        private static void WaitForRequest(ScriptExecutionContext ctx, Func<bool> isSatisfied)
+        {
+            if (isSatisfied())
+            {
+                ctx.YieldRequested = true;
+                return;
+            }
+
+            ctx.Block(new WaitUntilBlock(isSatisfied));
+        }
+
         /// <summary>
         /// End the script. Execute frees the slot once this has run, so there is nothing to do here.
         /// </summary>
@@ -875,6 +1172,7 @@ namespace RPGFramework.Field
         {
             // noop
         }
+
 
         /// <summary>
         /// Put a script in an entity's priority slot and carry on; refused if the slot is busy. A request on
@@ -893,6 +1191,7 @@ namespace RPGFramework.Field
                 ctx.YieldRequested = true;
             }
         }
+
 
         /// <summary>
         /// Request a script once. If the slot is busy, carry on. If it is accepted, wait until the entity is
@@ -913,6 +1212,7 @@ namespace RPGFramework.Field
             WaitForRequest(ctx, HasStarted);
         }
 
+
         /// <summary>
         /// Request a script once. If the slot is busy, carry on. If it is accepted, wait until the entity is
         /// running something less urgent than it — the requested script has returned.
@@ -931,17 +1231,6 @@ namespace RPGFramework.Field
             WaitForRequest(ctx, HasFinished);
         }
 
-        // Already satisfied: carry on next frame. Otherwise wait, and the frame the wait ends on is spent too.
-        private static void WaitForRequest(ScriptExecutionContext ctx, Func<bool> isSatisfied)
-        {
-            if (isSatisfied())
-            {
-                ctx.YieldRequested = true;
-                return;
-            }
-
-            ctx.Block(new WaitUntilBlock(isSatisfied));
-        }
 
         /// <summary>
         /// Hand this slot over to another script. The script being replaced is the one asking, so unlike
@@ -964,6 +1253,7 @@ namespace RPGFramework.Field
             entity.ReplaceScriptInSlot(targetScriptId, ctx.Priority);
         }
 
+
         /// <summary>
         /// Move the instruction pointer by a signed offset, counted from the end of this instruction.
         /// </summary>
@@ -972,6 +1262,7 @@ namespace RPGFramework.Field
             int offset = ReadInt(ctx);
             ctx.InstructionPointer += offset;
         }
+
 
         /// <summary>
         /// Move the instruction pointer to an absolute position in the script.
@@ -982,73 +1273,53 @@ namespace RPGFramework.Field
             ctx.InstructionPointer = target;
         }
 
+
         /// <summary>
-        /// Compare two bytes, skipping the IF body when the comparison fails.
+        /// Compare two values, skipping the IF body when the comparison fails.
         /// </summary>
-        private void CompareTwoByteValuesOpcodeHandler(ScriptExecutionContext ctx)
+        private void CompareOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
             byte sources = ReadByte(ctx);
+            byte aSource = GetFirstArgumentSource(sources);
+            byte bSource = GetSecondArgumentSource(sources);
 
-            byte a = ReadArgumentByte(ctx, GetFirstArgumentSource(sources));
-            byte b = ReadArgumentByte(ctx, GetSecondArgumentSource(sources));
+            bool result;
 
-            byte comparisonType = ReadByte(ctx);
-            byte jumpAmount     = ReadByte(ctx);
-
-            bool result = (ScriptComparison)comparisonType switch
-                          {
-                              ScriptComparison.Equal              => a              == b,
-                              ScriptComparison.NotEqual           => a              != b,
-                              ScriptComparison.GreaterThan        => a              > b,
-                              ScriptComparison.LessThan           => a              < b,
-                              ScriptComparison.GreaterThanOrEqual => a              >= b,
-                              ScriptComparison.LessThanOrEqual    => a              <= b,
-                              ScriptComparison.AnyBitInCommon     => (a & b)        != 0,
-                              ScriptComparison.AnyBitDifferent    => (a ^ b)        != 0,
-                              ScriptComparison.AnyBitSet          => (a | b)        != 0,
-                              ScriptComparison.BitIsSet           => (a & (1 << b)) != 0,
-                              ScriptComparison.BitIsClear         => (a & (1 << b)) == 0,
-                              _                                   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoByteValuesOpcodeHandler)} Unknown comparison [{comparisonType}]")
-                          };
-
-            if (!result)
+            switch (width)
             {
-                ctx.InstructionPointer += jumpAmount;
+                case VariableWidth.Bool:
+                {
+                    bool a = ReadBoolOperand(ctx, aSource);
+                    bool b = ReadBoolOperand(ctx, bSource);
+
+                    result = CompareBools(a, b, (ScriptComparison)ReadByte(ctx));
+                    break;
+                }
+
+                case VariableWidth.Float:
+                {
+                    float a = ReadFloatOperand(ctx, aSource);
+                    float b = ReadFloatOperand(ctx, bSource);
+
+                    result = CompareFloats(a, b, (ScriptComparison)ReadByte(ctx));
+                    break;
+                }
+
+                default:
+                {
+                    ulong a = ReadIntegerOperand(ctx, aSource, width);
+                    ulong b = ReadIntegerOperand(ctx, bSource, width);
+
+                    result = ScriptArithmetic.Compare(a, b, width, (ScriptComparison)ReadByte(ctx));
+                    break;
+                }
             }
-        }
 
-        /// <summary>
-        /// Compare two ints, skipping the IF body when the comparison fails.
-        /// </summary>
-        private void CompareTwoIntValuesOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            byte sources = ReadByte(ctx);
-
-            int a = ReadArgumentInt(ctx, GetFirstArgumentSource(sources));
-            int b = ReadArgumentInt(ctx, GetSecondArgumentSource(sources));
-
-            byte comparisonType = ReadByte(ctx);
-            byte jumpAmount     = ReadByte(ctx);
-
-            bool result = (ScriptComparison)comparisonType switch
-                          {
-                              ScriptComparison.Equal              => a              == b,
-                              ScriptComparison.NotEqual           => a              != b,
-                              ScriptComparison.GreaterThan        => a              > b,
-                              ScriptComparison.LessThan           => a              < b,
-                              ScriptComparison.GreaterThanOrEqual => a              >= b,
-                              ScriptComparison.LessThanOrEqual    => a              <= b,
-                              ScriptComparison.AnyBitInCommon     => (a & b)        != 0,
-                              ScriptComparison.AnyBitDifferent    => (a ^ b)        != 0,
-                              ScriptComparison.AnyBitSet          => (a | b)        != 0,
-                              ScriptComparison.BitIsSet           => (a & (1 << b)) != 0,
-                              ScriptComparison.BitIsClear         => (a & (1 << b)) == 0,
-                              _                                   => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoIntValuesOpcodeHandler)} Unknown comparison [{comparisonType}]")
-                          };
+            int jumpDistance = ReadInt(ctx);
 
             if (!result)
             {
-                ctx.InstructionPointer += jumpAmount;
+                ctx.InstructionPointer += jumpDistance;
             }
         }
 
@@ -1061,6 +1332,7 @@ namespace RPGFramework.Field
             ctx.YieldRequested = true;
         }
 
+
         /// <summary>
         /// Block this script for a number of seconds.
         /// </summary>
@@ -1071,6 +1343,7 @@ namespace RPGFramework.Field
             ctx.Block(new WaitSecondsBlock(seconds));
         }
 
+
         /// <summary>
         /// Do nothing.
         /// </summary>
@@ -1079,31 +1352,6 @@ namespace RPGFramework.Field
             // noop
         }
 
-        /// <summary>
-        /// Compare two bools with == or !=, skipping the IF body when the comparison fails.
-        /// </summary>
-        private void CompareTwoBoolValuesOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            byte sources = ReadByte(ctx);
-
-            bool a = ReadArgumentBool(ctx, GetFirstArgumentSource(sources));
-            bool b = ReadArgumentBool(ctx, GetSecondArgumentSource(sources));
-
-            byte comparisonType = ReadByte(ctx);
-            byte jumpAmount     = ReadByte(ctx);
-
-            bool result = (ScriptComparison)comparisonType switch
-                          {
-                              ScriptComparison.Equal    => a == b,
-                              ScriptComparison.NotEqual => a != b,
-                              _ => throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(CompareTwoBoolValuesOpcodeHandler)} Unknown comparison [{comparisonType}]")
-                          };
-
-            if (!result)
-            {
-                ctx.InstructionPointer += jumpAmount;
-            }
-        }
 
         /// <summary>
         /// Set the arena, enemy group, flags and enemy level for the next battle.
@@ -1121,6 +1369,7 @@ namespace RPGFramework.Field
             RequestSetBattleModeOptions?.Invoke(args);
         }
 
+
         /// <summary>
         /// Ask for a transition to another field, entering at one of its spawn points. The script stops here:
         /// nothing after a map jump runs.
@@ -1137,6 +1386,7 @@ namespace RPGFramework.Field
             ctx.Block(new WaitUntilBlock(() => false));
         }
 
+
         /// <summary>
         /// Ask for the battle set up by SET_BATTLE_MODE_OPTIONS to begin.
         /// </summary>
@@ -1144,6 +1394,7 @@ namespace RPGFramework.Field
         {
             RequestStartBattle?.Invoke();
         }
+
 
         /// <summary>
         /// Turn every gateway trigger in the field on or off.
@@ -1155,450 +1406,192 @@ namespace RPGFramework.Field
             RequestSetGatewayTriggersActive?.Invoke(enabled);
         }
 
-        /// <summary>
-        /// Write a byte to a variable.
-        /// </summary>
-        private void AssignValue8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            WriteVariableByte(ctx, bank, address, argument);
-        }
 
         /// <summary>
-        /// Write a ushort to a variable.
+        /// Set a variable to a value.
         /// </summary>
-        private void AssignValue16BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
+            DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
 
-            WriteVariableUshort(ctx, bank, address, argument);
-        }
-
-        /// <summary>
-        /// Set one bit of a byte variable. A bit index above 7 is logged and the variable left unchanged.
-        /// </summary>
-        private void SetBitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
-
-            if (bitIndex > 7)
+            switch (width)
             {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(SetBitOpcodeHandler)} Bit index [{bitIndex}] is out of range for a byte at [{bank}:{address}]");
+                case VariableWidth.Bool:
+                    WriteVariableBool(ctx, bank, address, ReadBoolOperand(ctx, valueSource));
+                    return;
+
+                case VariableWidth.Float:
+                    WriteVariableFloat(ctx, bank, address, ReadFloatOperand(ctx, valueSource));
+                    return;
+
+                default:
+                    WriteVariableBits(ctx, bank, address, width, ReadIntegerOperand(ctx, valueSource, width));
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// Add a value to a variable, wrapping if it overflows.
+        /// </summary>
+        private void AddOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        {
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.Add(current, value, w), (current, value) => current + value);
+        }
+
+        /// <summary>
+        /// Add a value to a variable, stopping at its limit.
+        /// </summary>
+        private void AddClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        {
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.AddClamped(current, value, w), null);
+        }
+
+        /// <summary>
+        /// Subtract a value from a variable, wrapping if it overflows.
+        /// </summary>
+        private void SubtractOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        {
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.Subtract(current, value, w), (current, value) => current - value);
+        }
+
+        /// <summary>
+        /// Subtract a value from a variable, stopping at its limit.
+        /// </summary>
+        private void SubtractClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        {
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.SubtractClamped(current, value, w), null);
+        }
+
+        /// <summary>
+        /// Multiply a variable by a value, wrapping if it overflows.
+        /// </summary>
+        private void MultiplyOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        {
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.Multiply(current, value, w), (current, value) => current * value);
+        }
+
+        /// <summary>
+        /// Divide a variable by a value. Dividing by zero is logged and the variable left unchanged.
+        /// </summary>
+        private void DivideOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        {
+            DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
+
+            if (width == VariableWidth.Float)
+            {
+                float divisor = ReadFloatOperand(ctx, valueSource);
+
+                if (divisor == 0f)
+                {
+                    Debug.LogError($"{nameof(FieldVM)}::{nameof(DivideOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
+                    return;
+                }
+
+                WriteVariableFloat(ctx, bank, address, ReadVariableFloat(ctx, bank, address) / divisor);
                 return;
             }
 
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current | (1 << bitIndex));
+            ulong value   = ReadIntegerOperand(ctx, valueSource, width);
+            ulong current = ReadVariableBits(ctx, bank, address, width);
 
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Clear one bit of a byte variable. A bit index above 7 is logged and the variable left unchanged.
-        /// </summary>
-        private void UnsetBitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte bitIndex);
-
-            if (bitIndex > 7)
+            if (!ScriptArithmetic.TryDivide(current, value, width, out ulong quotient))
             {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(UnsetBitOpcodeHandler)} Bit index [{bitIndex}] is out of range for a byte at [{bank}:{address}]");
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(DivideOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
                 return;
             }
 
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current & ~(1 << bitIndex));
-
-            WriteVariableByte(ctx, bank, address, result);
+            WriteVariableBits(ctx, bank, address, width, quotient);
         }
 
         /// <summary>
-        /// Add to a byte variable, wrapping on overflow.
+        /// Replace a variable with its remainder after dividing by a value. Dividing by zero is logged and the variable left unchanged.
         /// </summary>
-        private void Addition8BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void RemainderOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
+            DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
 
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current + argument);
+            ulong value   = ReadIntegerOperand(ctx, valueSource, width);
+            ulong current = ReadVariableBits(ctx, bank, address, width);
 
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Add to a ushort variable, wrapping on overflow.
-        /// </summary>
-        private void Addition16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current + argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Add to a byte variable, stopping at 255.
-        /// </summary>
-        private void Addition8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            int  current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)Math.Min(current + argument, byte.MaxValue);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Add to a ushort variable, stopping at 65535.
-        /// </summary>
-        private void Addition16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            int    current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)Math.Min(current + argument, ushort.MaxValue);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract from a byte variable, wrapping below zero.
-        /// </summary>
-        private void Subtraction8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current - argument);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract from a ushort variable, wrapping below zero.
-        /// </summary>
-        private void Subtraction16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current - argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract from a byte variable, stopping at 0.
-        /// </summary>
-        private void Subtraction8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            int  current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)Math.Max(current - argument, 0);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract from a ushort variable, stopping at 0.
-        /// </summary>
-        private void Subtraction16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            int    current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)Math.Max(current - argument, 0);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Multiply a byte variable, wrapping on overflow.
-        /// </summary>
-        private void Multiplication8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current * argument);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Multiply a ushort variable, wrapping on overflow.
-        /// </summary>
-        private void Multiplication16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current * argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Divide a byte variable. Dividing by zero is logged and the variable left unchanged.
-        /// </summary>
-        private void Division8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            if (argument == 0)
+            if (!ScriptArithmetic.TryRemainder(current, value, width, out ulong remainder))
             {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Division8BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(RemainderOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
                 return;
             }
 
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current / argument);
-
-            WriteVariableByte(ctx, bank, address, result);
+            WriteVariableBits(ctx, bank, address, width, remainder);
         }
 
         /// <summary>
-        /// Divide a ushort variable. Dividing by zero is logged and the variable left unchanged.
+        /// Add one to a variable, wrapping if it overflows.
         /// </summary>
-        private void Division16BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void IncrementOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            if (argument == 0)
-            {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Division16BitOpcodeHandler)} Divide by zero at [{bank}:{address}], leaving the value unchanged");
-                return;
-            }
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current / argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
+            ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.Add(current, 1, w));
         }
 
         /// <summary>
-        /// Replace a byte variable with its remainder. A zero divisor is logged and the variable left unchanged.
+        /// Add one to a variable, stopping at its limit.
         /// </summary>
-        private void Remainder8BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void IncrementClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            if (argument == 0)
-            {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder8BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
-                return;
-            }
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current % argument);
-
-            WriteVariableByte(ctx, bank, address, result);
+            ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.AddClamped(current, 1, w));
         }
 
         /// <summary>
-        /// Replace a ushort variable with its remainder. A zero divisor is logged and the variable left unchanged.
+        /// Subtract one from a variable, wrapping if it overflows.
         /// </summary>
-        private void Remainder16BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void DecrementOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            if (argument == 0)
-            {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(Remainder16BitOpcodeHandler)} Modulo by zero at [{bank}:{address}], leaving the value unchanged");
-                return;
-            }
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current % argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
+            ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.Subtract(current, 1, w));
         }
 
         /// <summary>
-        /// Bitwise AND a byte variable with the argument.
+        /// Subtract one from a variable, stopping at its limit.
         /// </summary>
-        private void BitwiseAnd8BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void DecrementClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current & argument);
-
-            WriteVariableByte(ctx, bank, address, result);
+            ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.SubtractClamped(current, 1, w));
         }
 
         /// <summary>
-        /// Bitwise AND a ushort variable with the argument.
+        /// Bitwise AND a variable with a value.
         /// </summary>
-        private void BitwiseAnd16BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void BitwiseAndOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current & argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.BitwiseAnd(current, value, w), null);
         }
 
         /// <summary>
-        /// Bitwise OR a byte variable with the argument.
+        /// Bitwise OR a variable with a value.
         /// </summary>
-        private void BitwiseOr8BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void BitwiseOrOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current | argument);
-
-            WriteVariableByte(ctx, bank, address, result);
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.BitwiseOr(current, value, w), null);
         }
 
         /// <summary>
-        /// Bitwise OR a ushort variable with the argument.
+        /// Bitwise XOR a variable with a value.
         /// </summary>
-        private void BitwiseOr16BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void BitwiseXorOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current | argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
+            ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.BitwiseXor(current, value, w), null);
         }
 
         /// <summary>
-        /// Bitwise XOR a byte variable with the argument.
+        /// Set one bit of a variable. An index past its last bit is logged and the variable left unchanged.
         /// </summary>
-        private void BitwiseXor8BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetBitOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current ^ argument);
-
-            WriteVariableByte(ctx, bank, address, result);
+            ChangeBit(ctx, width, true, nameof(SetBitOpcodeHandler));
         }
 
         /// <summary>
-        /// Bitwise XOR a ushort variable with the argument.
+        /// Clear one bit of a variable. An index past its last bit is logged and the variable left unchanged.
         /// </summary>
-        private void BitwiseXor16BitOpcodeHandler(ScriptExecutionContext ctx)
+        private void UnsetBitOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
         {
-            ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current ^ argument);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Add one to a byte variable, wrapping on overflow.
-        /// </summary>
-        private void Increment8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current + 1);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Add one to a ushort variable, wrapping on overflow.
-        /// </summary>
-        private void Increment16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current + 1);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Add one to a byte variable, stopping at 255.
-        /// </summary>
-        private void Increment8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = current == byte.MaxValue ? current : (byte)(current + 1);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Add one to a ushort variable, stopping at 65535.
-        /// </summary>
-        private void Increment16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = current == ushort.MaxValue ? current : (ushort)(current + 1);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract one from a byte variable, wrapping below zero.
-        /// </summary>
-        private void Decrement8BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = (byte)(current - 1);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract one from a ushort variable, wrapping below zero.
-        /// </summary>
-        private void Decrement16BitOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = (ushort)(current - 1);
-
-            WriteVariableUshort(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract one from a byte variable, stopping at 0.
-        /// </summary>
-        private void Decrement8BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            byte current = ReadVariableByte(ctx, bank, address);
-            byte result  = current == byte.MinValue ? current : (byte)(current - 1);
-
-            WriteVariableByte(ctx, bank, address, result);
-        }
-
-        /// <summary>
-        /// Subtract one from a ushort variable, stopping at 0.
-        /// </summary>
-        private void Decrement16BitClampedOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            ReadDestination(ctx, out MemoryBank bank, out ushort address);
-
-            ushort current = ReadVariableUshort(ctx, bank, address);
-            ushort result  = current == ushort.MinValue ? current : (ushort)(current - 1);
-
-            WriteVariableUshort(ctx, bank, address, result);
+            ChangeBit(ctx, width, false, nameof(UnsetBitOpcodeHandler));
         }
 
         /// <summary>
@@ -1613,30 +1606,18 @@ namespace RPGFramework.Field
             WriteVariableByte(ctx, bank, address, result);
         }
 
+
         /// <summary>
         /// Reseed the VM's random sequence, so a script can be made deterministic.
         /// </summary>
         private void RandomNumberSeedOpcodeHandler(ScriptExecutionContext ctx)
         {
             byte sources = ReadByte(ctx);
-            int  seed    = ReadArgumentInt(ctx, GetSecondArgumentSource(sources));
+            int  seed    = unchecked((int)ReadIntegerOperand(ctx, GetSecondArgumentSource(sources), VariableWidth.Int));
 
             m_Random = new System.Random(seed);
         }
 
-        /// <summary>
-        /// Write a bool to a variable.
-        /// </summary>
-        private void AssignValueBoolOpcodeHandler(ScriptExecutionContext ctx)
-        {
-            byte sources = ReadByte(ctx);
-
-            MemoryBank bank    = ToMemoryBank(GetFirstArgumentSource(sources));
-            ushort     address = ReadUshort(ctx);
-            bool       value   = ReadArgumentBool(ctx, GetSecondArgumentSource(sources));
-
-            WriteVariableBool(ctx, bank, address, value);
-        }
 
         /// <summary>
         /// Show a dialogue window and block until it closes.
@@ -1651,6 +1632,7 @@ namespace RPGFramework.Field
 
             ctx.Block(new WaitUntilBlock(() => !IsDialogueWindowOpen(dialogueId)));
         }
+
 
         /// <summary>
         /// Ask the player to pick one of several answers and block until they have. The listener stores the
@@ -1676,6 +1658,7 @@ namespace RPGFramework.Field
             ctx.Block(new WaitUntilBlock(() => !IsPlayerMakingAChoice(dialogueId)));
         }
 
+
         /// <summary>
         /// Allow or block opening the main menu.
         /// </summary>
@@ -1685,6 +1668,7 @@ namespace RPGFramework.Field
             bool              enabled = ReadArgumentBool(ctx, ref sources);
             RequestSetMainMenuAccessibility?.Invoke(enabled);
         }
+
 
         /// <summary>
         /// Create a dialogue window at a position and size, without showing it.
@@ -1701,6 +1685,7 @@ namespace RPGFramework.Field
             RequestCreateDialogueWindow?.Invoke(new DialogueWindowArgs(dialogueId, rect));
         }
 
+
         /// <summary>
         /// Lock or unlock player input.
         /// </summary>
@@ -1710,6 +1695,7 @@ namespace RPGFramework.Field
             bool              inputLocked = ReadArgumentBool(ctx, ref sources);
             RequestInputLock?.Invoke(inputLocked);
         }
+
 
         /// <summary>
         /// Turn this entity's interaction trigger on or off.
@@ -1721,6 +1707,7 @@ namespace RPGFramework.Field
             RequestSetInteractionTriggerActive?.Invoke(ctx.EntityId, enabled);
         }
 
+
         /// <summary>
         /// Make this entity the player character.
         /// </summary>
@@ -1728,6 +1715,7 @@ namespace RPGFramework.Field
         {
             RequestSetPlayerEntity?.Invoke(m_Entities[ctx.EntityId]);
         }
+
 
         /// <summary>
         /// Show or hide this entity.
@@ -1739,6 +1727,7 @@ namespace RPGFramework.Field
             RequestSetEntityVisible?.Invoke(ctx.EntityId, isVisible);
         }
 
+
         /// <summary>
         /// Place this entity at a position immediately.
         /// </summary>
@@ -1749,6 +1738,7 @@ namespace RPGFramework.Field
             RequestSetEntityPosition?.Invoke(ctx.EntityId, position);
         }
 
+
         /// <summary>
         /// Set how fast this entity moves.
         /// </summary>
@@ -1758,6 +1748,7 @@ namespace RPGFramework.Field
             float             movementSpeed = ReadArgumentFloat(ctx, ref sources);
             RequestSetEntityMovementSpeed?.Invoke(ctx.EntityId, movementSpeed);
         }
+
 
         /// <summary>
         /// Set this entity's rotation immediately, from Euler angles.
@@ -1771,6 +1762,7 @@ namespace RPGFramework.Field
 
             RequestSetEntityRotation?.Invoke(ctx.EntityId, Quaternion.Euler(x, y, z));
         }
+
 
         /// <summary>
         /// Turn this entity to a rotation over time and block until it finishes.
@@ -1792,6 +1784,7 @@ namespace RPGFramework.Field
             ctx.Block(new WaitUntilBlock(() => !IsEntityRotating(ctx.EntityId)));
         }
 
+
         /// <summary>
         /// Turn this entity to face another entity.
         /// </summary>
@@ -1802,6 +1795,7 @@ namespace RPGFramework.Field
             RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, targetEntityId);
         }
 
+
         /// <summary>
         /// Set the radius around this entity within which the player can interact with it.
         /// </summary>
@@ -1811,6 +1805,7 @@ namespace RPGFramework.Field
             float             radius  = ReadArgumentFloat(ctx, ref sources);
             RequestSetInteractionRange?.Invoke(ctx.EntityId, radius);
         }
+
 
         /// <summary>
         /// Play a music track, starting in one of its stem states.
@@ -1823,6 +1818,7 @@ namespace RPGFramework.Field
             RequestMusic?.Invoke(nameHash, stateNameHash);
         }
 
+
         /// <summary>
         /// Play a sound effect once.
         /// </summary>
@@ -1831,6 +1827,7 @@ namespace RPGFramework.Field
             ulong nameHash = ReadUlong(ctx);
             RequestSfx?.Invoke(nameHash);
         }
+
 
         /// <summary>
         /// Switch the playing music to one of its stem states, fading over the given number of seconds.

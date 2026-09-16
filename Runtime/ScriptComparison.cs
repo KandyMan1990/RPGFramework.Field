@@ -34,6 +34,20 @@
     public static class ScriptComparisonExtensions
     {
         /// <summary>
+        /// The comparisons that test bits, which mean nothing for a float.
+        /// </summary>
+        public static bool IsBitTest(this ScriptComparison comparison)
+        {
+            bool isBitTest = comparison == ScriptComparison.AnyBitInCommon  ||
+                             comparison == ScriptComparison.AnyBitDifferent ||
+                             comparison == ScriptComparison.AnyBitSet       ||
+                             comparison == ScriptComparison.BitIsSet        ||
+                             comparison == ScriptComparison.BitIsClear;
+
+            return isBitTest;
+        }
+
+        /// <summary>
         /// How the comparison is written in a script, so <c>$flag == 1</c> reads as it would anywhere
         /// else. The bit tests have no operator, so they use their names.
         /// </summary>

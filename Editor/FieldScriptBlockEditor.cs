@@ -301,14 +301,14 @@ namespace RPGFramework.Field.Editor
 
             row.Add(control);
 
-            if (ArgumentTypes.TryGetVariableWidth(argument.Type, out _))
+            if (ArgumentTypes.TryGetVariableWidth(argument.Type, argument.Width, out _))
             {
                 row.Add(MakeSmallButton("▼", "Choose a variable", () => ShowVariablePicker(block, argumentIndex, argument)));
             }
 
-            if (HasLiteralControl(argument.Type) && IsVariableToken(block, argumentIndex))
+            if (HasLiteralControl(argument) && IsVariableToken(block, argumentIndex))
             {
-                row.Add(MakeSmallButton("#", "Use a value instead", () => Set(block, argumentIndex, FieldScriptBlock.DefaultFor(argument.Type), true)));
+                row.Add(MakeSmallButton("#", "Use a value instead", () => Set(block, argumentIndex, FieldScriptBlock.DefaultFor(argument), true)));
             }
 
             return row;
@@ -318,7 +318,7 @@ namespace RPGFramework.Field.Editor
         {
             string current = argumentIndex < block.Arguments.Count ? block.Arguments[argumentIndex] : string.Empty;
 
-            if (HasLiteralControl(argument.Type) && IsVariableToken(block, argumentIndex))
+            if (HasLiteralControl(argument) && IsVariableToken(block, argumentIndex))
             {
                 TextField variable = new TextField(label) { value = current };
                 variable.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue));
@@ -329,7 +329,7 @@ namespace RPGFramework.Field.Editor
             switch (argument.Type)
             {
                 case ArgumentType.Bool:
-                case ArgumentType.ValueBool:
+                case ArgumentType.Value when argument.Width == VariableWidth.Bool:
                 {
                     Toggle toggle = new Toggle(label) { value = current == "true" };
                     toggle.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue ? "true" : "false"));
@@ -439,16 +439,19 @@ namespace RPGFramework.Field.Editor
                     // are discoverable instead of having to be known.
                     List<string> choices = new List<string>();
 
-                    bool comparesBools = false;
-
-                    foreach (FieldArgumentInfo other in block.OpCode.Arguments)
-                    {
-                        comparesBools |= other.Type == ArgumentType.ValueBool;
-                    }
+                    // A comparison takes its width from the values either side of it.
+                    VariableWidth comparedWidth = block.OpCode.Arguments[0].Width;
 
                     foreach (ScriptComparison comparison in Enum.GetValues(typeof(ScriptComparison)))
                     {
-                        if (comparesBools && comparison != ScriptComparison.Equal && comparison != ScriptComparison.NotEqual)
+                        bool offered = comparedWidth switch
+                                       {
+                                           VariableWidth.Bool  => comparison == ScriptComparison.Equal || comparison == ScriptComparison.NotEqual,
+                                           VariableWidth.Float => !comparison.IsBitTest(),
+                                           _                   => true
+                                       };
+
+                        if (!offered)
                         {
                             continue;
                         }
@@ -473,9 +476,10 @@ namespace RPGFramework.Field.Editor
             }
         }
 
-        private static bool HasLiteralControl(ArgumentType type)
+        private static bool HasLiteralControl(FieldArgumentInfo argument)
         {
-            bool hasLiteralControl = ArgumentTypes.TakesSource(type) || type == ArgumentType.ValueBool;
+            bool hasLiteralControl = ArgumentTypes.TakesSource(argument.Type) ||
+                                     (argument.Type == ArgumentType.Value && argument.Width == VariableWidth.Bool);
 
             return hasLiteralControl;
         }
@@ -488,7 +492,8 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Offer the variables the map declares whose width this argument takes.
+        /// Offer the variables the map declares that this argument can take: a destination's exact width, or for
+        /// a value, any width it can read.
         /// </summary>
         private void ShowVariablePicker(FieldScriptBlock block, int argumentIndex, FieldArgumentInfo argument)
         {
@@ -506,13 +511,15 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            ArgumentTypes.TryGetVariableWidth(argument.Type, out VariableWidth width);
+            ArgumentTypes.TryGetVariableWidth(argument.Type, argument.Width, out VariableWidth width);
 
             int offered = 0;
 
             foreach (VariableDefinition variable in m_VariableMap.Variables)
             {
-                if (variable.Width != width)
+                bool fits = argument.Type == ArgumentType.Value ? ArgumentTypes.CanRead(width, variable.Width) : variable.Width == width;
+
+                if (!fits)
                 {
                     continue;
                 }

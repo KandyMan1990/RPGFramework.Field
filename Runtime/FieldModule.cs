@@ -60,7 +60,6 @@ namespace RPGFramework.Field
         private Dictionary<int, FieldEntityComponents> m_Entities;
         private int                                    m_PlayerEntityId;
 
-        private FieldArgs          m_FieldArgs;
         private bool               m_FieldTransitionRequested;
         private FieldDatabaseAsset m_FieldDatabaseAsset;
 
@@ -252,7 +251,7 @@ namespace RPGFramework.Field
 
         private void OnSetFieldModuleArgs(FieldArgs args)
         {
-            m_FieldArgs                = args;
+            m_FieldArgsProvider.Set(args);
             m_FieldTransitionRequested = true;
         }
 
@@ -290,14 +289,14 @@ namespace RPGFramework.Field
 
         private async Task<FieldEntity[]> PreLoadFieldAsync()
         {
-            m_FieldArgs          = m_FieldArgsProvider.Get;
-            m_FieldDatabaseAsset = m_FieldDatabase.Get(m_FieldArgs.FieldId);
+            FieldArgs fieldArgs = m_FieldArgsProvider.Get;
+            m_FieldDatabaseAsset = m_FieldDatabase.Get(fieldArgs.FieldId);
 
             await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldDatabaseAsset.LocalisationSheets);
 
             GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(m_FieldDatabaseAsset);
             SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
-            m_InitialPlayerSpawn = Array.Find(spawnPoints, sp => sp.Id == m_FieldArgs.SpawnId);
+            m_InitialPlayerSpawn = Array.Find(spawnPoints, sp => sp.Id == fieldArgs.SpawnId);
 
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
             m_Entities = new Dictionary<int, FieldEntityComponents>(entitiesInGameObject.Length);
@@ -445,7 +444,8 @@ namespace RPGFramework.Field
 
             if (m_InitialPlayerSpawn == null)
             {
-                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No spawn point with id [{m_FieldArgs.SpawnId}] in this field, so the player keeps whatever position its init script gave it");
+                FieldArgs fieldArgs = m_FieldArgsProvider.Get;
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No spawn point with id [{fieldArgs.SpawnId}] in this field, so the player keeps whatever position its init script gave it");
             }
             else
             {
