@@ -9,7 +9,7 @@
         /// <summary>
         /// The entity's ongoing behaviour: a patrol route, an idle animation loop, anything that runs
         /// for as long as the field does. Started once initialisation is complete and free to yield and
-        /// loop, on its own priority slot so a trigger firing does not disturb it.
+        /// loop, in the least urgent slot so any trigger preempts it and it resumes afterwards.
         /// </summary>
         Main = 0,
 

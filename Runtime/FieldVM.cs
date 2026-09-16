@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core;
+using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Field.BlockState;
 using RPGFramework.Field.FieldVmArgs;
@@ -32,7 +33,7 @@ namespace RPGFramework.Field
         internal event Action<DialogueWindowArgs>              RequestCreateDialogueWindow;
         internal event Action<ulong, bool>                     RequestShowDialogueWindow;
         internal Func<ulong, bool>                             IsDialogueWindowOpen;
-        internal event Action<byte, ushort, ulong, ulong[]>    RequestAskPlayerToMakeAChoice;
+        internal event Action<ulong, ulong[], Action<byte>>    RequestAskPlayerToMakeAChoice;
         internal Func<ulong, bool>                             IsPlayerMakingAChoice;
         internal event Action<BattleArgs>                      RequestSetBattleModeOptions;
         internal event Action                                  RequestStartBattle;
@@ -45,10 +46,11 @@ namespace RPGFramework.Field
         private readonly Dictionary<int, byte[]>                                           m_Scripts;
 
         private readonly IMemoryService m_MemoryService;
+        private readonly int            m_TempBytes;
 
         private System.Random m_Random = new System.Random();
 
-        internal FieldVM(IMemoryService memoryService)
+        internal FieldVM(IMemoryService memoryService, int tempBytes)
         {
             m_Contexts       = new Dictionary<(int entityId, byte priority), ScriptExecutionContext>();
             m_Entities       = new Dictionary<int, FieldEntityRuntime>();
@@ -56,6 +58,7 @@ namespace RPGFramework.Field
             m_Scripts        = new Dictionary<int, byte[]>();
 
             m_MemoryService = memoryService;
+            m_TempBytes     = tempBytes;
         }
         
         // TODO: once op codes are implemented, convert from dictionary to an array
@@ -348,23 +351,31 @@ namespace RPGFramework.Field
         internal const int INSTRUCTIONS_PER_SLOT_PER_FRAME = 16;
 
         /// <summary>
-        /// Whether the script in a slot is waiting on something, as opposed to having run out of its
-        /// instructions for the frame. Both leave the slot occupied, and they are different authoring
-        /// mistakes, so the init report tells them apart with this.
+        /// Init runs until it returns, however many instructions that takes. This only stops one that
+        /// never returns, which would otherwise hang the field load.
         /// </summary>
-        internal bool IsSlotWaiting(int entityId, byte priority)
+        internal const int INIT_INSTRUCTION_CEILING = 1024;
+
+        /// <summary>
+        /// Replace an entity's init script with its Main script, whether or not init returned. An entity
+        /// with no Main script is left with the slot empty.
+        /// </summary>
+        internal void StartMainScript(int entityId, int mainEventId)
         {
-            if (!m_Contexts.TryGetValue((entityId, priority), out ScriptExecutionContext ctx))
+            FieldEntityRuntime entity = m_Entities[entityId];
+
+            m_Contexts.Remove((entityId, FieldEntityRuntime.MAIN_PRIORITY));
+
+            if (entity.TryGetScriptId(mainEventId, out int scriptId))
             {
-                return false;
+                entity.ReplaceScriptInSlot(scriptId, FieldEntityRuntime.MAIN_PRIORITY);
+                return;
             }
 
-            bool isWaiting = ctx.IsBlocked();
-
-            return isWaiting;
+            entity.ClearSlot(FieldEntityRuntime.MAIN_PRIORITY);
         }
 
-        internal void Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity)
+        internal ScriptRunOutcome Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity, int instructionBudget)
         {
             (int entityId, byte priority) key = (entityId, priority);
 
@@ -375,7 +386,7 @@ namespace RPGFramework.Field
                 if (!m_Scripts.TryGetValue(scriptId, out byte[] bytecode))
                 {
                     entity.ClearSlot(priority);
-                    return;
+                    return ScriptRunOutcome.Ended;
                 }
 
                 ctx = new ScriptExecutionContext
@@ -389,19 +400,20 @@ namespace RPGFramework.Field
                 m_Contexts[key] = ctx;
             }
 
+            // The frame a block completes on is spent, so the next instruction runs next frame.
             if (ctx.IsBlocked())
             {
                 ctx.UpdateBlock(Time.deltaTime);
-                return;
+                return ScriptRunOutcome.Waiting;
             }
 
             int instructionsRun = 0;
 
             while (!ctx.IsBlocked())
             {
-                if (instructionsRun == INSTRUCTIONS_PER_SLOT_PER_FRAME)
+                if (instructionsRun == instructionBudget)
                 {
-                    return;
+                    return ScriptRunOutcome.OutOfInstructions;
                 }
 
                 instructionsRun++;
@@ -412,7 +424,7 @@ namespace RPGFramework.Field
                 {
                     m_Contexts.Remove(key);
                     entity.ClearSlot(priority);
-                    return;
+                    return ScriptRunOutcome.Ended;
                 }
 
                 opcodeHandler(ctx);
@@ -421,9 +433,17 @@ namespace RPGFramework.Field
                 {
                     m_Contexts.Remove(key);
                     entity.ClearSlot(priority);
-                    return;
+                    return ScriptRunOutcome.Ended;
+                }
+
+                if (ctx.YieldRequested)
+                {
+                    ctx.YieldRequested = false;
+                    return ScriptRunOutcome.Waiting;
                 }
             }
+
+            return ScriptRunOutcome.Waiting;
         }
 
         private static FieldScriptOpCode FetchOpcode(ScriptExecutionContext ctx)
@@ -437,7 +457,7 @@ namespace RPGFramework.Field
         // (the destination, for anything that writes) comes from, the low nibble the second.
         //
         //   0 = immediate, the value follows inline in the bytecode
-        //   1 = Global bank      2 = Session bank      3 = Temp bank
+        //   1 = Persistent bank  2 = Session bank      3 = Temp
         //
         // Bank addresses are ushort, matching IMemoryService, so a script can reach any variable the
         // variable map declares.
@@ -482,7 +502,7 @@ namespace RPGFramework.Field
             }
 
             ushort address = ReadUshort(ctx);
-            byte   value   = m_MemoryService.ReadByte(ToMemoryBank(source), address);
+            byte   value   = ReadVariableByte(ctx, ToMemoryBank(source), address);
 
             return value;
         }
@@ -500,7 +520,7 @@ namespace RPGFramework.Field
             }
 
             ushort address = ReadUshort(ctx);
-            ushort value   = m_MemoryService.ReadUshort(ToMemoryBank(source), address);
+            ushort value   = ReadVariableUshort(ctx, ToMemoryBank(source), address);
 
             return value;
         }
@@ -518,7 +538,7 @@ namespace RPGFramework.Field
             }
 
             ushort address = ReadUshort(ctx);
-            int    value   = m_MemoryService.ReadInt(ToMemoryBank(source), address);
+            int    value   = ReadVariableInt(ctx, ToMemoryBank(source), address);
 
             return value;
         }
@@ -533,7 +553,7 @@ namespace RPGFramework.Field
             }
 
             ushort address = ReadUshort(ctx);
-            float  value   = m_MemoryService.ReadFloat(ToMemoryBank(source), address);
+            float  value   = ReadVariableFloat(ctx, ToMemoryBank(source), address);
 
             return value;
         }
@@ -548,7 +568,7 @@ namespace RPGFramework.Field
             }
 
             ushort address = ReadUshort(ctx);
-            bool   value   = m_MemoryService.ReadBool(ToMemoryBank(source), address);
+            bool   value   = ReadVariableBool(ctx, ToMemoryBank(source), address);
 
             return value;
         }
@@ -614,6 +634,83 @@ namespace RPGFramework.Field
         private bool ReadArgumentBool(ScriptExecutionContext ctx, ref SequentialSources sources)
         {
             bool value = ReadArgumentBool(ctx, NextSource(ctx, ref sources));
+
+            return value;
+        }
+
+        private TempMemory TempOf(ScriptExecutionContext ctx)
+        {
+            // Created on first use: most scripts never touch temp memory.
+            TempMemory temp = ctx.Temp ??= new TempMemory(m_TempBytes);
+
+            return temp;
+        }
+
+        // Temp variables live in the running script's own memory; Persistent and Session in the memory service.
+        private byte ReadVariableByte(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
+        {
+            byte value = bank == MemoryBank.Temp ? TempOf(ctx).ReadByte(address) : m_MemoryService.ReadByte(bank, address);
+
+            return value;
+        }
+
+        private void WriteVariableByte(ScriptExecutionContext ctx, MemoryBank bank, ushort address, byte value)
+        {
+            if (bank == MemoryBank.Temp)
+            {
+                TempOf(ctx).WriteByte(address, value);
+                return;
+            }
+
+            m_MemoryService.WriteByte(bank, address, value);
+        }
+
+        private bool ReadVariableBool(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
+        {
+            bool value = bank == MemoryBank.Temp ? TempOf(ctx).ReadBool(address) : m_MemoryService.ReadBool(bank, address);
+
+            return value;
+        }
+
+        private void WriteVariableBool(ScriptExecutionContext ctx, MemoryBank bank, ushort address, bool value)
+        {
+            if (bank == MemoryBank.Temp)
+            {
+                TempOf(ctx).WriteBool(address, value);
+                return;
+            }
+
+            m_MemoryService.WriteBool(bank, address, value);
+        }
+
+        private ushort ReadVariableUshort(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
+        {
+            ushort value = bank == MemoryBank.Temp ? TempOf(ctx).ReadUshort(address) : m_MemoryService.ReadUshort(bank, address);
+
+            return value;
+        }
+
+        private void WriteVariableUshort(ScriptExecutionContext ctx, MemoryBank bank, ushort address, ushort value)
+        {
+            if (bank == MemoryBank.Temp)
+            {
+                TempOf(ctx).WriteUshort(address, value);
+                return;
+            }
+
+            m_MemoryService.WriteUshort(bank, address, value);
+        }
+
+        private int ReadVariableInt(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
+        {
+            int value = bank == MemoryBank.Temp ? TempOf(ctx).ReadInt(address) : m_MemoryService.ReadInt(bank, address);
+
+            return value;
+        }
+
+        private float ReadVariableFloat(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
+        {
+            float value = bank == MemoryBank.Temp ? TempOf(ctx).ReadFloat(address) : m_MemoryService.ReadFloat(bank, address);
 
             return value;
         }
@@ -918,11 +1015,12 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Stop running this script until the next frame.
+        /// Stop running this script for the rest of the frame; it carries on from the next instruction next
+        /// frame.
         /// </summary>
         private static void YieldOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ctx.Block(new WaitForFrameBlock());
+            ctx.YieldRequested = true;
         }
 
         /// <summary>
@@ -986,7 +1084,8 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Ask for a transition to another field, entering at one of its spawn points.
+        /// Ask for a transition to another field, entering at one of its spawn points. The script stops here:
+        /// nothing after a map jump runs.
         /// </summary>
         private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
         {
@@ -996,6 +1095,8 @@ namespace RPGFramework.Field
 
             FieldArgs args = new FieldArgs(fieldNameHash, spawnId);
             RequestFieldTransition?.Invoke(args);
+
+            ctx.Block(new WaitUntilBlock(() => false));
         }
 
         /// <summary>
@@ -1023,7 +1124,7 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            m_MemoryService.WriteByte(bank, address, argument);
+            WriteVariableByte(ctx, bank, address, argument);
         }
 
         /// <summary>
@@ -1033,7 +1134,7 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            m_MemoryService.WriteUshort(bank, address, argument);
+            WriteVariableUshort(ctx, bank, address, argument);
         }
 
         /// <summary>
@@ -1049,10 +1150,10 @@ namespace RPGFramework.Field
                 return;
             }
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current | (1 << bitIndex));
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1068,10 +1169,10 @@ namespace RPGFramework.Field
                 return;
             }
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current & ~(1 << bitIndex));
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1081,10 +1182,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current + argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1094,10 +1195,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current + argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1107,10 +1208,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            int  current = m_MemoryService.ReadByte(bank, address);
+            int  current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)Math.Min(current + argument, byte.MaxValue);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1120,10 +1221,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            int    current = m_MemoryService.ReadUshort(bank, address);
+            int    current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)Math.Min(current + argument, ushort.MaxValue);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1133,10 +1234,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current - argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1146,10 +1247,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current - argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1159,10 +1260,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            int  current = m_MemoryService.ReadByte(bank, address);
+            int  current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)Math.Max(current - argument, 0);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1172,10 +1273,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            int    current = m_MemoryService.ReadUshort(bank, address);
+            int    current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)Math.Max(current - argument, 0);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1185,10 +1286,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current * argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1198,10 +1299,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current * argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1217,10 +1318,10 @@ namespace RPGFramework.Field
                 return;
             }
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current / argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1236,10 +1337,10 @@ namespace RPGFramework.Field
                 return;
             }
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current / argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1255,10 +1356,10 @@ namespace RPGFramework.Field
                 return;
             }
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current % argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1274,10 +1375,10 @@ namespace RPGFramework.Field
                 return;
             }
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current % argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1287,10 +1388,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current & argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1300,10 +1401,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current & argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1313,10 +1414,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current | argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1326,10 +1427,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current | argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1339,10 +1440,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte argument);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current ^ argument);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1352,10 +1453,10 @@ namespace RPGFramework.Field
         {
             ReadBinaryArgumentsUshort(ctx, out MemoryBank bank, out ushort address, out ushort argument);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current ^ argument);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1365,10 +1466,10 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current + 1);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1378,10 +1479,10 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current + 1);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1391,10 +1492,10 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = current == byte.MaxValue ? current : (byte)(current + 1);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1404,10 +1505,10 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = current == ushort.MaxValue ? current : (ushort)(current + 1);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1417,10 +1518,10 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = (byte)(current - 1);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1430,10 +1531,10 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = (ushort)(current - 1);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1443,10 +1544,10 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            byte current = m_MemoryService.ReadByte(bank, address);
+            byte current = ReadVariableByte(ctx, bank, address);
             byte result  = current == byte.MinValue ? current : (byte)(current - 1);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1456,24 +1557,22 @@ namespace RPGFramework.Field
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            ushort current = m_MemoryService.ReadUshort(bank, address);
+            ushort current = ReadVariableUshort(ctx, bank, address);
             ushort result  = current == ushort.MinValue ? current : (ushort)(current - 1);
 
-            m_MemoryService.WriteUshort(bank, address, result);
+            WriteVariableUshort(ctx, bank, address, result);
         }
 
         /// <summary>
-        /// Write a random byte in <c>[0, argument)</c> to the destination. An argument of 0 is treated as a
-        /// full byte range, so GET_RANDOM with no sensible bound still produces a value.
+        /// Write a random byte, 0 to 255, to the destination.
         /// </summary>
         private void GetRandomNumberOpcodeHandler(ScriptExecutionContext ctx)
         {
-            ReadBinaryArgumentsByte(ctx, out MemoryBank bank, out ushort address, out byte exclusiveMaximum);
+            ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            int  upperBound = exclusiveMaximum == 0 ? byte.MaxValue + 1 : exclusiveMaximum;
-            byte result     = (byte)m_Random.Next(0, upperBound);
+            byte result = (byte)m_Random.Next(0, byte.MaxValue + 1);
 
-            m_MemoryService.WriteByte(bank, address, result);
+            WriteVariableByte(ctx, bank, address, result);
         }
 
         /// <summary>
@@ -1498,7 +1597,7 @@ namespace RPGFramework.Field
             ushort     address = ReadUshort(ctx);
             bool       value   = ReadArgumentBool(ctx, GetSecondArgumentSource(sources));
 
-            m_MemoryService.WriteBool(bank, address, value);
+            WriteVariableBool(ctx, bank, address, value);
         }
 
         /// <summary>
@@ -1516,8 +1615,8 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Ask the player to pick one of several answers and block until they have. The listener writes
-        /// the chosen answer to the destination variable.
+        /// Ask the player to pick one of several answers and block until they have. The listener stores the
+        /// answer through the callback, so a temp destination is this script's own.
         /// </summary>
         private void AskPlayerToMakeAChoiceOpcodeHandler(ScriptExecutionContext ctx)
         {
@@ -1532,7 +1631,9 @@ namespace RPGFramework.Field
                 answerIds[i] = ReadUlong(ctx);
             }
 
-            RequestAskPlayerToMakeAChoice?.Invoke(bank, addressToStoreChoice, dialogueId, answerIds);
+            MemoryBank choiceBank = (MemoryBank)bank;
+
+            RequestAskPlayerToMakeAChoice?.Invoke(dialogueId, answerIds, choice => WriteVariableByte(ctx, choiceBank, addressToStoreChoice, choice));
 
             ctx.Block(new WaitUntilBlock(() => !IsPlayerMakingAChoice(dialogueId)));
         }

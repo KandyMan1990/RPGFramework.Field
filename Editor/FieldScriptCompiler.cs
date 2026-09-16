@@ -204,7 +204,7 @@ namespace RPGFramework.Field.Editor
                         break;
 
                     case "GET_RANDOM":
-                        WriteBinaryArguments(bw, FieldScriptOpCode.GetRandomNumber, parts, ref variableMap, VariableWidth.Byte);
+                        WriteDestinationOnly(bw, FieldScriptOpCode.GetRandomNumber, parts, ref variableMap, VariableWidth.Byte);
                         break;
 
                     case "INC_BYTE":
@@ -756,7 +756,7 @@ namespace RPGFramework.Field.Editor
         /// Emit <c>opcode, sources, destinationAddress, argument</c>.<br /><br />
         /// <c>sources</c> packs where each argument comes from, two nibbles to a byte: high for the
         /// destination, low for the second argument. 0 means the value follows inline, 1..3 select
-        /// Global/Session/Temp and a ushort address follows instead.
+        /// Persistent/Session/Temp and a ushort address follows instead.
         /// </summary>
         private static void WriteBinaryArguments(BinaryWriter bw, FieldScriptOpCode opCode, string[] parts, ref VariableMapAsset variableMap, VariableWidth width)
         {
@@ -863,7 +863,7 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Bank as the VM's argument source nibble: 0 is reserved for immediates, so Global is 1.
+        /// Bank as the VM's argument source nibble: 0 is reserved for immediates, so Persistent is 1.
         /// </summary>
         private static byte ToArgumentSource(MemoryBank bank)
         {

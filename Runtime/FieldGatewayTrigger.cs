@@ -12,13 +12,15 @@ namespace RPGFramework.Field
 
         private FieldEntity m_Entity;
         private bool        m_IsActive;
+        private bool        m_IsEntityShown;
         private int         m_EntityId;
 
         private void Awake()
         {
-            m_Entity   = GetComponentInParent<FieldEntity>();
-            m_IsActive = true;
-            m_EntityId = m_Entity.EntityId;
+            m_Entity        = GetComponentInParent<FieldEntity>();
+            m_IsActive      = true;
+            m_IsEntityShown = true;
+            m_EntityId      = m_Entity.EntityId;
         }
 
         private void OnTriggerEnter(Collider other)
@@ -33,7 +35,7 @@ namespace RPGFramework.Field
 
         private void TriggerLogic(Component other)
         {
-            if (!m_IsActive)
+            if (!m_IsActive || !m_IsEntityShown)
             {
                 return;
             }
@@ -52,9 +54,17 @@ namespace RPGFramework.Field
             OnTriggered?.Invoke(m_EntityId, eventId);
         }
 
+        /// <summary>
+        /// Turns every gateway in the field on or off, separately from whether this entity is shown.
+        /// </summary>
         public void SetActive(bool active)
         {
             m_IsActive = active;
+        }
+
+        public void SetEntityShown(bool shown)
+        {
+            m_IsEntityShown = shown;
         }
     }
 }

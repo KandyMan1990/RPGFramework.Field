@@ -1,4 +1,5 @@
-﻿using RPGFramework.Field.BlockState;
+﻿using RPGFramework.Core.Memory;
+using RPGFramework.Field.BlockState;
 
 namespace RPGFramework.Field
 {
@@ -14,6 +15,8 @@ namespace RPGFramework.Field
         internal int         ScriptId;
         internal int         InstructionPointer;
         internal byte[]      Bytecode;
+        internal TempMemory  Temp;
+        internal bool        YieldRequested;
         private  IBlockState m_BlockingState;
 
         internal void Block(IBlockState blockingState)

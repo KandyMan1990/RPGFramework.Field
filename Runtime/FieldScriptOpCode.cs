@@ -8,19 +8,19 @@
 
         [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts. Does nothing if that priority slot is busy")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7")]
+        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptUnlessBusy = 0x0001,
 
         [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts, waiting until the slot accepts it")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7")]
+        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilStarted = 0x0002,
 
         [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7")]
+        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilFinished = 0x0003,
 
@@ -260,9 +260,8 @@
         [Argument(0, "destination", ArgumentType.Variable16)]
         Decrement16BitClamped = 0x021F,
 
-        [FieldOpCode("GET_RANDOM", ArgumentLayout.BankBinary, Summary = "Store a random byte below a maximum")]
-        [Argument(0, "destination",      ArgumentType.Variable8)]
-        [Argument(1, "exclusiveMaximum", ArgumentType.Value8, Description = "0 means the full byte range")]
+        [FieldOpCode("GET_RANDOM", ArgumentLayout.BankUnary, Summary = "Store a random byte, 0 to 255")]
+        [Argument(0, "destination", ArgumentType.Variable8)]
         GetRandomNumber = 0x0220,
 
         [FieldOpCode("RANDOM_SEED", ArgumentLayout.BankSeed, Summary = "Reseed the random sequence, so a script repeats exactly")]

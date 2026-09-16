@@ -40,6 +40,7 @@ namespace RPGFramework.Field
         private readonly ILocalisationService               m_LocalisationService;
         private readonly Dictionary<ulong, IDialogueWindow> m_DialogueWindows;
         private readonly IMemoryService                     m_MemoryService;
+        private readonly ITempMemoryArgs                    m_TempMemoryArgs;
         private readonly IScreenFadeService                 m_ScreenFadeService;
         private readonly IBattleArgsProvider                m_BattleArgsProvider;
         private readonly IFieldArgsProvider                 m_FieldArgsProvider;
@@ -68,7 +69,6 @@ namespace RPGFramework.Field
 
         private IMovementDriver m_PlayerMovementDriver;
 
-        private bool m_MainMenuAccessible;
 
         public FieldModule(ICoreModule           coreModule,
                            IDIResolver           diResolver,
@@ -79,6 +79,7 @@ namespace RPGFramework.Field
                            IFieldPresentation    fieldPresentation,
                            ILocalisationService  localisationService,
                            IMemoryService        memoryService,
+                           ITempMemoryArgs       tempMemoryArgs,
                            IScreenFadeService    screenFadeService,
                            IBattleArgsProvider   battleArgsProvider,
                            IFieldArgsProvider    fieldArgsProvider,
@@ -96,6 +97,7 @@ namespace RPGFramework.Field
             m_FieldPresentation    = fieldPresentation;
             m_LocalisationService  = localisationService;
             m_MemoryService        = memoryService;
+            m_TempMemoryArgs       = tempMemoryArgs;
             m_ScreenFadeService    = screenFadeService;
             m_BattleArgsProvider   = battleArgsProvider;
             m_FieldArgsProvider    = fieldArgsProvider;
@@ -203,7 +205,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetGatewayTriggersActive    += OnRequestSetGatewayTriggersActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive += OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionRange         += OnRequestSetInteractionRange;
-            m_FieldContext.VM.RequestInputLock                   += OnRequestInputLock;
+            m_FieldContext.VM.RequestInputLock                   += OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetEntityPosition           += OnRequestSetEntityPosition;
             m_FieldContext.VM.RequestSetEntityRotation           += OnRequestSetEntityRotation;
             m_FieldContext.VM.RequestSetEntityRotationAsync      += OnRequestSetEntityRotationAsync;
@@ -236,7 +238,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityRotationAsync      -= OnRequestSetEntityRotationAsync;
             m_FieldContext.VM.RequestSetEntityRotation           -= OnRequestSetEntityRotation;
             m_FieldContext.VM.RequestSetEntityPosition           -= OnRequestSetEntityPosition;
-            m_FieldContext.VM.RequestInputLock                   -= OnRequestInputLock;
+            m_FieldContext.VM.RequestInputLock                   -= OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= OnRequestSetInteractionRange;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= OnRequestSetGatewayTriggersActive;
@@ -300,8 +302,6 @@ namespace RPGFramework.Field
             FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
             m_Entities = new Dictionary<int, FieldEntityComponents>(entitiesInGameObject.Length);
 
-            m_MemoryService.ClearTemp();
-
             return entitiesInGameObject;
         }
 
@@ -309,7 +309,7 @@ namespace RPGFramework.Field
         {
             FieldEntity[] entitiesInGameObject = await PreLoadFieldAsync();
 
-            FieldVM                  vm       = new FieldVM(m_MemoryService);
+            FieldVM                  vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
 
             foreach (FieldEntity entity in entitiesInGameObject)
@@ -365,7 +365,7 @@ namespace RPGFramework.Field
 
         /// <summary>
         /// Run every entity's init script to completion, before the field is shown or the player has
-        /// control.<br /><br />
+        /// control.
         /// </summary>
         private void InitialiseFieldScripts()
         {
@@ -373,54 +373,52 @@ namespace RPGFramework.Field
 
             foreach (FieldEntityRuntime entity in m_FieldContext.Entities)
             {
-                entity.Update(vm);
+                ScriptRunOutcome outcome = entity.RunInitScript(vm);
 
 #if UNITY_EDITOR
-                if (entity.IsRunningScript)
-                {
-                    ReportInitScriptDidNotReturn(entity, vm);
-                }
+                ReportInitScriptDidNotReturn(entity, outcome);
 #endif
             }
         }
 
 #if UNITY_EDITOR
         /// <summary>
-        /// An init script still holding its slot after its frame means one of two different mistakes,
-        /// and the fix is different for each, so they are reported separately rather than as one
-        /// "did not return".
+        /// An init script that did not return is one of two different mistakes, and the fix is different
+        /// for each, so they are reported separately rather than as one "did not return".
         /// </summary>
-        private static void ReportInitScriptDidNotReturn(FieldEntityRuntime entity, FieldVM vm)
+        private static void ReportInitScriptDidNotReturn(FieldEntityRuntime entity, ScriptRunOutcome outcome)
         {
-            if (vm.IsSlotWaiting(entity.EntityId, FieldEntityRuntime.DEFAULT_PRIORITY))
+            if (outcome == ScriptRunOutcome.Ended)
             {
-                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script is waiting on something, so the field was shown before it finished. Init runs straight through in a single frame and cannot wait — move the wait, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");
+                return;
+            }
+
+            if (outcome == ScriptRunOutcome.Waiting)
+            {
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script waited or yielded, so it was stopped there and nothing after that ran. Init runs straight through before the field is shown and cannot wait — move the wait, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");
 
                 return;
             }
 
-            Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script is still running after the {FieldVM.INSTRUCTIONS_PER_SLOT_PER_FRAME} instructions a script gets in a frame, so the field was shown before it finished. Either it loops, or it is simply too long for init — shorten it, or move the rest into a {nameof(FieldScriptType.Main)} script");
+            Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script ran {FieldVM.INIT_INSTRUCTION_CEILING} instructions without returning, so it was stopped there. It most likely loops — init has to run straight through to its RETURN; move looping behaviour into a {nameof(FieldScriptType.Main)} script");
         }
 #endif
 
         /// <summary>
-        /// Start each entity's <see cref="FieldScriptType.Main" /> script, once initialisation is done.
+        /// Start each entity's <see cref="FieldScriptType.Main" /> script, once every init has run.
         /// <br /><br />
         /// Main is where an entity's ongoing behaviour lives — a patrol route, an idle loop — and unlike
-        /// init it is free to wait and to run for as long as the field does. It sits one priority below
-        /// the triggers, so a trigger firing preempts it however long it has been looping, and it
+        /// init it is free to wait and to run for as long as the field does. It takes over init's slot,
+        /// the least urgent, so a trigger firing preempts it however long it has been looping, and it
         /// resumes where it left off once the trigger's script returns.
         /// </summary>
         private void StartMainScripts(FieldEntity[] entitiesInGameObject)
         {
             foreach (FieldEntity entity in entitiesInGameObject)
             {
-                if (!entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Main, out int eventId))
-                {
-                    continue;
-                }
+                entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Main, out int eventId);
 
-                m_FieldContext.VM.RequestScript(entity.EntityId, eventId, FieldEntityRuntime.MAIN_PRIORITY);
+                m_FieldContext.VM.StartMainScript(entity.EntityId, eventId);
             }
         }
 
@@ -499,21 +497,47 @@ namespace RPGFramework.Field
 
             foreach (int entityId in m_FieldContext.VisibleEntityIds)
             {
-                OnRequestSetEntityVisible(entityId, true);
+                ShowOrHideEntity(entityId, true);
             }
+
+            foreach (int entityId in m_FieldContext.HiddenEntityIds)
+            {
+                ShowOrHideEntity(entityId, false);
+            }
+
+            // After visibility, which switches interaction too: these hold the last value a script set.
+            foreach ((int entityId, bool active) in m_FieldContext.InteractionsActive)
+            {
+                m_Entities[entityId].InteractionTrigger.SetActive(active);
+            }
+
+            foreach ((int entityId, float range) in m_FieldContext.InteractionRanges)
+            {
+                m_Entities[entityId].InteractionTrigger.SetInteractionRange(range);
+            }
+
+            foreach ((int entityId, float speed) in m_FieldContext.MovementSpeeds)
+            {
+                GetMovementDriver(entityId).SetMoveSpeed(speed);
+            }
+
+            SetGatewaysActive(m_FieldContext.GatewaysActive);
 
             await PostFieldLoadAsync();
         }
 
         private async Task PostFieldLoadAsync()
         {
-            m_MainMenuAccessible = true;
-
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
 
             m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
             m_InputRouter.Push(m_CurrentInputContext);
+
+            if (m_FieldContext.IsInputLockedByScript)
+            {
+                OnRequestInputLock(true);
+            }
 
             await m_ScreenFadeService.FadeInAsync();
 
@@ -523,6 +547,11 @@ namespace RPGFramework.Field
         private async Task UnloadCurrentFieldAsync()
         {
             m_InputAdapter.Disable();
+
+            if (m_FieldContext.IsInputLockedByScript)
+            {
+                OnRequestInputLock(false);
+            }
 
             m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
 
@@ -597,20 +626,48 @@ namespace RPGFramework.Field
             m_FieldContext.SetPlayerEntity(entity);
         }
 
+        /// <summary>
+        /// Showing or hiding an entity also switches whether it can be talked to and whether walking into it
+        /// runs its collision script. Showing switches both back on even if a script had turned interaction
+        /// off.
+        /// </summary>
         private void OnRequestSetEntityVisible(int entityId, bool visible)
         {
             m_FieldContext.SetEntityVisible(entityId, visible);
-            m_Entities[entityId].Entity.SetVisible(visible);
+
+            if (m_Entities[entityId].InteractionTrigger != null)
+            {
+                m_FieldContext.SetInteractionActive(entityId, visible);
+            }
+
+            ShowOrHideEntity(entityId, visible);
+        }
+
+        private void ShowOrHideEntity(int entityId, bool visible)
+        {
+            FieldEntityComponents entity = m_Entities[entityId];
+
+            entity.Entity.SetVisible(visible);
+
+            if (entity.InteractionTrigger != null)
+            {
+                entity.InteractionTrigger.SetActive(visible);
+            }
+
+            if (entity.GatewayTrigger != null)
+            {
+                entity.GatewayTrigger.SetEntityShown(visible);
+            }
         }
 
         private void OnGatewayTriggered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.DEFAULT_PRIORITY);
+            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.COLLISION_PRIORITY);
         }
 
         private void OnInteractionTriggered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.DEFAULT_PRIORITY);
+            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.INTERACTION_PRIORITY);
         }
 
         private bool IsPlayerFacingEntity(int entityId)
@@ -739,7 +796,7 @@ namespace RPGFramework.Field
         // TODO: when we have the main menu/party menu, it should load that instead
         private void OpenConfigMenu()
         {
-            if (!m_MainMenuAccessible)
+            if (!m_FieldContext.MainMenuAccessible)
             {
                 return;
             }
@@ -785,6 +842,13 @@ namespace RPGFramework.Field
 
         private void OnRequestSetGatewayTriggersActive(bool active)
         {
+            m_FieldContext.SetGatewaysActive(active);
+
+            SetGatewaysActive(active);
+        }
+
+        private void SetGatewaysActive(bool active)
+        {
             foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
             {
                 if (entity.Value.GatewayTrigger != null)
@@ -797,11 +861,29 @@ namespace RPGFramework.Field
         private void OnRequestSetInteractionTriggerActive(int entityId, bool active)
         {
             m_Entities[entityId].InteractionTrigger.SetActive(active);
+            m_FieldContext.SetInteractionActive(entityId, active);
         }
 
         private void OnRequestSetInteractionRange(int entityId, float range)
         {
             m_Entities[entityId].InteractionTrigger.SetInteractionRange(range);
+            m_FieldContext.SetInteractionRange(entityId, range);
+        }
+
+        /// <summary>
+        /// A script's input lock is on or off: locking twice needs one unlock, and unlocking when unlocked
+        /// does nothing. Dialogue takes its own locks through <see cref="OnRequestInputLock" />.
+        /// </summary>
+        private void OnRequestScriptInputLock(bool lockInput)
+        {
+            if (lockInput == m_FieldContext.IsInputLockedByScript)
+            {
+                return;
+            }
+
+            m_FieldContext.SetInputLockedByScript(lockInput);
+
+            OnRequestInputLock(lockInput);
         }
 
         private void OnRequestInputLock(bool lockInput)
@@ -861,6 +943,7 @@ namespace RPGFramework.Field
         private void OnRequestSetEntityMovementSpeed(int entityId, float movementSpeed)
         {
             GetMovementDriver(entityId).SetMoveSpeed(movementSpeed);
+            m_FieldContext.SetMovementSpeed(entityId, movementSpeed);
         }
 
         private IMovementDriver GetMovementDriver(int entityId)
@@ -879,7 +962,7 @@ namespace RPGFramework.Field
 
         private void OnRequestSetMainMenuAccessibility(bool enabled)
         {
-            m_MainMenuAccessible = enabled;
+            m_FieldContext.SetMainMenuAccessible(enabled);
         }
 
         private void OnRequestCreateDialogueWindow(DialogueWindowArgs args)
@@ -927,12 +1010,12 @@ namespace RPGFramework.Field
             }
         }
 
-        private void OnRequestAskPlayerToMakeAChoice(byte bank, ushort addressToStoreChoice, ulong dialogueId, ulong[] answerIds)
+        private void OnRequestAskPlayerToMakeAChoice(ulong dialogueId, ulong[] answerIds, Action<byte> storeChoice)
         {
-            RequestAskPlayerToMakeAChoiceAsync(bank, addressToStoreChoice, dialogueId, answerIds).FireAndForget();
+            RequestAskPlayerToMakeAChoiceAsync(dialogueId, answerIds, storeChoice).FireAndForget();
         }
 
-        private async Task RequestAskPlayerToMakeAChoiceAsync(byte bank, ushort addressToStoreChoice, ulong dialogueId, ulong[] answerIds)
+        private async Task RequestAskPlayerToMakeAChoiceAsync(ulong dialogueId, ulong[] answerIds, Action<byte> storeChoice)
         {
             OnRequestInputLock(true);
 
@@ -957,9 +1040,8 @@ namespace RPGFramework.Field
 
             await dialogueWindow.RunAsync(dialogueFlow, dialogues, fieldDialogueInputContext);
 
-            byte       selectedChoice = dialogueWindow.GetSelectedChoice();
-            MemoryBank memoryBank     = (MemoryBank)bank;
-            m_MemoryService.WriteByte(memoryBank, addressToStoreChoice, selectedChoice);
+            byte selectedChoice = dialogueWindow.GetSelectedChoice();
+            storeChoice(selectedChoice);
 
             await RequestCloseDialogueWindowAsync(dialogueId);
 

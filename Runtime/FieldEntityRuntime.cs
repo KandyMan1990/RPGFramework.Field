@@ -8,24 +8,21 @@
     internal sealed class FieldEntityRuntime
     {
         /// <summary>
-        /// Priorities are 0-7, <b>0 being the highest</b>. An entity runs the lowest-numbered occupied
-        /// slot and only that one; a higher priority arriving preempts what is running, and the script
+        /// Priorities are 0-7, <b>7 being the most urgent</b>. An entity runs its highest-numbered occupied
+        /// slot and only that one; a more urgent script arriving preempts what is running, and the script
         /// underneath resumes when it returns.
         /// </summary>
         internal const int PRIORITY_COUNT = 8;
 
         /// <summary>
-        /// The slot used by an entity's init script and by gateway and interaction triggers — anything
-        /// the engine starts rather than another script.
+        /// The least urgent slot. The init script runs here, then the <see cref="FieldScriptType.Main" />
+        /// script replaces it, so every other slot preempts Main.
         /// </summary>
-        internal const byte DEFAULT_PRIORITY = 0;
+        internal const byte MAIN_PRIORITY = 0;
 
-        /// <summary>
-        /// The slot the entity's <see cref="FieldScriptType.Main" /> script runs on. Separate from
-        /// <see cref="DEFAULT_PRIORITY" /> so that a trigger firing does not have to wait for an ongoing
-        /// behaviour to finish, and so that a Main script looping forever does not block triggers.
-        /// </summary>
-        internal const byte MAIN_PRIORITY = 1;
+        internal const byte COLLISION_PRIORITY = 6;
+
+        internal const byte INTERACTION_PRIORITY = 7;
 
         private const int NO_SCRIPT = -1;
 
@@ -49,7 +46,7 @@
             }
 
             // Event 0 is the init script, and it starts as soon as the field loads.
-            m_ScriptIdBySlot[DEFAULT_PRIORITY] = m_ScriptIdByEvent[0];
+            m_ScriptIdBySlot[MAIN_PRIORITY] = m_ScriptIdByEvent[0];
         }
 
         /// <summary>
@@ -66,26 +63,6 @@
             scriptId = m_ScriptIdByEvent[eventId];
 
             return true;
-        }
-
-        /// <summary>
-        /// True while any slot holds a script that has not yet returned. After the field's initialisation
-        /// pass this being true means the entity's init script blocked partway.
-        /// </summary>
-        internal bool IsRunningScript
-        {
-            get
-            {
-                for (int i = 0; i < PRIORITY_COUNT; i++)
-                {
-                    if (m_ScriptIdBySlot[i] != NO_SCRIPT)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
         }
 
         internal bool IsSlotOccupied(byte priority)
@@ -130,9 +107,9 @@
         /// untouched, and the next one down resumes where it left off once the script above it returns.
         /// Occupying a slot is what marks a script pending, and returning is what releases it.<br /><br />
         /// A script that is waiting still holds the entity — nothing below it runs while it waits. Only
-        /// a <b>higher</b> priority arriving takes over, which is the point of the ordering: a trigger
-        /// at <see cref="DEFAULT_PRIORITY" /> preempts a Main script at <see cref="MAIN_PRIORITY" />
-        /// however long that Main script has been looping, and Main picks up again afterwards.
+        /// a <b>more urgent</b> priority arriving takes over, which is the point of the ordering: a trigger
+        /// preempts a Main script at <see cref="MAIN_PRIORITY" /> however long that Main script has been
+        /// looping, and Main picks up again afterwards.
         /// </summary>
         internal void Update(FieldVM vm)
         {
@@ -141,7 +118,7 @@
                 return;
             }
 
-            for (byte priority = 0; priority < PRIORITY_COUNT; priority++)
+            for (int priority = PRIORITY_COUNT - 1; priority >= 0; priority--)
             {
                 int scriptId = m_ScriptIdBySlot[priority];
 
@@ -150,10 +127,23 @@
                     continue;
                 }
 
-                vm.Execute(EntityId, priority, scriptId, this);
+                vm.Execute(EntityId, (byte)priority, scriptId, this, FieldVM.INSTRUCTIONS_PER_SLOT_PER_FRAME);
 
                 return;
             }
+        }
+
+        /// <summary>
+        /// Run the init script until it returns, before the field's first frame. It is not held to a
+        /// frame's budget, only to <see cref="FieldVM.INIT_INSTRUCTION_CEILING" />. Every entity has an
+        /// init script: exporting a field refuses one whose first script is not Init.
+        /// </summary>
+        internal ScriptRunOutcome RunInitScript(FieldVM vm)
+        {
+            int              scriptId = m_ScriptIdBySlot[MAIN_PRIORITY];
+            ScriptRunOutcome outcome  = vm.Execute(EntityId, MAIN_PRIORITY, scriptId, this, FieldVM.INIT_INSTRUCTION_CEILING);
+
+            return outcome;
         }
     }
 }
