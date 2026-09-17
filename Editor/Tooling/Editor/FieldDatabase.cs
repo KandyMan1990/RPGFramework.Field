@@ -240,6 +240,8 @@ namespace RPGFramework.Field.Editor
                 {
                     problems.Add($"{scriptDescription} has script id [{scriptId}], outside the 0..{ushort.MaxValue} a script-request opcode can address");
                 }
+
+                ValidateInitScript(scriptEntry, scriptDescription, problems);
             }
 
             if (initScriptCount > 1)
@@ -250,6 +252,36 @@ namespace RPGFramework.Field.Editor
             if (mainScriptCount > 1)
             {
                 problems.Add($"{entityName} has {mainScriptCount} {nameof(FieldScriptType.Main)} scripts, but only one is started after initialisation");
+            }
+        }
+
+        /// <summary>
+        /// An init script that stops.<br /><br />
+        /// Init runs straight through before the field is shown, so an opcode that blocks or ends the frame
+        /// stops it there and everything after it never runs. The opcodes that do that declare
+        /// <see cref="FieldOpCodeAttribute.StopsInit" />, so this reads the table rather than a list kept here.
+        /// </summary>
+        private static void ValidateInitScript(ScriptEntry scriptEntry, string scriptDescription, List<string> problems)
+        {
+            if (scriptEntry.ScriptType != FieldScriptType.Init)
+            {
+                return;
+            }
+
+            if (!FieldCompiledScriptAssets.TryFindSource(scriptEntry.CompiledScript, out FieldScriptSource source))
+            {
+                problems.Add($"{scriptDescription} has no {nameof(FieldScriptSource)} beside it, so it cannot be recompiled or checked. A compiled script is written next to the source it came from");
+                return;
+            }
+
+            foreach (string line in source.ScriptText.Split('\n'))
+            {
+                string name = line.Trim().Split(' ')[0];
+
+                if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.StopsInit)
+                {
+                    problems.Add($"{scriptDescription} uses {name}, which waits or gives up the frame. Init runs straight through before the field is shown, so nothing after it would run — move it, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");
+                }
             }
         }
 

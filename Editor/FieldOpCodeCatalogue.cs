@@ -38,6 +38,7 @@ namespace RPGFramework.Field.Editor
         /// True when instructions nest inside this one, such as an <c>IF</c>.
         /// </summary>
         public bool OpensBlock { get; }
+        public bool StopsInit  { get; }
 
         public IReadOnlyList<FieldArgumentInfo> Arguments { get; }
 
@@ -48,6 +49,7 @@ namespace RPGFramework.Field.Editor
             Layout     = attribute.Layout;
             Summary    = attribute.Summary;
             OpensBlock = attribute.OpensBlock;
+            StopsInit  = attribute.StopsInit;
             Arguments  = arguments;
         }
     }

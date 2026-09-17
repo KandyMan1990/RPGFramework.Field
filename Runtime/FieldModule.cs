@@ -434,7 +434,8 @@ namespace RPGFramework.Field
 
             if (playerEntity == null)
             {
-                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No entity designated itself as the player during initialisation, so there is nothing to place or control");
+                m_PlayerEntityId = FieldEntity.NO_ENTITY;
+                SetGatewayPlayerEntityId(m_PlayerEntityId);
                 return;
             }
 
@@ -453,6 +454,8 @@ namespace RPGFramework.Field
             }
 
             m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
+
+            SetGatewayPlayerEntityId(m_PlayerEntityId);
         }
 
         private async Task ResumeFieldAsync()
@@ -484,8 +487,19 @@ namespace RPGFramework.Field
 
             SubscribeVm();
 
-            m_PlayerEntityId       = m_FieldContext.PlayerEntity.EntityId;
-            m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
+            FieldEntityRuntime playerEntity = m_FieldContext.PlayerEntity;
+
+            if (playerEntity != null)
+            {
+                m_PlayerEntityId       = playerEntity.EntityId;
+                m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
+            }
+            else
+            {
+                m_PlayerEntityId = FieldEntity.NO_ENTITY;
+            }
+
+            SetGatewayPlayerEntityId(m_PlayerEntityId);
 
             foreach ((int entityId, Vector3 position) in m_FieldContext.EntityPositions)
             {
@@ -631,6 +645,24 @@ namespace RPGFramework.Field
         private void OnRequestSetPlayerEntity(FieldEntityRuntime entity)
         {
             m_FieldContext.SetPlayerEntity(entity);
+
+            m_PlayerMovementDriver?.SetMoveInput(Vector3.zero);
+
+            m_PlayerEntityId       = entity.EntityId;
+            m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
+
+            SetGatewayPlayerEntityId(m_PlayerEntityId);
+        }
+
+        private void SetGatewayPlayerEntityId(int entityId)
+        {
+            foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
+            {
+                if (entity.Value.GatewayTrigger != null)
+                {
+                    entity.Value.GatewayTrigger.SetPlayerEntityId(entityId);
+                }
+            }
         }
 
         /// <summary>
@@ -734,6 +766,11 @@ namespace RPGFramework.Field
 
         private FieldInteractionTrigger GetBestInteractionTrigger()
         {
+            if (m_FieldContext.PlayerEntity == null)
+            {
+                return null;
+            }
+
             FieldEntity player          = m_Entities[m_FieldContext.PlayerEntity.EntityId].Entity;
             Transform   playerTransform = player.transform;
 
@@ -844,7 +881,7 @@ namespace RPGFramework.Field
 
         private void MovePlayer(Vector3 worldMove)
         {
-            m_PlayerMovementDriver.SetMoveInput(worldMove);
+            m_PlayerMovementDriver?.SetMoveInput(worldMove);
         }
 
         private void OnRequestSetGatewayTriggersActive(bool active)

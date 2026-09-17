@@ -401,7 +401,7 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            if (!TryFindScriptSource(scriptEntry.CompiledScript, out m_SelectedScriptSource))
+            if (!FieldCompiledScriptAssets.TryFindSource(scriptEntry.CompiledScript, out m_SelectedScriptSource))
             {
                 m_ScriptBlockContainer.Add(new HelpBox($"No {nameof(FieldScriptSource)} found beside '{scriptEntry.CompiledScript.name}'. A compiled script is written next to the source it came from, so the two must stay together.", HelpBoxMessageType.Warning));
                 return;
@@ -458,22 +458,6 @@ namespace RPGFramework.Field.Editor
             {
                 EditorUtility.DisplayDialog("Compile failed", e.Message, "OK");
             }
-        }
-
-        /// <summary>
-        /// A compiled script is written as <c>Name.compiled.asset</c> beside the <c>Name.asset</c> it was
-        /// compiled from, so the source is found by undoing that.
-        /// </summary>
-        private static bool TryFindScriptSource(FieldCompiledScript compiled, out FieldScriptSource source)
-        {
-            string compiledPath = AssetDatabase.GetAssetPath(compiled);
-            string sourcePath   = compiledPath.Replace(".compiled.asset", ".asset");
-
-            source = AssetDatabase.LoadAssetAtPath<FieldScriptSource>(sourcePath);
-
-            bool found = source != null;
-
-            return found;
         }
 
         private void OnPrefabObjectFieldChanged(ChangeEvent<Object> evt)

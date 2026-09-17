@@ -152,6 +152,13 @@ namespace RPGFramework.Field
         /// </summary>
         public bool OpensBlock { get; set; }
 
+        /// <summary>
+        /// True when the opcode stops an init script: it either blocks, or ends the entity's frame. Init runs
+        /// straight through before the field is shown, so one of these in an init script means everything
+        /// after it never runs. Export refuses that rather than leaving it to be found in play.
+        /// </summary>
+        public bool StopsInit { get; set; }
+
         public FieldOpCodeAttribute(string scriptName, ArgumentLayout layout)
         {
             ScriptName = scriptName;

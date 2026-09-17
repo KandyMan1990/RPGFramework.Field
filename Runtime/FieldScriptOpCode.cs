@@ -8,144 +8,150 @@ namespace RPGFramework.Field
         [FieldOpCode("RETURN", ArgumentLayout.Sequential, Summary = "End this script and free its priority slot")]
         Return = 0x0000,
 
-        [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts. Does nothing if that priority slot is busy")]
+        [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts. Does nothing if that priority slot is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptUnlessBusy = 0x0001,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait until it starts. Does nothing if that priority slot is busy")]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait until it starts. Does nothing if that priority slot is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilStarted = 0x0002,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish. Does nothing if that priority slot is busy")]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish. Does nothing if that priority slot is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilFinished = 0x0003,
 
+        RunPartyMemberScriptUnlessBusy        = 0x0004, // as REQUEST_SCRIPT but addressed to a party slot rather than an entity id
+        RunPartyMemberScriptWaitUntilStarted  = 0x0005,
+        RunPartyMemberScriptWaitUntilFinished = 0x0006,
+
         [FieldOpCode("RETURN_TO_SCRIPT", ArgumentLayout.Sequential, Summary = "Hand this priority slot to another of this entity's scripts")]
         [Argument(0, "targetEventId", ArgumentType.EventId)]
-        ReturnToAnotherScript = 0x0004,
+        ReturnToAnotherScript = 0x0007,
+
+        CallAnotherScript = 0x0008, // run another of this entity's scripts and come back when it returns
+        ReturnFromCall    = 0x0009, // return from CallAnotherScript, which RETURN does not
 
         [FieldOpCode("GOTO_JUMP", ArgumentLayout.Sequential, Summary = "Jump forwards or backwards, counted from the end of this instruction")]
         [Argument(0, "offset", ArgumentType.JumpDistance, Description = "relative to the byte after this instruction")]
-        GotoJump = 0x0005,
+        GotoJump = 0x000A,
 
         [FieldOpCode("GOTO_DIRECTLY", ArgumentLayout.Sequential, Summary = "Jump to an absolute position in this script")]
         [Argument(0, "target", ArgumentType.JumpTarget, Description = "absolute byte offset")]
-        GotoDirectly = 0x0006,
+        GotoDirectly = 0x000B,
 
         [FieldOpCode("IF_BOOL", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
-        [Argument(0, "a",          ArgumentType.Value, VariableWidth.Bool)]
+        [Argument(0, "a",          ArgumentType.Value,      VariableWidth.Bool)]
         [Argument(1, "comparison", ArgumentType.Comparison, Description = "== or !=")]
-        [Argument(2, "b",          ArgumentType.Value, VariableWidth.Bool)]
-        CompareBool = 0x0007,
+        [Argument(2, "b",          ArgumentType.Value,      VariableWidth.Bool)]
+        CompareBool = 0x000C,
 
         [FieldOpCode("IF_SBYTE", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.SByte)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.SByte)]
-        CompareSByte = 0x0008,
+        CompareSByte = 0x000D,
 
         [FieldOpCode("IF_BYTE", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.Byte)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.Byte)]
-        CompareByte = 0x0009,
+        CompareByte = 0x000E,
 
         [FieldOpCode("IF_SHORT", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.Short)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.Short)]
-        CompareShort = 0x000A,
+        CompareShort = 0x000F,
 
         [FieldOpCode("IF_USHORT", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.UShort)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.UShort)]
-        CompareUShort = 0x000B,
+        CompareUShort = 0x0010,
 
         [FieldOpCode("IF_INT", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.Int)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.Int)]
-        CompareInt = 0x000C,
+        CompareInt = 0x0011,
 
         [FieldOpCode("IF_UINT", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.UInt)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.UInt)]
-        CompareUInt = 0x000D,
+        CompareUInt = 0x0012,
 
         [FieldOpCode("IF_LONG", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.Long)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.Long)]
-        CompareLong = 0x000E,
+        CompareLong = 0x0013,
 
         [FieldOpCode("IF_ULONG", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
         [Argument(0, "a",          ArgumentType.Value, VariableWidth.ULong)]
         [Argument(1, "comparison", ArgumentType.Comparison)]
         [Argument(2, "b",          ArgumentType.Value, VariableWidth.ULong)]
-        CompareULong = 0x000F,
+        CompareULong = 0x0014,
 
         [FieldOpCode("IF_FLOAT", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]
-        [Argument(0, "a",          ArgumentType.Value, VariableWidth.Float)]
+        [Argument(0, "a",          ArgumentType.Value,      VariableWidth.Float)]
         [Argument(1, "comparison", ArgumentType.Comparison, Description = "== != > < >= <=")]
-        [Argument(2, "b",          ArgumentType.Value, VariableWidth.Float)]
-        CompareFloat = 0x0010,
+        [Argument(2, "b",          ArgumentType.Value,      VariableWidth.Float)]
+        CompareFloat = 0x0015,
 
-        IfCharacterIsInParty   = 0x0011,
-        IfCharacterIsAvailable = 0x0012,
+        [FieldOpCode("YIELD", ArgumentLayout.Sequential, Summary = "Give up the rest of this frame and resume next frame", StopsInit = true)]
+        Yield = 0x0016,
 
-        [FieldOpCode("YIELD", ArgumentLayout.Sequential, Summary = "Give up the rest of this frame and resume next frame")]
-        Yield = 0x0013,
-
-        [FieldOpCode("WAIT_SECONDS", ArgumentLayout.Sequential, Summary = "Pause this script for a length of time")]
+        [FieldOpCode("WAIT_SECONDS", ArgumentLayout.Sequential, Summary = "Pause this script for a length of time", StopsInit = true)]
         [Argument(0, "seconds", ArgumentType.Float)]
-        WaitSeconds = 0x0014,
+        WaitSeconds = 0x0017,
+
+        HaltScript = 0x0018, // stop here for good, holding this priority slot
 
         [FieldOpCode("NOP", ArgumentLayout.Sequential, Summary = "Does nothing. Useful as a placeholder while authoring")]
-        DoNothing = 0x0015,
+        DoNothing = 0x0019,
 
-        DebugLog = 0x0016, // ulong messageId - authoring aid, writes to the console
+        DebugLog = 0x001A, // ulong messageId - authoring aid, writes to the console
 
         // System and module control (0x0100)
+
+        [FieldOpCode("JUMP_TO_MAP", ArgumentLayout.Sequential, Summary = "Leave for another field, entering at one of its spawn points", StopsInit = true)]
+        [Argument(0, "field",      ArgumentType.FieldName)]
+        [Argument(1, "spawnPoint", ArgumentType.SpawnId, Description = "the id on a SpawnPoint in the field being entered")]
+        JumpToAnotherMap = 0x0100,
+
+        SetJumpFieldID = 0x0101,
+
+        [FieldOpCode("GATEWAY_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this field's gateway triggers on or off")]
+        [Argument(0, "active", ArgumentType.Bool)]
+        GatewayTriggerActivation = 0x0102,
+
+        SetFieldExitFade = 0x0103, // bool faded - whether leaving by a gateway fades the screen
+        WorldMapJump     = 0x0104, // int spawnIndex
+
         [FieldOpCode("SET_BATTLE_MODE_OPTIONS", ArgumentLayout.Sequential, Summary = "Choose the arena, enemies and rules for the next battle")]
         [Argument(0, "arena",      ArgumentType.UShort)]
         [Argument(1, "enemyGroup", ArgumentType.UShort)]
         [Argument(2, "flags",      ArgumentType.UShort)]
         [Argument(3, "enemyLevel", ArgumentType.Byte)]
-        SetBattleModeOptions = 0x0100,
-
-        LoadResultOfLastBattle  = 0x0101,
-        SetBattleEncounterTable = 0x0102,
-
-        [FieldOpCode("JUMP_TO_MAP", ArgumentLayout.Sequential, Summary = "Leave for another field, entering at one of its spawn points")]
-        [Argument(0, "field",      ArgumentType.FieldName)]
-        [Argument(1, "spawnPoint", ArgumentType.SpawnId, Description = "the id on a SpawnPoint in the field being entered")]
-        JumpToAnotherMap = 0x0103,
-
-        GetLastFieldMap = 0x0104,
-        SetJumpFieldID  = 0x0105,
+        SetBattleModeOptions = 0x0105,
 
         [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin the battle set up by SET_BATTLE_MODE_OPTIONS")]
         StartBattle = 0x0106,
 
-        RandomEncounters = 0x0107,
-
-        [FieldOpCode("GATEWAY_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this field's gateway triggers on or off")]
-        [Argument(0, "active", ArgumentType.Bool)]
-        GatewayTriggerActivation = 0x0108,
-
-        GameOver       = 0x0109,
-        WorldMapJump   = 0x010A, // int spawnIndex
-        SetSaveEnabled = 0x010B, // bool enabled
+        LoadResultOfLastBattle = 0x0107,
+        RandomEncounters       = 0x0108,
+        GameOver               = 0x0109,
+        SetSaveEnabled         = 0x010A, // bool enabled
 
         // Assignment and mathematics (0x0200)
+
         [FieldOpCode("SET_BOOL", ArgumentLayout.BankBinary, Summary = "Set a bool variable")]
         [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Bool)]
         [Argument(1, "value",       ArgumentType.Value,    VariableWidth.Bool)]
@@ -833,30 +839,6 @@ namespace RPGFramework.Field
         RandomNumberSeed = 0x028F,
 
         // Windowing and menu (0x0300)
-        RunTutorial         = 0x0300,
-        CloseWindow         = 0x0301,
-        CreateSpecialWindow = 0x0302,
-        SetNumberInWindow   = 0x0303,
-        SetTimeInWindow     = 0x0304,
-
-        [FieldOpCode("SHOW_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Show a line of dialogue and wait for the player to dismiss it")]
-        [Argument(0, "dialogue",      ArgumentType.LocalisationKey)]
-        [Argument(1, "blockMovement", ArgumentType.Bool)]
-        ShowDialogueWindow = 0x0305,
-
-        SetMapNameInMenu = 0x0306,
-
-        [FieldOpCode("ASK_PLAYER_TO_MAKE_A_CHOICE", ArgumentLayout.Sequential, Summary = "Ask a question and store which answer the player chose")]
-        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
-        [Argument(1, "question",    ArgumentType.LocalisationKey)]
-        [Argument(2, "answers",     ArgumentType.LocalisationKeyList)]
-        AskPlayerToMakeAChoice = 0x0307,
-
-        MenuOperations = 0x0308,
-
-        [FieldOpCode("MAIN_MENU_ACCESSIBILITY", ArgumentLayout.Sequential, Summary = "Allow or block the player opening the main menu")]
-        [Argument(0, "enabled", ArgumentType.Bool)]
-        MainMenuAccessibility = 0x0309,
 
         [FieldOpCode("CREATE_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Create a dialogue window at a position and size, without showing it")]
         [Argument(0, "dialogue", ArgumentType.LocalisationKey)]
@@ -864,170 +846,209 @@ namespace RPGFramework.Field
         [Argument(2, "y",        ArgumentType.Int)]
         [Argument(3, "width",    ArgumentType.Int)]
         [Argument(4, "height",   ArgumentType.Int)]
-        CreateDialogueWindow = 0x030A,
+        CreateDialogueWindow = 0x0300,
 
-        SetMessageSpeed = 0x030B, // float charactersPerSecond
+        [FieldOpCode("SHOW_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Show a line of dialogue and wait for the player to dismiss it", StopsInit = true)]
+        [Argument(0, "dialogue",      ArgumentType.LocalisationKey)]
+        [Argument(1, "blockMovement", ArgumentType.Bool)]
+        ShowDialogueWindow = 0x0301,
+
+        ShowDialogueWindowNoWait = 0x0302, // as SHOW_DIALOGUE_WINDOW but the script carries on
+        WaitForDialogueWindow    = 0x0303, // wait for a window shown without waiting
+        CloseWindow              = 0x0304,
+        SetDialogueWindowStyle   = 0x0305, // byte style (spoken, thought, transparent)
+        SetMessageVariable       = 0x0306, // byte slot, int value - text shows a slot as {Var0}-{Var7}
+        SetMessageSpeed          = 0x0307, // float charactersPerSecond
+
+        [FieldOpCode("ASK_PLAYER_TO_MAKE_A_CHOICE", ArgumentLayout.Sequential, Summary = "Ask a question and store which answer the player chose", StopsInit = true)]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
+        [Argument(1, "question",    ArgumentType.LocalisationKey)]
+        [Argument(2, "answers",     ArgumentType.LocalisationKeyList)]
+        AskPlayerToMakeAChoice = 0x0308,
+
+        [FieldOpCode("MAIN_MENU_ACCESSIBILITY", ArgumentLayout.Sequential, Summary = "Allow or block the player opening the main menu")]
+        [Argument(0, "enabled", ArgumentType.Bool)]
+        MainMenuAccessibility = 0x0309,
+
+        OpenMainMenu     = 0x030A,
+        OpenSaveMenu     = 0x030B,
+        OpenShop         = 0x030C, // ushort shopId
+        OpenNameEntry    = 0x030D, // byte characterId
+        SetMapNameInMenu = 0x030E,
+        RunTutorial      = 0x030F,
 
         // Party and inventory (0x0400)
-        ChangePartyMembers        = 0x0400,
-        StorePartyMembers         = 0x0401,
-        IncreaseGil               = 0x0402,
-        DecreaseGil               = 0x0403,
-        GetGilAmount              = 0x0404,
-        RestoreHPMP               = 0x0405,
-        IncreaseMP                = 0x0406,
-        DecreaseMP                = 0x0407,
-        IncreaseHP                = 0x0408,
-        DecreaseHP                = 0x0409,
-        AddItemToInventory        = 0x040A,
-        RemoveItemFromInventory   = 0x040B,
-        GetItemCountFromInventory = 0x040C,
-        GetPartyMembersIdentity   = 0x040D,
-        AddCharacterToParty       = 0x040E,
-        RemoveCharacterFromParty  = 0x040F,
-        SetAllPartyCharacters     = 0x0410,
-        SetCharacterAvailability  = 0x0411,
-        LockPartyMember           = 0x0412,
-        UnlockPartyMember         = 0x0413,
+        AddCharacterToParty      = 0x0400,
+        RemoveCharacterFromParty = 0x0401,
+        ChangePartyMembers       = 0x0402,
+        SetAllPartyCharacters    = 0x0403,
+        GetCharacterInPartySlot  = 0x0404,
+        GetCharacterPartySlot    = 0x0405,
+        SetCharacterAvailability = 0x0406,
+        GetCharacterIsAvailable  = 0x0407,
+        SetPartyMemberLocked     = 0x0408, // byte characterId, bool locked - locked members cannot be swapped out
+        SetCharacterHP           = 0x0409, // byte characterId, ushort hp
+        GetCharacterHP           = 0x040A, // byte characterId, ushort destination
+        SetCharacterMP           = 0x040B,
+        GetCharacterMP           = 0x040C,
+        AddMoney                   = 0x040D, // int amount - negative takes money away
+        GetMoneyAmount             = 0x040E,
+        AddItem                  = 0x040F, // ushort itemId, int count - negative removes
+        GetItemCount             = 0x0410,
 
         // Field models and animation (0x0500)
-        JoinPartyToLeader    = 0x0500,
-        SplitPartyFromLeader = 0x0501,
-        MoveToPartyMember    = 0x0502,
+
+        [FieldOpCode("SET_PLAYER_ENTITY", ArgumentLayout.Sequential, Summary = "Make this entity the one the player controls")]
+        SetPlayerEntity = 0x0500,
 
         [FieldOpCode("LOCK_INPUT", ArgumentLayout.Sequential, Summary = "Take control away from the player, or give it back")]
         [Argument(0, "locked", ArgumentType.Bool)]
-        LockInput = 0x0503,
+        LockInput = 0x0501,
 
-        TurnToPartyMember       = 0x0504,
-        CollisionDetection      = 0x0505,
-        GetPartyMemberDirection = 0x0506,
-        GetPartyMemberPosition  = 0x0507,
-
-        [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off")]
-        [Argument(0, "enabled", ArgumentType.Bool)]
-        InteractionTriggerActivation = 0x0508,
-
-        [FieldOpCode("INIT_CHARACTER", ArgumentLayout.Sequential, Summary = "Mark this entity as the player character")]
-        InitAsCharacter = 0x0509,
-
-        PlayAnimationLooping     = 0x050A,
-        PlayAnimationOnceAndWait = 0x050B,
+        SetRunningEnabled    = 0x0502, // bool enabled
+        JoinPartyToLeader    = 0x0503,
+        SplitPartyFromLeader = 0x0504,
+        SetFollowerEnabled   = 0x0505, // byte partySlot, bool following
+        ResetFollowerTrail   = 0x0506, // forget the path followers are walking, after the leader is moved
 
         [FieldOpCode("VISIBILITY", ArgumentLayout.Sequential, Summary = "Show or hide this entity")]
         [Argument(0, "isVisible", ArgumentType.Bool)]
-        Visibility = 0x050C,
+        Visibility = 0x0507,
+
+        SetEntityActive           = 0x0508, // bool active - inactive stops its scripts, hides it and removes its collision
+        EntitySolidity            = 0x0509,
+        CollisionScriptActivation = 0x050A,
+        SetCollisionRadius        = 0x050B,
+
+        [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off")]
+        [Argument(0, "enabled", ArgumentType.Bool)]
+        InteractionTriggerActivation = 0x050C,
+
+        [FieldOpCode("SET_INTERACTION_RANGE", ArgumentLayout.Sequential, Summary = "Set how close the player must be to interact with this entity")]
+        [Argument(0, "radius", ArgumentType.Float)]
+        SetInteractionRange = 0x050D,
 
         [FieldOpCode("SET_ENTITY_POSITION", ArgumentLayout.Sequential, Summary = "Move this entity immediately, with no animation")]
         [Argument(0, "x", ArgumentType.Float)]
         [Argument(1, "y", ArgumentType.Float)]
         [Argument(2, "z", ArgumentType.Float)]
-        SetEntityPosition = 0x050D,
+        SetEntityPosition = 0x050E,
 
-        MoveEntityToXYWalkAnimation = 0x050E, // moves an entity using walk animation (if available) to x,y,z at speed set by SetMovementSpeed
-        MoveEntityToXYNoAnimation   = 0x050F, // as above but doesn't animate or rotate
-        MoveEntityToAnotherEntity   = 0x0510, // navigates to another entity stopping once it reaches its collision
-        TurnEntityToAnotherEntity   = 0x0511, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SetEntityRotationAsync with smooth)
-        WaitForAnimation            = 0x0512, // waits for the animation to complete that has been previously played using any of the animation opcodes.
-        MoveFieldObject             = 0x0513, // MoveEntityToXYNoAnimation but rotates
-        PlayAnimationAsync          = 0x0514,
-        PlayAnimationOnceAsync      = 0x0515,
-        PlayPartialAnimation        = 0x0516,
+        SetEntityHeightOffset   = 0x050F, // float offset - lift the model, for standing on something
+        SetEntityDrawOffset     = 0x0510,
+        WaitForEntityDrawOffset = 0x0511,
 
         [FieldOpCode("SET_MOVEMENT_SPEED", ArgumentLayout.Sequential, Summary = "Set how fast this entity moves")]
         [Argument(0, "movementSpeed", ArgumentType.Float)]
-        SetMovementSpeed = 0x0517,
+        SetMovementSpeed = 0x0512,
+
+        MoveEntityToXYWalkAnimation = 0x0513, // moves an entity using walk animation (if available) to x,y,z at speed set by SetMovementSpeed
+        MoveEntityToXYNoAnimation   = 0x0514, // as above but doesn't animate or rotate
+        MoveFieldObject             = 0x0515, // MoveEntityToXYNoAnimation but rotates
+        MoveEntityToAnotherEntity   = 0x0516, // navigates to another entity stopping once it reaches its collision
+        MoveToPartyMember           = 0x0517,
+        MakeEntityJump              = 0x0518,
+        JumpToPartyMember           = 0x0519, // byte partySlot, float seconds
+        ClimbLadder                 = 0x051A,
+        WaitForMovement             = 0x051B, // wait until this entity has finished moving
+        FlushMovement               = 0x051C, // drop any queued movement for this entity
 
         [FieldOpCode("SET_ENTITY_ROTATION", ArgumentLayout.Sequential, Summary = "Face this entity in a direction immediately")]
         [Argument(0, "x", ArgumentType.Float)]
         [Argument(1, "y", ArgumentType.Float)]
         [Argument(2, "z", ArgumentType.Float)]
-        SetEntityRotation = 0x0518,
+        SetEntityRotation = 0x051D,
 
-        [FieldOpCode("SET_ENTITY_ROTATION_ASYNC", ArgumentLayout.Sequential, Summary = "Turn this entity to face a direction over time")]
+        [FieldOpCode("SET_ENTITY_ROTATION_OVER_TIME", ArgumentLayout.Sequential, Summary = "Turn this entity to face a direction over time, waiting until it has", StopsInit = true)]
         [Argument(0, "x",            ArgumentType.Float)]
         [Argument(1, "y",            ArgumentType.Float)]
         [Argument(2, "z",            ArgumentType.Float)]
         [Argument(3, "direction",    ArgumentType.Byte, Description = "0 clockwise, 1 counterclockwise, 2 closest")]
         [Argument(4, "duration",     ArgumentType.Float)]
         [Argument(5, "rotationType", ArgumentType.Byte, Description = "0 linear, 1 smooth")]
-        SetEntityRotationAsync = 0x0519,
+        SetEntityRotationOverTime = 0x051E,
 
         [FieldOpCode("SET_DIRECTION_TO_FACE_ENTITY", ArgumentLayout.Sequential, Summary = "Face this entity towards another")]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        SetDirectionToFaceEntity = 0x051A,
+        SetDirectionToFaceEntity = 0x051F,
 
-        GetEntityDirection               = 0x051B,
-        PlayAnimationStopOnLastFrameWait = 0x051C,
-        SetAnimationSpeed                = 0x051D,
-        SetEntityAsControllableCharacter = 0x051E,
-        MakeEntityJump                   = 0x051F,
-        GetEntityPosition                = 0x0520,
-        ClimbLadder                      = 0x0521,
-        TransposeObjectVisualizationOnly = 0x0522,
-        WaitForTranspose                 = 0x0523,
+        SetDirectionToPosition           = 0x0520, // float x, float y, float z
+        SetDirectionToPartyMember        = 0x0521, // byte partySlot
+        TurnEntityToAnotherEntity        = 0x0522, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SET_ENTITY_ROTATION_OVER_TIME with smooth)
+        TurnToPartyMember                = 0x0523,
+        SetBaseAnimation                 = 0x0524,
+        SetLadderAnimations              = 0x0525, // the climbing animations, as SetBaseAnimation is for walking
+        PlayAnimationLooping             = 0x0526,
+        PlayAnimationOnceAndWait         = 0x0527,
+        PlayAnimationOnceAsync           = 0x0528,
+        PlayAnimationStopOnLastFrameWait = 0x0529,
+        PlayPartialAnimation             = 0x052A,
+        SetAnimationSpeed                = 0x052B,
+        WaitForAnimation                 = 0x052C, // waits for the animation to complete that has been previously played using any of the animation opcodes.
+        StopAnimation                    = 0x052D,
+        PushAnimationState               = 0x052E, // remember what is playing, so an interruption can restore it
+        PopAnimationState                = 0x052F,
+        InitialiseHeadFacing             = 0x0530, // begin head tracking on this entity, before any SetHeadFacing*
+        SetHeadFacingEntity              = 0x0531, // int targetEntityId, int frameCount - turn the head only, body unchanged
+        SetHeadFacingPlayer              = 0x0532, // int frameCount - track the player entity with the head only
+        SetHeadFacingLimit               = 0x0533, // byte yawLimit, byte pitchLimit, byte rollLimit - stop the head over-rotating
+        SetHeadPose                      = 0x0534, // byte pose (0 neutral, 1 up, 2 down)
+        StopHeadFacing                   = 0x0535, // return the head to neutral and leave tracking
+        WaitForHeadFacing                = 0x0536, // wait until the head has reached where it was sent
+        SetFootstepSound                 = 0x0537, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
+        SetFootstepsEnabled              = 0x0538, // bool enabled
+        SetEntityShadeLevel              = 0x0539, // float level
+        GetEntityPosition                = 0x053A,
+        GetEntityDirection               = 0x053B,
+        GetPartyMemberPosition           = 0x053C,
+        GetPartyMemberDirection          = 0x053D,
+        CopyEntityInfo                   = 0x053E, // int sourceEntityId - take another entity's position and facing
+        IsEntityTouching                 = 0x053F, // int otherEntityId, ushort destination
 
-        [FieldOpCode("SET_INTERACTION_RANGE", ArgumentLayout.Sequential, Summary = "Set how close the player must be to interact with this entity")]
-        [Argument(0, "radius", ArgumentType.Float)]
-        SetInteractionRange = 0x0524,
-
-        SetCollisionRadius   = 0x0525,
-        Collidability        = 0x0526,
-        FixFacingForward     = 0x0527,
-        SetAnimationID       = 0x0528,
-        StopAnimation        = 0x0529,
-        FlushMovement        = 0x052A, // drop any queued movement for this entity
-        SetRunningEnabled    = 0x052B, // bool enabled
-        SetFootstepSound     = 0x052C, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
-        InitialiseHeadFacing = 0x052D, // begin head tracking on this entity, before any SetHeadFacing*
-        SetHeadFacingEntity  = 0x052E, // int targetEntityId, int frameCount - turn the head only, body unchanged
-        SetHeadFacingPlayer  = 0x052F, // int frameCount - track the player entity with the head only
-        SetHeadFacingLimit   = 0x0530, // byte yawLimit, byte pitchLimit, byte rollLimit - stop the head over-rotating
-        SetHeadPose          = 0x0531, // byte pose (0 neutral, 1 up, 2 down)
-        StopHeadFacing       = 0x0532, // return the head to neutral and leave tracking
-
-        // Screen tint (0x0600)
-        SetShadeLevel         = 0x0600, // float level
-        SubtractiveScreenFade = 0x0601, // float r, float g, float b, float duration
+        // Screen and field effects (0x0600)
+        SubtractiveScreenFade = 0x0600, // float r, float g, float b, float duration
+        AdditiveScreenFade    = 0x0601, // float r, float g, float b, float duration
+        WaitForScreenColour   = 0x0602, // wait for a screen colour fade to finish
+        ParticleActivation    = 0x0603, // ushort effectId, bool active - a named effect placed in the field
 
         // Camera and screen movement (0x0700)
-        FadeScreen                        = 0x0700,
-        FadeScreenWait                    = 0x0701,
-        WaitForFade                       = 0x0702,
-        ShakeScreen                       = 0x0703,
-        ScrollScreen                      = 0x0704,
-        ScrollScreenToEntity              = 0x0705,
-        ScrollScreenToPosition            = 0x0706,
-        ScrollScreenToLeader              = 0x0707,
-        ScrollToPartyMember               = 0x0708,
-        StartTheScreenToPositionEaseInOut = 0x0709,
-        StartTheScreenToPositionLinear    = 0x070A,
-        WaitForScrolling                  = 0x070B,
+        FadeScreen             = 0x0700,
+        FadeScreenWait         = 0x0701,
+        WaitForFade            = 0x0702,
+        ShakeScreen            = 0x0703,
+        ScrollScreenToPosition = 0x0704,
+        ScrollScreenToEntity   = 0x0705,
+        ScrollToPartyMember    = 0x0706,
+        WaitForScrolling       = 0x0707,
+        SetCamera              = 0x0708, // byte cameraId - which of the field's cameras to look through
 
         // Audio (0x0800)
-        MusicOperation = 0x0800,
 
         [FieldOpCode("PLAY_MUSIC", ArgumentLayout.Sequential, Summary = "Start a music track, layered as one of its stem states")]
         [Argument(0, "track", ArgumentType.MusicName,      Description = "the music asset's name, as it appears in the music provider")]
         [Argument(1, "state", ArgumentType.MusicStateName, Description = "which stem state it starts on")]
-        PlayMusic = 0x0801,
+        PlayMusic = 0x0800,
 
-        [FieldOpCode("PLAY_SOUND", ArgumentLayout.Sequential, Summary = "Play a sound effect once")]
-        [Argument(0, "sound", ArgumentType.SoundName, Description = "the sound asset's name, as it appears in the SFX provider")]
-        PlaySound = 0x0802,
-
-        MusicLockMode         = 0x0803,
-        SetBattleMusic        = 0x0804,
-        CheckIfMusicIsPlaying = 0x0805,
-        PlayAmbientLoop       = 0x0806, // int id - a looping ambience, distinct from a one-shot
-        SetAllSoundVolume     = 0x0807, // float volume
-        FadeAllSoundVolume    = 0x0808, // float volume, float duration
+        StopMusic       = 0x0801,
+        SetMusicVolume  = 0x0802, // float volume
+        FadeMusicVolume = 0x0803, // float volume, float seconds
 
         [FieldOpCode("MUSIC_STEM_STATE", ArgumentLayout.Sequential, Summary = "Switch the music to one of the stem states its asset declares")]
         [Argument(0, "track",       ArgumentType.MusicNameHint,  Description = "which track's states to choose from — not compiled, it applies to whatever is playing")]
         [Argument(1, "state",       ArgumentType.MusicStateName, Description = "the state's name on the music asset")]
         [Argument(2, "fadeSeconds", ArgumentType.Float,          Description = "0 changes immediately")]
-        SetMusicStemState = 0x0809,
+        SetMusicStemState = 0x0804,
+
+        CheckIfMusicIsPlaying = 0x0805,
+        SetBattleMusic        = 0x0806,
+
+        [FieldOpCode("PLAY_SOUND", ArgumentLayout.Sequential, Summary = "Play a sound effect once")]
+        [Argument(0, "sound", ArgumentType.SoundName, Description = "the sound asset's name, as it appears in the SFX provider")]
+        PlaySound = 0x0807,
+
+        PlayAmbientLoop    = 0x0808, // int id - a looping ambience, distinct from a one-shot
+        SetAllSoundVolume  = 0x0809, // float volume
+        FadeAllSoundVolume = 0x080A, // float volume, float duration
 
         // Video (0x0900)
         PrepareMovie = 0x0900, // int id
@@ -1037,10 +1058,10 @@ namespace RPGFramework.Field
         // Timer (0x0A00)
         SetCountdownTimer  = 0x0A00, // int seconds
         ShowCountdownTimer = 0x0A01, // bool visible, int x, int y
+        GetCountdownTimer  = 0x0A02, // ushort destination - seconds left, to branch on
 
         // Input and haptics (0x0B00)
-        SetVibration  = 0x0B00, // float lowFrequency, float highFrequency, float duration
-        SetKeyEnabled = 0x0B01, // byte controlSlot, bool enabled
+        SetVibration = 0x0B00, // float lowFrequency, float highFrequency, float duration
     }
 
     /// <summary>

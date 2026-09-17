@@ -6,21 +6,21 @@ namespace RPGFramework.Field
     [RequireComponent(typeof(BoxCollider))]
     public sealed class FieldGatewayTrigger : MonoBehaviour
     {
-        private const string PLAYER_TAG = "Player";
-
         public event Action<int, int> OnTriggered;
 
         private FieldEntity m_Entity;
         private bool        m_IsActive;
         private bool        m_IsEntityShown;
         private int         m_EntityId;
+        private int         m_PlayerEntityId;
 
         private void Awake()
         {
-            m_Entity        = GetComponentInParent<FieldEntity>();
-            m_IsActive      = true;
-            m_IsEntityShown = true;
-            m_EntityId      = m_Entity.EntityId;
+            m_Entity         = GetComponentInParent<FieldEntity>();
+            m_IsActive       = true;
+            m_IsEntityShown  = true;
+            m_EntityId       = m_Entity.EntityId;
+            m_PlayerEntityId = FieldEntity.NO_ENTITY;
         }
 
         private void OnTriggerEnter(Collider other)
@@ -40,8 +40,9 @@ namespace RPGFramework.Field
                 return;
             }
 
-            // TODO: don't want to rely on tag, need to know player entity ID
-            if (!other.CompareTag(PLAYER_TAG))
+            FieldEntity entity = other.GetComponentInParent<FieldEntity>();
+
+            if (entity == null || entity.EntityId != m_PlayerEntityId)
             {
                 return;
             }
@@ -54,9 +55,6 @@ namespace RPGFramework.Field
             OnTriggered?.Invoke(m_EntityId, eventId);
         }
 
-        /// <summary>
-        /// Turns every gateway in the field on or off, separately from whether this entity is shown.
-        /// </summary>
         public void SetActive(bool active)
         {
             m_IsActive = active;
@@ -65,6 +63,11 @@ namespace RPGFramework.Field
         public void SetEntityShown(bool shown)
         {
             m_IsEntityShown = shown;
+        }
+
+        public void SetPlayerEntityId(int entityId)
+        {
+            m_PlayerEntityId = entityId;
         }
     }
 }

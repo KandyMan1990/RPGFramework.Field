@@ -33,6 +33,22 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
+        /// A compiled script is written as <c>Name.compiled.asset</c> beside the <c>Name.asset</c> it was
+        /// compiled from, so the source is found by undoing that.
+        /// </summary>
+        internal static bool TryFindSource(FieldCompiledScript compiled, out FieldScriptSource source)
+        {
+            string compiledPath = AssetDatabase.GetAssetPath(compiled);
+            string sourcePath   = compiledPath.Replace(".compiled.asset", ".asset");
+
+            source = AssetDatabase.LoadAssetAtPath<FieldScriptSource>(sourcePath);
+
+            bool found = source != null;
+
+            return found;
+        }
+
+        /// <summary>
         /// Compile every script source in the project, so an export never ships bytecode built against an older
         /// opcode table.
         /// </summary>

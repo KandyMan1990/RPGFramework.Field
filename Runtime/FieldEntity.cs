@@ -4,6 +4,11 @@ namespace RPGFramework.Field
 {
     public sealed class FieldEntity : MonoBehaviour
     {
+        /// <summary>
+        /// No entity. Entity ids are authored from 0, so nothing ever has this one.
+        /// </summary>
+        public const int NO_ENTITY = -1;
+
         public FieldScriptDefinition ScriptDefinition;
         public int                   EntityId => ScriptDefinition.EntityId;
 
