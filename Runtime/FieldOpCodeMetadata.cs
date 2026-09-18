@@ -124,7 +124,19 @@ namespace RPGFramework.Field
         Value,
 
         /// <summary>How an IF compares its two values — see <see cref="ScriptComparison" />.</summary>
-        Comparison
+        Comparison,
+        /// <summary>
+        /// One of the field's dialogue windows, 0 to <see cref="ArgumentTypes.DIALOGUE_CHANNEL_COUNT" /> - 1. A
+        /// channel keeps its rectangle and style for every message shown on it. Always literal.
+        /// </summary>
+        DialogueChannel,
+        /// <summary>How a dialogue window looks — see <c>DialogueWindowStyle</c>. Written by name. Always literal.</summary>
+        DialogueWindowStyle,
+        /// <summary>
+        /// A message variable, which dialogue shows as <c>{Var n}</c>, 0 to
+        /// <c>DialogueMarkup.MESSAGE_VARIABLE_COUNT</c> - 1. Always literal.
+        /// </summary>
+        MessageVariableSlot
     }
 
     /// <summary>
@@ -214,6 +226,8 @@ namespace RPGFramework.Field
         /// <paramref name="declaredWidth" /> is the width an <see cref="ArgumentType.Variable" /> or
         /// <see cref="ArgumentType.Value" /> argument declares.
         /// </summary>
+        public const int DIALOGUE_CHANNEL_COUNT = 8;
+
         public static bool TryGetVariableWidth(ArgumentType type, VariableWidth declaredWidth, out VariableWidth width)
         {
             switch (type)

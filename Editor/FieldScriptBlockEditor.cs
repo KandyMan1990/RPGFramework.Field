@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
 using RPGFramework.Audio.Music;
 using RPGFramework.Audio.Sfx;
@@ -314,6 +315,29 @@ namespace RPGFramework.Field.Editor
             return row;
         }
 
+        /// <summary>
+        /// A choice of 0 to <paramref name="count" /> - 1, labelled, writing the number. A number outside the range is
+        /// shown as written rather than quietly changed.
+        /// </summary>
+        private DropdownField IndexDropdown(FieldScriptBlock block, int argumentIndex, string label, string current, int count, Func<int, string> describe)
+        {
+            List<string> labels = new List<string>(count);
+
+            for (int i = 0; i < count; i++)
+            {
+                labels.Add(describe(i));
+            }
+
+            DropdownField field = new DropdownField(label, labels, 0);
+
+            bool known = int.TryParse(current, out int index) && index >= 0 && index < count;
+            field.SetValueWithoutNotify(known ? labels[index] : current);
+
+            field.RegisterValueChangedCallback(e => Set(block, argumentIndex, labels.IndexOf(e.newValue).ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+            return field;
+        }
+
         private VisualElement BuildControl(FieldScriptBlock block, int argumentIndex, FieldArgumentInfo argument, string label)
         {
             string current = argumentIndex < block.Arguments.Count ? block.Arguments[argumentIndex] : string.Empty;
@@ -430,6 +454,21 @@ namespace RPGFramework.Field.Editor
 
                     field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue, rebuildOnChange));
 
+                    return field;
+                }
+
+                case ArgumentType.DialogueChannel:
+                    return IndexDropdown(block, argumentIndex, label, current, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, i => $"Channel {i}");
+
+                case ArgumentType.MessageVariableSlot:
+                    return IndexDropdown(block, argumentIndex, label, current, DialogueMarkup.MESSAGE_VARIABLE_COUNT, i => $"{{Var {i}}}");
+
+                case ArgumentType.DialogueWindowStyle:
+                {
+                    List<string> styles = new List<string>(Enum.GetNames(typeof(DialogueWindowStyle)));
+
+                    DropdownField field = new DropdownField(label, styles, Mathf.Max(0, styles.IndexOf(current)));
+                    field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue));
                     return field;
                 }
 

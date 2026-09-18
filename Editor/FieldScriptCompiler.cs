@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Hashing;
@@ -69,9 +70,9 @@ namespace RPGFramework.Field.Editor
                         break;
 
                     case "ASK_PLAYER_TO_MAKE_A_CHOICE":
-                        if (parts.Length < 4)
+                        if (parts.Length < 5)
                         {
-                            throw new Exception($"line {lineIndex + 1}: ASK_PLAYER_TO_MAKE_A_CHOICE needs at least one answer key after the question key");
+                            throw new Exception($"line {lineIndex + 1}: ASK_PLAYER_TO_MAKE_A_CHOICE needs a destination, a channel, a question key and at least one answer key");
                         }
 
                         VariableDefinition choice = ResolveVariable(parts[1], parts[0], ref variableMap, VariableWidth.Byte);
@@ -79,12 +80,13 @@ namespace RPGFramework.Field.Editor
                         bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
                         bw.Write((byte)choice.Bank);
                         bw.Write((ushort)choice.Offset);
-                        bw.Write(HashDialogueKey(parts, 2, lineIndex + 1));
+                        bw.Write(ParseIndex(parts, 2, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, "dialogue channel", lineIndex + 1));
+                        bw.Write(HashDialogueKey(parts, 3, lineIndex + 1));
 
-                        byte count = (byte)(parts.Length - 3);
+                        byte count = (byte)(parts.Length - 4);
                         bw.Write(count);
 
-                        for (int i = 3; i < parts.Length; i++)
+                        for (int i = 4; i < parts.Length; i++)
                         {
                             bw.Write(HashDialogueKey(parts, i, lineIndex + 1));
                         }
@@ -375,9 +377,54 @@ namespace RPGFramework.Field.Editor
                     bw.Write(HashDialogueKey(parts, part, lineNumber));
                     break;
 
+                case ArgumentType.DialogueChannel:
+                    bw.Write(ParseIndex(parts, part, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, "dialogue channel", lineNumber));
+                    break;
+
+                case ArgumentType.MessageVariableSlot:
+                    bw.Write(ParseIndex(parts, part, DialogueMarkup.MESSAGE_VARIABLE_COUNT, "message variable", lineNumber));
+                    break;
+
+                case ArgumentType.DialogueWindowStyle:
+                    bw.Write((byte)ParseWindowStyle(parts, part, lineNumber));
+                    break;
+
                 default:
                     throw new Exception($"line {lineNumber}: {parts[0]} has a {type} argument, which a sequential opcode cannot encode");
             }
+        }
+
+        private static byte ParseIndex(string[] parts, int part, int count, string what, int lineNumber)
+        {
+            if (part >= parts.Length)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} is missing its {what}");
+            }
+
+            if (!byte.TryParse(parts[part], NumberStyles.Integer, CultureInfo.InvariantCulture, out byte index) || index >= count)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} needs a {what} from 0 to {count - 1}, got '{parts[part]}'");
+            }
+
+            return index;
+        }
+
+        /// <summary>
+        /// A style is written by name, as the block editor writes it.
+        /// </summary>
+        private static DialogueWindowStyle ParseWindowStyle(string[] parts, int part, int lineNumber)
+        {
+            if (part >= parts.Length)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} is missing its window style");
+            }
+
+            if (!Enum.TryParse(parts[part], false, out DialogueWindowStyle style) || !Enum.IsDefined(typeof(DialogueWindowStyle), style) || char.IsDigit(parts[part][0]))
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} needs a window style — {string.Join(", ", Enum.GetNames(typeof(DialogueWindowStyle)))} — got '{parts[part]}'");
+            }
+
+            return style;
         }
 
         /// <summary>

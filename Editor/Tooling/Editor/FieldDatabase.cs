@@ -121,13 +121,16 @@ namespace RPGFramework.Field.Editor
 
                 FieldEntity[] entities = prefab.GetComponentsInChildren<FieldEntity>(true);
 
-                HashSet<int>            entityIds = new HashSet<int>();
-                Dictionary<int, string> scriptIds = new Dictionary<int, string>();
+                HashSet<int>            entityIds        = new HashSet<int>();
+                Dictionary<int, string> scriptIds        = new Dictionary<int, string>();
+                DialogueChannelUse      dialogueChannels = new DialogueChannelUse();
 
                 foreach (FieldEntity entity in entities)
                 {
-                    ValidateEntity(prefab, entity, entityIds, scriptIds, problems);
+                    ValidateEntity(prefab, entity, entityIds, scriptIds, dialogueChannels, problems);
                 }
+
+                dialogueChannels.Validate(prefab.name, problems);
             }
 
             return problems;
@@ -158,7 +161,7 @@ namespace RPGFramework.Field.Editor
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
         /// </summary>
-        private static void ValidateEntity(GameObject prefab, FieldEntity entity, HashSet<int> entityIds, Dictionary<int, string> scriptIds, List<string> problems)
+        private static void ValidateEntity(GameObject prefab, FieldEntity entity, HashSet<int> entityIds, Dictionary<int, string> scriptIds, DialogueChannelUse dialogueChannels, List<string> problems)
         {
             FieldScriptDefinition scriptDefinition = entity.ScriptDefinition;
 
@@ -241,7 +244,16 @@ namespace RPGFramework.Field.Editor
                     problems.Add($"{scriptDescription} has script id [{scriptId}], outside the 0..{ushort.MaxValue} a script-request opcode can address");
                 }
 
-                ValidateInitScript(scriptEntry, scriptDescription, problems);
+                if (!FieldCompiledScriptAssets.TryFindSource(scriptEntry.CompiledScript, out FieldScriptSource source))
+                {
+                    problems.Add($"{scriptDescription} has no {nameof(FieldScriptSource)} beside it, so it cannot be recompiled or checked. A compiled script is written next to the source it came from");
+                    continue;
+                }
+
+                string[] lines = source.ScriptText.Split('\n');
+
+                ValidateInitScript(scriptEntry, scriptDescription, lines, problems);
+                dialogueChannels.Read(lines, scriptDescription);
             }
 
             if (initScriptCount > 1)
@@ -261,20 +273,14 @@ namespace RPGFramework.Field.Editor
         /// stops it there and everything after it never runs. The opcodes that do that declare
         /// <see cref="FieldOpCodeAttribute.StopsInit" />, so this reads the table rather than a list kept here.
         /// </summary>
-        private static void ValidateInitScript(ScriptEntry scriptEntry, string scriptDescription, List<string> problems)
+        private static void ValidateInitScript(ScriptEntry scriptEntry, string scriptDescription, string[] lines, List<string> problems)
         {
             if (scriptEntry.ScriptType != FieldScriptType.Init)
             {
                 return;
             }
 
-            if (!FieldCompiledScriptAssets.TryFindSource(scriptEntry.CompiledScript, out FieldScriptSource source))
-            {
-                problems.Add($"{scriptDescription} has no {nameof(FieldScriptSource)} beside it, so it cannot be recompiled or checked. A compiled script is written next to the source it came from");
-                return;
-            }
-
-            foreach (string line in source.ScriptText.Split('\n'))
+            foreach (string line in lines)
             {
                 string name = line.Trim().Split(' ')[0];
 

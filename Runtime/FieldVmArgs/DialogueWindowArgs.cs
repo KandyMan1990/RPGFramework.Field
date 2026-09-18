@@ -4,13 +4,13 @@ namespace RPGFramework.Field.FieldVmArgs
 {
     internal readonly struct DialogueWindowArgs
     {
-        internal readonly ulong   DialogueId;
+        internal readonly byte    Channel;
         internal readonly RectInt Rect;
 
-        internal DialogueWindowArgs(ulong dialogueId, RectInt rect)
+        internal DialogueWindowArgs(byte channel, RectInt rect)
         {
-            DialogueId = dialogueId;
-            Rect       = rect;
+            Channel = channel;
+            Rect    = rect;
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
 using RPGFramework.Battle.SharedTypes;
@@ -30,29 +31,35 @@ namespace RPGFramework.Field
 {
     public partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
     {
-        private readonly ICoreModule                        m_CoreModule;
-        private readonly IDIResolver                        m_DIResolver;
-        private readonly IInputRouter                       m_InputRouter;
-        private readonly IMusicPlayer                       m_MusicPlayer;
-        private readonly ISfxPlayer                         m_SfxPlayer;
-        private readonly IFieldDatabase                     m_FieldDatabase;
-        private readonly IFieldPresentation                 m_FieldPresentation;
-        private readonly ILocalisationService               m_LocalisationService;
-        private readonly Dictionary<ulong, IDialogueWindow> m_DialogueWindows;
-        private readonly IMemoryService                     m_MemoryService;
-        private readonly ITempMemoryArgs                    m_TempMemoryArgs;
-        private readonly IScreenFadeService                 m_ScreenFadeService;
-        private readonly IBattleArgsProvider                m_BattleArgsProvider;
-        private readonly IFieldArgsProvider                 m_FieldArgsProvider;
-        private readonly IMenuArgsProvider                  m_MenuArgsProvider;
-        private readonly IChangeModuleStore                 m_ChangeModuleStore;
-        private readonly IResumeModuleStore                 m_ResumeModuleStore;
-        private readonly IFieldResumeDataStore              m_FieldResumeDataStore;
+        private readonly ICoreModule            m_CoreModule;
+        private readonly IDIResolver            m_DIResolver;
+        private readonly IInputRouter           m_InputRouter;
+        private readonly IMusicPlayer           m_MusicPlayer;
+        private readonly ISfxPlayer             m_SfxPlayer;
+        private readonly IFieldDatabase         m_FieldDatabase;
+        private readonly IFieldPresentation     m_FieldPresentation;
+        private readonly ILocalisationService   m_LocalisationService;
+        private readonly FieldDialogueChannel[] m_DialogueChannels;
+        private readonly int[]                  m_MessageVariables;
+        private readonly IMemoryService         m_MemoryService;
+        private readonly ITempMemoryArgs        m_TempMemoryArgs;
+        private readonly IScreenFadeService     m_ScreenFadeService;
+        private readonly IBattleArgsProvider    m_BattleArgsProvider;
+        private readonly IFieldArgsProvider     m_FieldArgsProvider;
+        private readonly IMenuArgsProvider      m_MenuArgsProvider;
+        private readonly IChangeModuleStore     m_ChangeModuleStore;
+        private readonly IResumeModuleStore     m_ResumeModuleStore;
+        private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
-        private IInputContext            m_CurrentInputContext;
-        private TransformHandle          m_CameraTransformHandle;
-        private VisualElement            m_RootElement;
+        private IInputContext            m_ExplorationInputContext;
+        private BlockAllInputContext     m_ScriptInputLock;
+
+        // Shared by every open dialogue window, so one press reaches them all; see DialogueInputContext.
+        private readonly DialogueInputContext m_DialogueInputContext = new DialogueInputContext();
+        private          int                  m_OpenDialogueWindows;
+        private          TransformHandle      m_CameraTransformHandle;
+        private          VisualElement        m_RootElement;
 
         private InputAdapter                           m_InputAdapter;
         private FieldContext                           m_FieldContext;
@@ -104,7 +111,13 @@ namespace RPGFramework.Field
             m_ChangeModuleStore    = changeModuleStore;
             m_ResumeModuleStore    = resumeModuleStore;
             m_FieldResumeDataStore = fieldResumeDataStore;
-            m_DialogueWindows      = new Dictionary<ulong, IDialogueWindow>(8);
+            m_DialogueChannels     = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
+            m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
+
+            for (int i = 0; i < m_DialogueChannels.Length; i++)
+            {
+                m_DialogueChannels[i] = new FieldDialogueChannel();
+            }
         }
 
         async Task IModule.OnEnterAsync()
@@ -214,9 +227,12 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetMainMenuAccessibility    += OnRequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestCreateDialogueWindow        += OnRequestCreateDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindow          += OnRequestShowDialogueWindow;
+            m_FieldContext.VM.RequestShowDialogueWindowNoWait    += OnRequestShowDialogueWindowNoWait;
+            m_FieldContext.VM.RequestCloseDialogueWindow         += OnRequestCloseDialogueWindow;
+            m_FieldContext.VM.RequestSetDialogueWindowStyle      += OnRequestSetDialogueWindowStyle;
+            m_FieldContext.VM.RequestSetMessageVariable          += OnRequestSetMessageVariable;
             m_FieldContext.VM.IsDialogueWindowOpen               =  IsDialogueWindowOpen;
             m_FieldContext.VM.RequestAskPlayerToMakeAChoice      += OnRequestAskPlayerToMakeAChoice;
-            m_FieldContext.VM.IsPlayerMakingAChoice              =  IsDialogueWindowOpen;
             m_FieldContext.VM.RequestSetBattleModeOptions        += OnRequestSetBattleModeOptions;
             m_FieldContext.VM.RequestStartBattle                 += OnRequestStartBattle;
         }
@@ -225,10 +241,13 @@ namespace RPGFramework.Field
         {
             m_FieldContext.VM.RequestStartBattle                 -= OnRequestStartBattle;
             m_FieldContext.VM.RequestSetBattleModeOptions        -= OnRequestSetBattleModeOptions;
-            m_FieldContext.VM.IsPlayerMakingAChoice              =  null;
             m_FieldContext.VM.RequestAskPlayerToMakeAChoice      -= OnRequestAskPlayerToMakeAChoice;
             m_FieldContext.VM.IsDialogueWindowOpen               =  null;
             m_FieldContext.VM.RequestShowDialogueWindow          -= OnRequestShowDialogueWindow;
+            m_FieldContext.VM.RequestShowDialogueWindowNoWait    -= OnRequestShowDialogueWindowNoWait;
+            m_FieldContext.VM.RequestCloseDialogueWindow         -= OnRequestCloseDialogueWindow;
+            m_FieldContext.VM.RequestSetDialogueWindowStyle      -= OnRequestSetDialogueWindowStyle;
+            m_FieldContext.VM.RequestSetMessageVariable          -= OnRequestSetMessageVariable;
             m_FieldContext.VM.RequestCreateDialogueWindow        -= OnRequestCreateDialogueWindow;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    -= OnRequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= OnRequestSetEntityMovementSpeed;
@@ -552,8 +571,8 @@ namespace RPGFramework.Field
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
 
-            m_CurrentInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
-            m_InputRouter.Push(m_CurrentInputContext);
+            m_ExplorationInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
+            m_InputRouter.Push(m_ExplorationInputContext);
 
             if (m_FieldContext.IsInputLockedByScript)
             {
@@ -574,7 +593,8 @@ namespace RPGFramework.Field
                 OnRequestInputLock(false);
             }
 
-            m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
+            m_InputRouter.Pop(m_ExplorationInputContext);
+            m_ExplorationInputContext = null;
 
             UpdateManager.UnregisterUpdatable(this);
             UpdateManager.UnregisterFixedUpdatable(this);
@@ -608,9 +628,11 @@ namespace RPGFramework.Field
             m_LocalisationService.UnloadLocalisationData(m_FieldDatabaseAsset.LocalisationSheets);
         }
 
-        private bool IsDialogueWindowOpen(ulong id)
+        private bool IsDialogueWindowOpen(byte channel)
         {
-            return m_DialogueWindows.ContainsKey(id);
+            bool open = m_DialogueChannels[channel].Window != null;
+
+            return open;
         }
 
         private bool IsEntityRotating(int entityId)
@@ -916,7 +938,7 @@ namespace RPGFramework.Field
 
         /// <summary>
         /// A script's input lock is on or off: locking twice needs one unlock, and unlocking when unlocked
-        /// does nothing. Dialogue takes its own locks through <see cref="OnRequestInputLock" />.
+        /// does nothing. Dialogue holds input through its own context instead.
         /// </summary>
         private void OnRequestScriptInputLock(bool lockInput)
         {
@@ -935,19 +957,13 @@ namespace RPGFramework.Field
             if (lockInput)
             {
                 MovePlayer(Vector3.zero);
-                m_CurrentInputContext = new BlockAllInputContext();
-                m_InputRouter.Push(m_CurrentInputContext);
+                m_ScriptInputLock = new BlockAllInputContext();
+                m_InputRouter.Push(m_ScriptInputLock);
             }
             else
             {
-                BlockAllInputContext currentInputContext = m_CurrentInputContext as BlockAllInputContext;
-                if (currentInputContext == null)
-                {
-                    Debug.LogError($"{nameof(FieldModule)}::{nameof(OnRequestInputLock)} cannot pop {nameof(BlockAllInputContext)}, current input context is {m_CurrentInputContext.GetType()}");
-                    return;
-                }
-
-                m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
+                m_InputRouter.Pop(m_ScriptInputLock);
+                m_ScriptInputLock = null;
             }
         }
 
@@ -1011,66 +1027,61 @@ namespace RPGFramework.Field
 
         private void OnRequestCreateDialogueWindow(DialogueWindowArgs args)
         {
-            IDialogueWindow window = m_DIResolver.Resolve<IDialogueWindow>();
-            window.Init(m_RootElement);
-            window.SetRect(args.Rect);
+            FieldDialogueChannel channel = m_DialogueChannels[args.Channel];
 
-            m_DialogueWindows.Add(args.DialogueId, window);
+            channel.HasRect = true;
+            channel.Rect    = args.Rect;
         }
 
-        private void OnRequestShowDialogueWindow(ulong id, bool blockMovement)
+        private void OnRequestSetDialogueWindowStyle(byte channel, DialogueWindowStyle style)
         {
-            RequestShowDialogueWindowAsync(id, blockMovement).FireAndForget();
+            m_DialogueChannels[channel].Style = style;
         }
 
-        private async Task RequestShowDialogueWindowAsync(ulong id, bool blockMovement)
+        private void OnRequestSetMessageVariable(byte slot, int value)
         {
-            if (blockMovement)
+            m_MessageVariables[slot] = value;
+        }
+
+        private void OnRequestShowDialogueWindow(byte channel, ulong dialogueId, bool blockMovement)
+        {
+            if (!TryOpenDialogueWindow(channel, dialogueId, out IDialogueWindow window))
             {
-                OnRequestInputLock(true);
+                return;
             }
 
-            IDialogueWindow dialogueWindow = m_DialogueWindows[id];
-            string          text           = m_LocalisationService.Get(id);
+            string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
 
-            await dialogueWindow.AnimateWindowOpenAsync();
+            RunDialogueAsync(channel, window, new TextDialogueFlow(), dialogues, blockMovement, null).FireAndForget();
+        }
 
-            DialogueInputContext fieldDialogueInputContext = new DialogueInputContext();
-
-            m_CurrentInputContext = fieldDialogueInputContext;
-            m_InputRouter.Push(m_CurrentInputContext);
-
-            IDialogueFlow dialogueFlow = new TextDialogueFlow();
-
-            await dialogueWindow.RunAsync(dialogueFlow, new[] { text }, fieldDialogueInputContext);
-
-            await RequestCloseDialogueWindowAsync(id);
-
-            m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
-
-            if (blockMovement)
+        /// <summary>
+        /// A window the player does not answer, up until a script closes it. It never touches input, so the player
+        /// walks, talks to people and opens the menu while it plays out.
+        /// </summary>
+        private void OnRequestShowDialogueWindowNoWait(byte channel, ulong dialogueId)
+        {
+            if (!TryOpenDialogueWindow(channel, dialogueId, out IDialogueWindow window))
             {
-                OnRequestInputLock(false);
+                return;
             }
+
+            string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
+
+            RunUnansweredDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues).FireAndForget();
         }
 
-        private void OnRequestAskPlayerToMakeAChoice(ulong dialogueId, ulong[] answerIds, Action<byte> storeChoice)
+        private void OnRequestCloseDialogueWindow(byte channel)
         {
-            RequestAskPlayerToMakeAChoiceAsync(dialogueId, answerIds, storeChoice).FireAndForget();
+            m_DialogueChannels[channel].Close?.Cancel();
         }
 
-        private async Task RequestAskPlayerToMakeAChoiceAsync(ulong dialogueId, ulong[] answerIds, Action<byte> storeChoice)
+        private void OnRequestAskPlayerToMakeAChoice(byte channel, ulong dialogueId, ulong[] answerIds, Action<byte> storeChoice)
         {
-            OnRequestInputLock(true);
-
-            IDialogueWindow dialogueWindow = m_DialogueWindows[dialogueId];
-
-            await dialogueWindow.AnimateWindowOpenAsync();
-
-            DialogueInputContext fieldDialogueInputContext = new DialogueInputContext();
-
-            m_CurrentInputContext = fieldDialogueInputContext;
-            m_InputRouter.Push(m_CurrentInputContext);
+            if (!TryOpenDialogueWindow(channel, dialogueId, out IDialogueWindow window))
+            {
+                return;
+            }
 
             string[] dialogues = new string[answerIds.Length + 1];
             dialogues[0] = m_LocalisationService.Get(dialogueId);
@@ -1080,29 +1091,110 @@ namespace RPGFramework.Field
                 dialogues[i] = m_LocalisationService.Get(answerIds[i - 1]);
             }
 
-            IDialogueFlow dialogueFlow = new ChoiceDialogueFlow();
-
-            await dialogueWindow.RunAsync(dialogueFlow, dialogues, fieldDialogueInputContext);
-
-            byte selectedChoice = dialogueWindow.GetSelectedChoice();
-            storeChoice(selectedChoice);
-
-            await RequestCloseDialogueWindowAsync(dialogueId);
-
-            m_CurrentInputContext = m_InputRouter.Pop(m_CurrentInputContext);
-
-            OnRequestInputLock(false);
+            RunDialogueAsync(channel, window, new ChoiceDialogueFlow(), dialogues, true, storeChoice).FireAndForget();
         }
 
-        private async Task RequestCloseDialogueWindowAsync(ulong id)
+        /// <summary>
+        /// Put a window on a channel, laid out and styled as the channel says. The channel counts as busy from
+        /// here, before the window has finished opening, so the script that asked waits on it straight away.
+        /// </summary>
+        private bool TryOpenDialogueWindow(byte channel, ulong dialogueId, out IDialogueWindow window)
         {
-            IDialogueWindow dialogueWindow = m_DialogueWindows[id];
+            FieldDialogueChannel dialogueChannel = m_DialogueChannels[channel];
 
-            await dialogueWindow.AnimateWindowClosedAsync();
+            if (!dialogueChannel.HasRect)
+            {
+#if UNITY_EDITOR
+                // Export checks that something in the field sets this channel's rectangle, but not that it runs
+                // first, which depends on the order scripts happen to run in.
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(TryOpenDialogueWindow)} Dialogue [{dialogueId}] was shown on channel [{channel}] before CREATE_DIALOGUE_WINDOW set that channel's rectangle, so it was not shown");
+#endif
+                window = null;
+                return false;
+            }
 
-            m_DialogueWindows.Remove(id);
+            window = m_DIResolver.Resolve<IDialogueWindow>();
+            window.Init(m_RootElement);
+            window.SetRect(dialogueChannel.Rect);
+            window.SetStyle(dialogueChannel.Style);
+            window.SetMessageVariables(m_MessageVariables);
 
-            dialogueWindow.Destroy();
+            dialogueChannel.Window = window;
+            dialogueChannel.Close  = new CancellationTokenSource();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Run a window to the end. Every open window shares <see cref="m_DialogueInputContext" />, so one press is
+        /// seen by all of them — each finishes typing or closes together, and windows may close in any order.
+        /// </summary>
+        /// <param name="blockOtherInput">
+        /// Hold back movement and every button but confirm while this window is open: someone the player is talking
+        /// to. Without it the player walks on and can open the menu, as for a conversation in the background.
+        /// </param>
+        private async Task RunDialogueAsync(byte channel, IDialogueWindow window, IDialogueFlow dialogueFlow, string[] dialogues, bool blockOtherInput, Action<byte> storeChoice)
+        {
+            if (m_OpenDialogueWindows++ == 0)
+            {
+                m_InputRouter.Push(m_DialogueInputContext);
+            }
+
+            if (blockOtherInput)
+            {
+                // Movement stops reaching the player from here, so it stops where it is rather than walking on under
+                // the last input it was given.
+                MovePlayer(Vector3.zero);
+                m_DialogueInputContext.BlockOtherInput();
+            }
+
+            CancellationToken close = m_DialogueChannels[channel].Close.Token;
+
+            await window.AnimateWindowOpenAsync();
+            await window.RunAsync(dialogueFlow, dialogues, m_DialogueInputContext, close);
+
+            // A question closed by a script was never answered, so its destination keeps what it held.
+            if (storeChoice != null && !close.IsCancellationRequested)
+            {
+                storeChoice(window.GetSelectedChoice());
+            }
+
+            await CloseDialogueWindowAsync(channel, window);
+
+            if (blockOtherInput)
+            {
+                m_DialogueInputContext.UnblockOtherInput();
+            }
+
+            if (--m_OpenDialogueWindows == 0)
+            {
+                m_InputRouter.Pop(m_DialogueInputContext);
+            }
+        }
+
+        private async Task RunUnansweredDialogueAsync(byte channel, IDialogueWindow window, IDialogueFlow dialogueFlow, string[] dialogues)
+        {
+            CancellationToken close = m_DialogueChannels[channel].Close.Token;
+
+            await window.AnimateWindowOpenAsync();
+            await window.RunAsync(dialogueFlow, dialogues, null, close);
+            await CloseDialogueWindowAsync(channel, window);
+        }
+
+        /// <summary>
+        /// The channel stays busy until the window has finished closing, so what is shown on it next waits for that.
+        /// </summary>
+        private async Task CloseDialogueWindowAsync(byte channel, IDialogueWindow window)
+        {
+            await window.AnimateWindowClosedAsync();
+
+            window.Destroy();
+
+            FieldDialogueChannel dialogueChannel = m_DialogueChannels[channel];
+
+            dialogueChannel.Close.Dispose();
+            dialogueChannel.Close  = null;
+            dialogueChannel.Window = null;
         }
 
         private void OnRequestSetBattleModeOptions(BattleArgs args)

@@ -6,6 +6,7 @@
         "RPGFramework.Field",
         "RPGFramework.Core.SharedTypes",
         "RPGFramework.Core",
+        "RPGFramework.Core.Editor",
         "RPGFramework.Hashing",
         "RPGFramework.Localisation.Editor"
     ],

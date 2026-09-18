@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
 
 namespace RPGFramework.Field.Editor
@@ -101,6 +102,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.Comparison:
                     return ScriptComparison.Equal.ToScriptText();
+
+                case ArgumentType.DialogueWindowStyle:
+                    return nameof(DialogueWindowStyle.Spoken);
 
                 default:
                     return "0";

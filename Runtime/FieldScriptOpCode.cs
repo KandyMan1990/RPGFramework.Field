@@ -840,30 +840,50 @@ namespace RPGFramework.Field
 
         // Windowing and menu (0x0300)
 
-        [FieldOpCode("CREATE_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Create a dialogue window at a position and size, without showing it")]
-        [Argument(0, "dialogue", ArgumentType.LocalisationKey)]
-        [Argument(1, "x",        ArgumentType.Int)]
-        [Argument(2, "y",        ArgumentType.Int)]
-        [Argument(3, "width",    ArgumentType.Int)]
-        [Argument(4, "height",   ArgumentType.Int)]
+        [FieldOpCode("CREATE_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Set where a dialogue channel's window appears and how big it is, for every message shown on it")]
+        [Argument(0, "channel", ArgumentType.DialogueChannel)]
+        [Argument(1, "x",       ArgumentType.Int)]
+        [Argument(2, "y",       ArgumentType.Int)]
+        [Argument(3, "width",   ArgumentType.Int)]
+        [Argument(4, "height",  ArgumentType.Int)]
         CreateDialogueWindow = 0x0300,
 
         [FieldOpCode("SHOW_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Show a line of dialogue and wait for the player to dismiss it", StopsInit = true)]
-        [Argument(0, "dialogue",      ArgumentType.LocalisationKey)]
-        [Argument(1, "blockMovement", ArgumentType.Bool)]
+        [Argument(0, "channel",       ArgumentType.DialogueChannel)]
+        [Argument(1, "dialogue",      ArgumentType.LocalisationKey)]
+        [Argument(2, "blockMovement", ArgumentType.Bool, Description = "On: the player stands still and cannot open menus while this shows. Off: a conversation in the background they can walk away from")]
         ShowDialogueWindow = 0x0301,
 
-        ShowDialogueWindowNoWait = 0x0302, // as SHOW_DIALOGUE_WINDOW but the script carries on
-        WaitForDialogueWindow    = 0x0303, // wait for a window shown without waiting
-        CloseWindow              = 0x0304,
-        SetDialogueWindowStyle   = 0x0305, // byte style (spoken, thought, transparent)
-        SetMessageVariable       = 0x0306, // byte slot, int value - text shows a slot as {Var0}-{Var7}
-        SetMessageSpeed          = 0x0307, // float charactersPerSecond
+        [FieldOpCode("SHOW_DIALOGUE_WINDOW_NO_WAIT", ArgumentLayout.Sequential, Summary = "Show dialogue the player does not answer, and carry on. It stays up until CLOSE_DIALOGUE_WINDOW", StopsInit = true)]
+        [Argument(0, "channel",  ArgumentType.DialogueChannel)]
+        [Argument(1, "dialogue", ArgumentType.LocalisationKey)]
+        ShowDialogueWindowNoWait = 0x0302,
+
+        [FieldOpCode("WAIT_FOR_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Wait until nothing is showing on a dialogue channel", StopsInit = true)]
+        [Argument(0, "channel", ArgumentType.DialogueChannel)]
+        WaitForDialogueWindow = 0x0303,
+
+        [FieldOpCode("CLOSE_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Close whatever is showing on a dialogue channel")]
+        [Argument(0, "channel", ArgumentType.DialogueChannel)]
+        CloseDialogueWindow = 0x0304,
+
+        [FieldOpCode("SET_DIALOGUE_WINDOW_STYLE", ArgumentLayout.Sequential, Summary = "Choose how a dialogue channel's window looks: spoken, thought or transparent")]
+        [Argument(0, "channel", ArgumentType.DialogueChannel)]
+        [Argument(1, "style",   ArgumentType.DialogueWindowStyle)]
+        SetDialogueWindowStyle = 0x0305,
+
+        [FieldOpCode("SET_MESSAGE_VARIABLE", ArgumentLayout.Sequential, Summary = "Set a value that dialogue shows as {Var n}")]
+        [Argument(0, "slot",  ArgumentType.MessageVariableSlot)]
+        [Argument(1, "value", ArgumentType.Int)]
+        SetMessageVariable = 0x0306,
+
+        SetMessageSpeed = 0x0307, // float charactersPerSecond
 
         [FieldOpCode("ASK_PLAYER_TO_MAKE_A_CHOICE", ArgumentLayout.Sequential, Summary = "Ask a question and store which answer the player chose", StopsInit = true)]
         [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
-        [Argument(1, "question",    ArgumentType.LocalisationKey)]
-        [Argument(2, "answers",     ArgumentType.LocalisationKeyList)]
+        [Argument(1, "channel",     ArgumentType.DialogueChannel)]
+        [Argument(2, "question",    ArgumentType.LocalisationKey)]
+        [Argument(3, "answers",     ArgumentType.LocalisationKeyList)]
         AskPlayerToMakeAChoice = 0x0308,
 
         [FieldOpCode("MAIN_MENU_ACCESSIBILITY", ArgumentLayout.Sequential, Summary = "Allow or block the player opening the main menu")]
@@ -891,8 +911,8 @@ namespace RPGFramework.Field
         GetCharacterHP           = 0x040A, // byte characterId, ushort destination
         SetCharacterMP           = 0x040B,
         GetCharacterMP           = 0x040C,
-        AddMoney                   = 0x040D, // int amount - negative takes money away
-        GetMoneyAmount             = 0x040E,
+        AddMoney                 = 0x040D, // int amount - negative takes money away
+        GetMoneyAmount           = 0x040E,
         AddItem                  = 0x040F, // ushort itemId, int count - negative removes
         GetItemCount             = 0x0410,
 

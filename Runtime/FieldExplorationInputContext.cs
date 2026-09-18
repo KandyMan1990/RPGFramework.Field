@@ -41,9 +41,11 @@ namespace RPGFramework.Field
             return true;
         }
 
-        void IInputContext.HandleMove(Vector2 move)
+        bool IInputContext.HandleMove(Vector2 move)
         {
             m_OnMove(move);
+
+            return true;
         }
     }
 }
