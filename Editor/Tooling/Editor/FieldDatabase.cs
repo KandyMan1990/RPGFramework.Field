@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEditor;
@@ -98,7 +99,7 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// Check every field's entities before their data is exported.<br /><br />
         /// Script 0 is an entity's init script by convention, and the field module runs it at load. An
-        /// entity whose scripts were authored in another order would have its collision or interaction
+        /// entity whose scripts were authored in another order would have its enter or interaction
         /// script executed at field load, firing gameplay logic nobody triggered.<br /><br />
         /// This is checked here rather than at runtime deliberately. A per-load check re-proves the same
         /// thing on every field load forever, and reports the problem while playing; checking as the
@@ -161,7 +162,7 @@ namespace RPGFramework.Field.Editor
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
         /// </summary>
-        private static void ValidateEntity(GameObject prefab, FieldEntity entity, HashSet<int> entityIds, Dictionary<int, string> scriptIds, DialogueChannelUse dialogueChannels, List<string> problems)
+        private void ValidateEntity(GameObject prefab, FieldEntity entity, HashSet<int> entityIds, Dictionary<int, string> scriptIds, DialogueChannelUse dialogueChannels, List<string> problems)
         {
             FieldScriptDefinition scriptDefinition = entity.ScriptDefinition;
 
@@ -253,6 +254,8 @@ namespace RPGFramework.Field.Editor
                 string[] lines = source.ScriptText.Split('\n');
 
                 ValidateInitScript(scriptEntry, scriptDescription, lines, problems);
+                ValidateTriggerSwitches(entity, scriptDescription, lines, problems);
+                ValidateMapJumps(scriptDescription, lines, problems);
                 dialogueChannels.Read(lines, scriptDescription);
             }
 
@@ -265,6 +268,8 @@ namespace RPGFramework.Field.Editor
             {
                 problems.Add($"{entityName} has {mainScriptCount} {nameof(FieldScriptType.Main)} scripts, but only one is started after initialisation");
             }
+
+            ValidateGateway(prefab, entity, entityName, problems);
         }
 
         /// <summary>
@@ -289,6 +294,142 @@ namespace RPGFramework.Field.Editor
                     problems.Add($"{scriptDescription} uses {name}, which waits or gives up the frame. Init runs straight through before the field is shown, so nothing after it would run — move it, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");
                 }
             }
+        }
+
+        /// <summary>
+        /// A script switching a trigger its entity does not have. The field module reaches for the trigger
+        /// without looking, so this is the only place the mistake can be caught.
+        /// </summary>
+        private static void ValidateTriggerSwitches(FieldEntity entity, string scriptDescription, string[] lines, List<string> problems)
+        {
+            bool hasCollisionTrigger   = entity.GetComponentInChildren<FieldCollisionTrigger>(true)   != null;
+            bool hasInteractionTrigger = entity.GetComponentInChildren<FieldInteractionTrigger>(true) != null;
+
+            foreach (string line in lines)
+            {
+                string name = line.Trim().Split(' ')[0];
+
+                if (!FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                if (opCode.OpCode == FieldScriptOpCode.CollisionTriggerActivation && !hasCollisionTrigger)
+                {
+                    problems.Add($"{scriptDescription} uses {name}, but its entity has no {nameof(FieldCollisionTrigger)} to switch");
+                }
+
+                if ((opCode.OpCode == FieldScriptOpCode.InteractionTriggerActivation || opCode.OpCode == FieldScriptOpCode.SetInteractionRange) && !hasInteractionTrigger)
+                {
+                    problems.Add($"{scriptDescription} uses {name}, but its entity has no {nameof(FieldInteractionTrigger)} to change");
+                }
+            }
+        }
+
+        /// <summary>
+        /// A map jump to a spawn point the field it names does not have. The name itself is checked when the
+        /// script compiles; the spawn id is not, and at run time the player arrives wherever their init script
+        /// left them instead. A spawn id read from a variable is only known then, so it is left alone.
+        /// </summary>
+        private void ValidateMapJumps(string scriptDescription, string[] lines, List<string> problems)
+        {
+            foreach (string line in lines)
+            {
+                string[] parts = line.Trim().Split(' ');
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || opCode.OpCode != FieldScriptOpCode.JumpToAnotherMap)
+                {
+                    continue;
+                }
+
+                // A jump written with the wrong arguments, or naming a field nothing answers to, is the
+                // compiler's to report, and it will not have produced the bytecode this entity holds.
+                if (parts.Length < 3 || parts[2].StartsWith("$") || !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int spawnId))
+                {
+                    continue;
+                }
+
+                GameObject destination = FindFieldPrefab(parts[1]);
+
+                if (destination == null)
+                {
+                    continue;
+                }
+
+                if (Array.Find(destination.GetComponentsInChildren<SpawnPoint>(true), spawnPoint => spawnPoint.Id == spawnId) == null)
+                {
+                    problems.Add($"{scriptDescription} jumps to spawn point [{spawnId}] in {parts[1]}, which has no {nameof(SpawnPoint)} with that id");
+                }
+            }
+        }
+
+        private GameObject FindFieldPrefab(string fieldName)
+        {
+            foreach (FieldDatabaseAssetAuthoring field in m_Fields)
+            {
+                if (field.Prefab != null && field.Prefab.name == fieldName)
+                {
+                    return field.Prefab;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// A gateway has to be reachable and must not be where a player arrives: a spawn point inside one sends the
+        /// player straight back out the moment they land.
+        /// </summary>
+        private static void ValidateGateway(GameObject prefab, FieldEntity entity, string entityName, List<string> problems)
+        {
+            if (!entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Gateway, out _))
+            {
+                return;
+            }
+
+            if (entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.OnEnter, out _))
+            {
+                problems.Add($"{entityName} has both a {nameof(FieldScriptType.Gateway)} and an {nameof(FieldScriptType.OnEnter)} script. Both run on entering, in the same slot, so only one would — put the other on its own entity");
+            }
+
+            FieldCollisionTrigger trigger = entity.GetComponentInChildren<FieldCollisionTrigger>(true);
+
+            if (trigger == null)
+            {
+                problems.Add($"{entityName} has a {nameof(FieldScriptType.Gateway)} script but no {nameof(FieldCollisionTrigger)}, so nothing runs it");
+                return;
+            }
+
+            if (!trigger.TryGetComponent(out BoxCollider box))
+            {
+                return;
+            }
+
+            if (!box.isTrigger)
+            {
+                problems.Add($"{entityName}'s gateway has a solid {nameof(BoxCollider)}, so it blocks the player instead of letting them through — tick Is Trigger");
+            }
+
+            foreach (SpawnPoint spawnPoint in prefab.GetComponentsInChildren<SpawnPoint>(true))
+            {
+                if (Contains(box, spawnPoint.Position))
+                {
+                    problems.Add($"{prefab.name} / spawn point '{spawnPoint.name}' is inside {entityName}'s gateway, so a player arriving there leaves again at once");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Worked out from the box's own space, because a prefab that is not in a scene has no physics bounds.
+        /// </summary>
+        private static bool Contains(BoxCollider box, Vector3 worldPoint)
+        {
+            Vector3 local  = box.transform.InverseTransformPoint(worldPoint) - box.center;
+            Vector3 extent = box.size * 0.5f;
+
+            bool inside = Mathf.Abs(local.x) <= extent.x && Mathf.Abs(local.y) <= extent.y && Mathf.Abs(local.z) <= extent.z;
+
+            return inside;
         }
 
         public void BuildAssetBundles()

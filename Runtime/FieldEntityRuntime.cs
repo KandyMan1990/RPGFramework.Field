@@ -8,21 +8,11 @@
     internal sealed class FieldEntityRuntime
     {
         /// <summary>
-        /// Priorities are 0-7, <b>7 being the most urgent</b>. An entity runs its highest-numbered occupied
-        /// slot and only that one; a more urgent script arriving preempts what is running, and the script
-        /// underneath resumes when it returns.
+        /// Priorities are 0-7, <b>7 being the most urgent</b>, and <see cref="FieldScriptPriority" /> says
+        /// what each is for. An entity runs its highest-numbered occupied slot and only that one; a more urgent
+        /// script arriving preempts what is running, and the script underneath resumes when it returns.
         /// </summary>
         internal const int PRIORITY_COUNT = 8;
-
-        /// <summary>
-        /// The least urgent slot. The init script runs here, then the <see cref="FieldScriptType.Main" />
-        /// script replaces it, so every other slot preempts Main.
-        /// </summary>
-        internal const byte MAIN_PRIORITY = 0;
-
-        internal const byte COLLISION_PRIORITY = 6;
-
-        internal const byte INTERACTION_PRIORITY = 7;
 
         internal const int NO_PRIORITY = -1;
 
@@ -48,7 +38,7 @@
             }
 
             // Event 0 is the init script, and it starts as soon as the field loads.
-            m_ScriptIdBySlot[MAIN_PRIORITY] = m_ScriptIdByEvent[0];
+            m_ScriptIdBySlot[(int)FieldScriptPriority.Main] = m_ScriptIdByEvent[0];
         }
 
         /// <summary>
@@ -139,7 +129,7 @@
         /// returning is what releases it.<br /><br />
         /// A script that is waiting still holds the entity — nothing below it runs while it waits. Only
         /// a <b>more urgent</b> priority arriving takes over, which is the point of the ordering: a trigger
-        /// preempts a Main script at <see cref="MAIN_PRIORITY" /> however long that Main script has been
+        /// preempts a Main script at <see cref="FieldScriptPriority.Main" /> however long that Main script has been
         /// looping, and Main picks up again afterwards.
         /// </summary>
         internal void Update(FieldVM vm)
@@ -176,9 +166,9 @@
         /// </summary>
         internal ScriptRunOutcome RunInitScript(FieldVM vm)
         {
-            int              scriptId          = m_ScriptIdBySlot[MAIN_PRIORITY];
+            int              scriptId          = m_ScriptIdBySlot[(int)FieldScriptPriority.Main];
             int              instructionBudget = FieldVM.INIT_INSTRUCTION_CEILING;
-            ScriptRunOutcome outcome           = vm.Execute(EntityId, MAIN_PRIORITY, scriptId, this, ref instructionBudget);
+            ScriptRunOutcome outcome           = vm.Execute(EntityId, (byte)FieldScriptPriority.Main, scriptId, this, ref instructionBudget);
 
             return outcome;
         }

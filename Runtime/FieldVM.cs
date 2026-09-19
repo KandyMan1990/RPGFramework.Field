@@ -22,6 +22,7 @@ namespace RPGFramework.Field
         internal event Action<int, bool>                          RequestSetEntityVisible;
         internal event Action<bool>                               RequestSetGatewayTriggersActive;
         internal event Action<int, bool>                          RequestSetInteractionTriggerActive;
+        internal event Action<int, bool>                          RequestSetCollisionTriggerActive;
         internal event Action<int, float>                         RequestSetInteractionRange;
         internal event Action<bool>                               RequestInputLock;
         internal event Action<int, Vector3>                       RequestSetEntityPosition;
@@ -306,7 +307,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
                        // { FieldScriptOpCode.SetEntityActive, SetEntityActiveOpcodeHandler },
                        // { FieldScriptOpCode.EntitySolidity, EntitySolidityOpcodeHandler },
-                       // { FieldScriptOpCode.CollisionScriptActivation, CollisionScriptActivationOpcodeHandler },
+                       // { FieldScriptOpCode.PushScriptActivation, PushScriptActivationOpcodeHandler },
                        // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
                        { FieldScriptOpCode.InteractionTriggerActivation, InteractabilityOpcodeHandler },
                        { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
@@ -360,6 +361,7 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
                        // { FieldScriptOpCode.CopyEntityInfo, CopyEntityInfoOpcodeHandler },
                        // { FieldScriptOpCode.IsEntityTouching, IsEntityTouchingOpcodeHandler },
+                       { FieldScriptOpCode.CollisionTriggerActivation, CollisionTriggerActivationOpcodeHandler },
 
                        // Screen and field effects
                        // { FieldScriptOpCode.SubtractiveScreenFade, SubtractiveScreenFadeOpcodeHandler },
@@ -431,7 +433,7 @@ namespace RPGFramework.Field
 
         /// <summary>
         /// Start one of an entity's scripts by event id, for something the engine initiates rather than
-        /// another script — a gateway or an interaction trigger. Refused if the slot is busy.
+        /// another script — a collision or interaction trigger. Refused if the slot is busy.
         /// </summary>
         internal void RequestScript(int entityId, int eventId, byte priority)
         {
@@ -465,15 +467,15 @@ namespace RPGFramework.Field
         {
             FieldEntityRuntime entity = m_Entities[entityId];
 
-            m_Contexts.Remove((entityId, FieldEntityRuntime.MAIN_PRIORITY));
+            m_Contexts.Remove((entityId, (byte)FieldScriptPriority.Main));
 
             if (entity.TryGetScriptId(mainEventId, out int scriptId))
             {
-                entity.ReplaceScriptInSlot(scriptId, FieldEntityRuntime.MAIN_PRIORITY);
+                entity.ReplaceScriptInSlot(scriptId, (byte)FieldScriptPriority.Main);
                 return;
             }
 
-            entity.ClearSlot(FieldEntityRuntime.MAIN_PRIORITY);
+            entity.ClearSlot((byte)FieldScriptPriority.Main);
         }
 
         internal ScriptRunOutcome Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity, ref int instructionBudget)
@@ -1399,7 +1401,8 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Turn every gateway trigger in the field on or off.
+        /// Let the player leave the field through its gateways, or stop them: only entities' Gateway scripts
+        /// listen. A script's own map jump, and every other collision trigger script, carry on regardless.
         /// </summary>
         private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
         {
@@ -1897,6 +1900,16 @@ namespace RPGFramework.Field
             SequentialSources sources        = default;
             byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
             RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, targetEntityId);
+        }
+
+        /// <summary>
+        /// Turn this entity's collision trigger on or off.
+        /// </summary>
+        private void CollisionTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            RequestSetCollisionTriggerActive?.Invoke(ctx.EntityId, enabled);
         }
 
         /// <summary>

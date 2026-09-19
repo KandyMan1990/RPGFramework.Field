@@ -20,8 +20,24 @@
         /// </summary>
         Init = 1,
 
-        OnCollision = 2,
+        /// <summary>
+        /// Run when the player comes into the entity's collision trigger.
+        /// </summary>
+        OnEnter = 2,
 
-        OnInteraction = 3
+        OnInteraction = 3,
+
+        /// <summary>
+        /// Run when the player leaves the entity's collision trigger: the counterpart of
+        /// <see cref="OnEnter" />, switched off by the same things.
+        /// </summary>
+        OnLeave = 4,
+
+        /// <summary>
+        /// A way out of the field: run when the player comes into the entity's collision trigger, as
+        /// <see cref="OnEnter" /> is, but only while <c>GATEWAY_TRIGGER_ACTIVATION</c> has gateways on. It is where
+        /// the <c>JUMP_TO_MAP</c> that leaves goes.
+        /// </summary>
+        Gateway = 5
     }
 }

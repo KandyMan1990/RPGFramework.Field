@@ -216,6 +216,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityVisible            += OnRequestSetEntityVisible;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    += OnRequestSetGatewayTriggersActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive += OnRequestSetInteractionTriggerActive;
+            m_FieldContext.VM.RequestSetCollisionTriggerActive   += OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionRange         += OnRequestSetInteractionRange;
             m_FieldContext.VM.RequestInputLock                   += OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetEntityPosition           += OnRequestSetEntityPosition;
@@ -258,6 +259,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityPosition           -= OnRequestSetEntityPosition;
             m_FieldContext.VM.RequestInputLock                   -= OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= OnRequestSetInteractionRange;
+            m_FieldContext.VM.RequestSetCollisionTriggerActive   -= OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= OnRequestSetGatewayTriggersActive;
             m_FieldContext.VM.RequestSetEntityVisible            -= OnRequestSetEntityVisible;
@@ -336,12 +338,14 @@ namespace RPGFramework.Field
                 entityComponents.SetEntity(entity);
 
                 m_Entities.Add(entity.EntityId, entityComponents);
-                FieldGatewayTrigger gatewayTrigger = entity.GetComponentInChildren<FieldGatewayTrigger>();
+                FieldCollisionTrigger collisionTrigger = entity.GetComponentInChildren<FieldCollisionTrigger>();
 
-                if (gatewayTrigger != null)
+                if (collisionTrigger != null)
                 {
-                    entityComponents.SetGatewayTrigger(gatewayTrigger);
-                    gatewayTrigger.OnTriggered += OnGatewayTriggered;
+                    entityComponents.SetCollisionTrigger(collisionTrigger);
+                    collisionTrigger.OnEntered        += OnCollisionTriggerEntered;
+                    collisionTrigger.OnGatewayEntered += OnGatewayEntered;
+                    collisionTrigger.OnLeft           += OnCollisionTriggerLeft;
                 }
 
                 FieldInteractionTrigger interactionTrigger = entity.GetComponentInChildren<FieldInteractionTrigger>();
@@ -454,7 +458,7 @@ namespace RPGFramework.Field
             if (playerEntity == null)
             {
                 m_PlayerEntityId = FieldEntity.NO_ENTITY;
-                SetGatewayPlayerEntityId(m_PlayerEntityId);
+                SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
                 return;
             }
 
@@ -474,7 +478,7 @@ namespace RPGFramework.Field
 
             m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
 
-            SetGatewayPlayerEntityId(m_PlayerEntityId);
+            SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
         }
 
         private async Task ResumeFieldAsync()
@@ -487,12 +491,14 @@ namespace RPGFramework.Field
                 entityComponents.SetEntity(entity);
 
                 m_Entities.Add(entity.EntityId, entityComponents);
-                FieldGatewayTrigger gatewayTrigger = entity.GetComponentInChildren<FieldGatewayTrigger>();
+                FieldCollisionTrigger collisionTrigger = entity.GetComponentInChildren<FieldCollisionTrigger>();
 
-                if (gatewayTrigger != null)
+                if (collisionTrigger != null)
                 {
-                    entityComponents.SetGatewayTrigger(gatewayTrigger);
-                    gatewayTrigger.OnTriggered += OnGatewayTriggered;
+                    entityComponents.SetCollisionTrigger(collisionTrigger);
+                    collisionTrigger.OnEntered        += OnCollisionTriggerEntered;
+                    collisionTrigger.OnGatewayEntered += OnGatewayEntered;
+                    collisionTrigger.OnLeft           += OnCollisionTriggerLeft;
                 }
 
                 FieldInteractionTrigger interactionTrigger = entity.GetComponentInChildren<FieldInteractionTrigger>();
@@ -518,7 +524,7 @@ namespace RPGFramework.Field
                 m_PlayerEntityId = FieldEntity.NO_ENTITY;
             }
 
-            SetGatewayPlayerEntityId(m_PlayerEntityId);
+            SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
 
             foreach ((int entityId, Vector3 position) in m_FieldContext.EntityPositions)
             {
@@ -561,7 +567,10 @@ namespace RPGFramework.Field
                 GetMovementDriver(entityId).SetMoveSpeed(speed);
             }
 
-            SetGatewaysActive(m_FieldContext.GatewaysActive);
+            foreach ((int entityId, bool active) in m_FieldContext.CollisionTriggersActive)
+            {
+                m_Entities[entityId].CollisionTrigger.SetActive(active);
+            }
 
             await PostFieldLoadAsync();
         }
@@ -613,9 +622,11 @@ namespace RPGFramework.Field
                     entity.Value.InteractionTrigger.OnInteracted -= OnInteractionTriggered;
                 }
 
-                if (entity.Value.GatewayTrigger != null)
+                if (entity.Value.CollisionTrigger != null)
                 {
-                    entity.Value.GatewayTrigger.OnTriggered -= OnGatewayTriggered;
+                    entity.Value.CollisionTrigger.OnEntered        -= OnCollisionTriggerEntered;
+                    entity.Value.CollisionTrigger.OnGatewayEntered -= OnGatewayEntered;
+                    entity.Value.CollisionTrigger.OnLeft           -= OnCollisionTriggerLeft;
                 }
             }
 
@@ -673,24 +684,24 @@ namespace RPGFramework.Field
             m_PlayerEntityId       = entity.EntityId;
             m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
 
-            SetGatewayPlayerEntityId(m_PlayerEntityId);
+            SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
         }
 
-        private void SetGatewayPlayerEntityId(int entityId)
+        private void SetCollisionTriggerPlayerEntityId(int entityId)
         {
             foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
             {
-                if (entity.Value.GatewayTrigger != null)
+                if (entity.Value.CollisionTrigger != null)
                 {
-                    entity.Value.GatewayTrigger.SetPlayerEntityId(entityId);
+                    entity.Value.CollisionTrigger.SetPlayerEntityId(entityId);
                 }
             }
         }
 
         /// <summary>
-        /// Showing or hiding an entity also switches whether it can be talked to and whether walking into it
-        /// runs its collision script. Showing switches both back on even if a script had turned interaction
-        /// off.
+        /// Showing or hiding an entity also switches whether it can be talked to and whether its enter and leave
+        /// scripts run. Showing turns interaction back on even if a script had turned it off; the collision
+        /// trigger keeps a script's switch apart, so showing does not undo <c>COLLISION_TRIGGER_ACTIVATION</c>.
         /// </summary>
         private void OnRequestSetEntityVisible(int entityId, bool visible)
         {
@@ -715,20 +726,25 @@ namespace RPGFramework.Field
                 entity.InteractionTrigger.SetActive(visible);
             }
 
-            if (entity.GatewayTrigger != null)
+            if (entity.CollisionTrigger != null)
             {
-                entity.GatewayTrigger.SetEntityShown(visible);
+                entity.CollisionTrigger.SetEntityShown(visible);
             }
         }
 
-        private void OnGatewayTriggered(int entityId, int eventId)
+        private void OnCollisionTriggerEntered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.COLLISION_PRIORITY);
+            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Enter);
+        }
+
+        private void OnCollisionTriggerLeft(int entityId, int eventId)
+        {
+            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Leave);
         }
 
         private void OnInteractionTriggered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScript(entityId, eventId, FieldEntityRuntime.INTERACTION_PRIORITY);
+            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Interaction);
         }
 
         private bool IsPlayerFacingEntity(int entityId)
@@ -909,19 +925,22 @@ namespace RPGFramework.Field
         private void OnRequestSetGatewayTriggersActive(bool active)
         {
             m_FieldContext.SetGatewaysActive(active);
-
-            SetGatewaysActive(active);
         }
 
-        private void SetGatewaysActive(bool active)
+        private void OnGatewayEntered(int entityId, int eventId)
         {
-            foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
+            if (!m_FieldContext.GatewaysActive)
             {
-                if (entity.Value.GatewayTrigger != null)
-                {
-                    entity.Value.GatewayTrigger.SetActive(active);
-                }
+                return;
             }
+
+            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Enter);
+        }
+
+        private void OnRequestSetCollisionTriggerActive(int entityId, bool active)
+        {
+            m_Entities[entityId].CollisionTrigger.SetActive(active);
+            m_FieldContext.SetCollisionTriggerActive(entityId, active);
         }
 
         private void OnRequestSetInteractionTriggerActive(int entityId, bool active)

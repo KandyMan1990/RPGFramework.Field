@@ -372,7 +372,6 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.Int:
                 case ArgumentType.EntityId:
                 case ArgumentType.EventId:
-                case ArgumentType.Priority:
                 {
                     IntegerField field = new IntegerField(label) { value = ParseInt(current) };
                     field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue.ToString(System.Globalization.CultureInfo.InvariantCulture)));
@@ -456,6 +455,9 @@ namespace RPGFramework.Field.Editor
 
                     return field;
                 }
+
+                case ArgumentType.Priority:
+                    return IndexDropdown(block, argumentIndex, label, current, Enum.GetValues(typeof(FieldScriptPriority)).Length, i => $"{i}: {(FieldScriptPriority)i}");
 
                 case ArgumentType.DialogueChannel:
                     return IndexDropdown(block, argumentIndex, label, current, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, i => $"Channel {i}");

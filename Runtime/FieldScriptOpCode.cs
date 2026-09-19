@@ -10,19 +10,19 @@ namespace RPGFramework.Field
 
         [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts. Does nothing if that priority slot is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
+        [Argument(1, "priority",       ArgumentType.Priority, Description = "7 most urgent. Shared with the event that runs in that slot")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptUnlessBusy = 0x0001,
 
         [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait until it starts. Does nothing if that priority slot is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
+        [Argument(1, "priority",       ArgumentType.Priority, Description = "7 most urgent. Shared with the event that runs in that slot")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilStarted = 0x0002,
 
         [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish. Does nothing if that priority slot is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "0-7, 7 most urgent")]
+        [Argument(1, "priority",       ArgumentType.Priority, Description = "7 most urgent. Shared with the event that runs in that slot")]
         [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
         RunAnotherEntityScriptWaitUntilFinished = 0x0003,
 
@@ -128,7 +128,7 @@ namespace RPGFramework.Field
 
         SetJumpFieldID = 0x0101,
 
-        [FieldOpCode("GATEWAY_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this field's gateway triggers on or off")]
+        [FieldOpCode("GATEWAY_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Let the player leave this field through its gateways, or stop them. A script's JUMP_TO_MAP still works")]
         [Argument(0, "active", ArgumentType.Bool)]
         GatewayTriggerActivation = 0x0102,
 
@@ -937,7 +937,7 @@ namespace RPGFramework.Field
 
         SetEntityActive           = 0x0508, // bool active - inactive stops its scripts, hides it and removes its collision
         EntitySolidity            = 0x0509,
-        CollisionScriptActivation = 0x050A,
+        PushScriptActivation      = 0x050A,
         SetCollisionRadius        = 0x050B,
 
         [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off")]
@@ -1024,6 +1024,10 @@ namespace RPGFramework.Field
         GetPartyMemberDirection          = 0x053D,
         CopyEntityInfo                   = 0x053E, // int sourceEntityId - take another entity's position and facing
         IsEntityTouching                 = 0x053F, // int otherEntityId, ushort destination
+
+        [FieldOpCode("COLLISION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's collision trigger on or off, and with it the entity's enter and leave scripts")]
+        [Argument(0, "enabled", ArgumentType.Bool)]
+        CollisionTriggerActivation = 0x0540,
 
         // Screen and field effects (0x0600)
         SubtractiveScreenFade = 0x0600, // float r, float g, float b, float duration
