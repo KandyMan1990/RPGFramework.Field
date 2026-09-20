@@ -256,6 +256,7 @@ namespace RPGFramework.Field.Editor
                 ValidateInitScript(scriptEntry, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(entity, scriptDescription, lines, problems);
                 ValidateMapJumps(scriptDescription, lines, problems);
+                ValidateGatewayScript(scriptEntry, scriptDescription, lines, problems);
                 dialogueChannels.Read(lines, scriptDescription);
             }
 
@@ -324,6 +325,37 @@ namespace RPGFramework.Field.Editor
                     problems.Add($"{scriptDescription} uses {name}, but its entity has no {nameof(FieldInteractionTrigger)} to change");
                 }
             }
+        }
+
+        /// <summary>
+        /// A gateway that does not leave the field.<br /><br />
+        /// <c>GATEWAY_TRIGGER_ACTIVATION</c> switches scripts by their type, so the type is a promise about what the
+        /// script does. One that never jumps is silenced by that switch for no reason, and an author reading the
+        /// list of an entity's scripts is told it is a way out when it is not.
+        /// </summary>
+        private static void ValidateGatewayScript(ScriptEntry scriptEntry, string scriptDescription, string[] lines, List<string> problems)
+        {
+            if (scriptEntry.ScriptType != FieldScriptType.Gateway || HasMapJump(lines))
+            {
+                return;
+            }
+
+            FieldOpCodeCatalogue.TryGet(FieldScriptOpCode.JumpToAnotherMap, out FieldOpCodeInfo jump);
+
+            problems.Add($"{scriptDescription} is a {nameof(FieldScriptType.Gateway)} script with no {jump.ScriptName} in it, so it is not a way out of the field. {nameof(FieldScriptType.Gateway)} is what GATEWAY_TRIGGER_ACTIVATION switches — if this script does something else on entering, make it an {nameof(FieldScriptType.OnEnter)} script");
+        }
+
+        private static bool HasMapJump(string[] lines)
+        {
+            foreach (string line in lines)
+            {
+                if (FieldOpCodeCatalogue.TryGet(line.Trim().Split(' ')[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.JumpToAnotherMap)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
