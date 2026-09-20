@@ -38,6 +38,13 @@
         /// <see cref="OnEnter" /> is, but only while <c>GATEWAY_TRIGGER_ACTIVATION</c> has gateways on. It is where
         /// the <c>JUMP_TO_MAP</c> that leaves goes.
         /// </summary>
-        Gateway = 5
+        Gateway = 5,
+
+        /// <summary>
+        /// A script nothing raises: it runs only when another script asks for it by event id, with
+        /// <c>REQUEST_SCRIPT</c> and its waiting forms. An entity may hold as many as it likes — a shop, a step
+        /// of a cutscene, anything shared between its other scripts.
+        /// </summary>
+        Requested = 6
     }
 }

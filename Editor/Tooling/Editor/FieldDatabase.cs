@@ -328,21 +328,40 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// A gateway that does not leave the field.<br /><br />
+        /// A way out of the field that is not a <see cref="FieldScriptType.Gateway" /> script, or a gateway that is
+        /// not a way out.<br /><br />
         /// <c>GATEWAY_TRIGGER_ACTIVATION</c> switches scripts by their type, so the type is a promise about what the
-        /// script does. One that never jumps is silenced by that switch for no reason, and an author reading the
-        /// list of an entity's scripts is told it is a way out when it is not.
+        /// script does, and it is kept here. A gateway that never jumps is silenced by that switch for no reason; a
+        /// jump on entering that is typed as something else is a way out the switch cannot stop, which is the whole
+        /// point of the switch. Other script types are left alone: a cutscene ending in a map jump is ordinary, and
+        /// only entering the trigger is what the switch is about.
         /// </summary>
         private static void ValidateGatewayScript(ScriptEntry scriptEntry, string scriptDescription, string[] lines, List<string> problems)
         {
-            if (scriptEntry.ScriptType != FieldScriptType.Gateway || HasMapJump(lines))
+            bool isGateway = scriptEntry.ScriptType == FieldScriptType.Gateway;
+            bool isOnEnter = scriptEntry.ScriptType == FieldScriptType.OnEnter;
+
+            if (!isGateway && !isOnEnter)
+            {
+                return;
+            }
+
+            bool jumps = HasMapJump(lines);
+
+            if (isGateway == jumps)
             {
                 return;
             }
 
             FieldOpCodeCatalogue.TryGet(FieldScriptOpCode.JumpToAnotherMap, out FieldOpCodeInfo jump);
 
-            problems.Add($"{scriptDescription} is a {nameof(FieldScriptType.Gateway)} script with no {jump.ScriptName} in it, so it is not a way out of the field. {nameof(FieldScriptType.Gateway)} is what GATEWAY_TRIGGER_ACTIVATION switches — if this script does something else on entering, make it an {nameof(FieldScriptType.OnEnter)} script");
+            if (isGateway)
+            {
+                problems.Add($"{scriptDescription} is a {nameof(FieldScriptType.Gateway)} script with no {jump.ScriptName} in it, so it is not a way out of the field. {nameof(FieldScriptType.Gateway)} is what GATEWAY_TRIGGER_ACTIVATION switches — if this script does something else on entering, make it an {nameof(FieldScriptType.OnEnter)} script");
+                return;
+            }
+
+            problems.Add($"{scriptDescription} is an {nameof(FieldScriptType.OnEnter)} script containing {jump.ScriptName}, so it is a way out of the field that GATEWAY_TRIGGER_ACTIVATION cannot stop. Make it a {nameof(FieldScriptType.Gateway)} script");
         }
 
         private static bool HasMapJump(string[] lines)
