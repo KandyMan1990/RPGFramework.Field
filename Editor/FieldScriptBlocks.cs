@@ -12,7 +12,7 @@ namespace RPGFramework.Field.Editor
     /// <c>true</c>/<c>false</c> itself — so a block round trips through the text form without needing a
     /// second representation that could disagree with it.
     /// </summary>
-    public sealed class FieldScriptBlock
+    internal sealed class FieldScriptBlock
     {
         /// <summary>
         /// The opcode this block writes, or null when the line was not recognised. An unrecognised line
@@ -142,7 +142,7 @@ namespace RPGFramework.Field.Editor
     /// The text is the source of truth — it is what is stored on the asset and what the compiler reads.
     /// The editor is a way of writing it without typing, not a separate format.
     /// </summary>
-    public static class FieldScriptBlocks
+    internal static class FieldScriptBlocks
     {
         /// <summary>
         /// Closes the body of a block-opening opcode. Not an opcode itself — it emits nothing, it only

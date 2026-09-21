@@ -18,7 +18,7 @@ namespace RPGFramework.Field.Editor
     /// The script text stays the source of truth. This edits it, so a script can still be read, diffed
     /// and hand-edited, and a line the editor does not recognise is preserved rather than dropped.
     /// </summary>
-    public sealed class FieldScriptBlockEditor : VisualElement
+    internal sealed class FieldScriptBlockEditor : VisualElement
     {
         private readonly List<FieldScriptBlock> m_Blocks;
         private readonly VisualElement          m_BlockList;
@@ -610,7 +610,7 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>One spawn point a field offers: what the author sees, and the id that gets written.</summary>
-        private readonly struct SpawnChoice
+        internal readonly struct SpawnChoice
         {
             internal readonly string Label;
             internal readonly int    Id;
@@ -666,7 +666,7 @@ namespace RPGFramework.Field.Editor
             return string.Empty;
         }
 
-        private static List<SpawnChoice> GatherSpawnChoices(string fieldName)
+        internal static List<SpawnChoice> GatherSpawnChoices(string fieldName)
         {
             List<SpawnChoice> choices = new List<SpawnChoice>();
 
@@ -762,7 +762,7 @@ namespace RPGFramework.Field.Editor
             return string.Empty;
         }
 
-        private static List<string> GatherFieldNames()
+        internal static List<string> GatherFieldNames()
         {
             List<string> names = new List<string>();
 

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace RPGFramework.Field.Editor
 {
-    public class FieldDesignerData : ScriptableObject
+    internal class FieldDesignerData : ScriptableObject
     {
         [SerializeField]
         [HideInInspector]

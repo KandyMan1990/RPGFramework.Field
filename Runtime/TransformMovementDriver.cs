@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    public sealed class TransformMovementDriver : MonoBehaviour, IMovementDriver
+    internal sealed class TransformMovementDriver : MonoBehaviour, IMovementDriver
     {
         private Transform       m_Transform;
         private float           m_Speed;

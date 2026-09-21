@@ -7,7 +7,7 @@ namespace RPGFramework.Field.Editor
     /// <summary>
     /// One argument of an opcode, resolved from its attribute.
     /// </summary>
-    public sealed class FieldArgumentInfo
+    internal sealed class FieldArgumentInfo
     {
         public string        Name        { get; }
         public ArgumentType  Type        { get; }
@@ -27,7 +27,7 @@ namespace RPGFramework.Field.Editor
     /// One opcode an author can use, with everything needed to offer it as a block: what to call it,
     /// what it does, and one entry per input it takes.
     /// </summary>
-    public sealed class FieldOpCodeInfo
+    internal sealed class FieldOpCodeInfo
     {
         public FieldScriptOpCode OpCode     { get; }
         public string            ScriptName { get; }
@@ -62,7 +62,7 @@ namespace RPGFramework.Field.Editor
     /// keeping a second list in step. An opcode with no <see cref="FieldOpCodeAttribute" /> is a
     /// declaration of intent and is not offered.
     /// </summary>
-    public static class FieldOpCodeCatalogue
+    internal static class FieldOpCodeCatalogue
     {
         private static Dictionary<FieldScriptOpCode, FieldOpCodeInfo> s_ByOpCode;
         private static Dictionary<string, FieldOpCodeInfo>            s_ByScriptName;

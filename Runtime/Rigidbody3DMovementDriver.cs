@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    public sealed class Rigidbody3DMovementDriver : MonoBehaviour, IMovementDriver
+    internal sealed class Rigidbody3DMovementDriver : MonoBehaviour, IMovementDriver
     {
         private const float SKIN_WIDTH     = 0.01f;
         private const int   MAX_SLIDES     = 3;

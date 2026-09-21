@@ -5,12 +5,12 @@ namespace RPGFramework.Field
 {
     public sealed class FieldInteractionTrigger : MonoBehaviour
     {
-        public event Action<int, int> OnInteracted;
+        internal event Action<int, int> OnInteracted;
 
-        public float       InteractionAngle => m_InteractionAngle;
-        public float       InteractionRange => m_InteractionRange;
-        public bool        IsActive         => m_IsActive;
-        public FieldEntity Entity           => m_Entity;
+        internal float       InteractionAngle => m_InteractionAngle;
+        internal float       InteractionRange => m_InteractionRange;
+        internal bool        IsActive         => m_IsActive;
+        internal FieldEntity Entity           => m_Entity;
 
         [SerializeField]
         [Range(0f, 360f)]
@@ -32,7 +32,7 @@ namespace RPGFramework.Field
             m_EntityId = m_Entity.EntityId;
         }
 
-        public void TryInteract()
+        internal void TryInteract()
         {
             if (!m_IsActive)
             {
@@ -47,7 +47,7 @@ namespace RPGFramework.Field
             OnInteracted?.Invoke(m_EntityId, eventId);
         }
 
-        public void SetActive(bool active)
+        internal void SetActive(bool active)
         {
             m_IsActive = active;
         }

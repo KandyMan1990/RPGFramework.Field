@@ -7,7 +7,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// No entity. Entity ids are authored from 0, so nothing ever has this one.
         /// </summary>
-        public const int NO_ENTITY = -1;
+        internal const int NO_ENTITY = -1;
 
         public FieldScriptDefinition ScriptDefinition;
         public int                   EntityId => ScriptDefinition.EntityId;
@@ -21,7 +21,7 @@ namespace RPGFramework.Field
             SetVisible(false);
         }
 
-        public void SetVisible(bool visible)
+        internal void SetVisible(bool visible)
         {
             if (m_VisibleObject != null)
             {

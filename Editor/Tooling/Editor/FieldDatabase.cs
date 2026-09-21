@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using RPGFramework.Core.Memory;
+using RPGFramework.Hashing;
 using UnityEditor;
 using UnityEngine;
 
 namespace RPGFramework.Field.Editor
 {
     [Serializable]
-    public class FieldDatabase
+    internal class FieldDatabase
     {
         private readonly string m_AssetBundlesPath = Path.Combine(Application.streamingAssetsPath, "Field");
 
@@ -134,7 +136,70 @@ namespace RPGFramework.Field.Editor
                 dialogueChannels.Validate(prefab.name, problems);
             }
 
+            ValidateVariableMaps(problems);
+
             return problems;
+        }
+
+        /// <summary>
+        /// The variable map is part of what a field export depends on: a new game begins at the defaults of
+        /// <see cref="FieldVariables.CURRENT_FIELD" /> and <see cref="FieldVariables.CURRENT_SPAWN" />, so they have to
+        /// name a field in this database and a spawn point it has, and the map has to declare everything the
+        /// framework reads from it.
+        /// </summary>
+        private void ValidateVariableMaps(List<string> problems)
+        {
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(VariableMapAsset));
+
+            if (guids.Length == 0)
+            {
+                problems.Add($"No {nameof(VariableMapAsset)} in the project. A new game reads where to begin from it — create one with RPG Framework / Core / Variable Map");
+                return;
+            }
+
+            foreach (string guid in guids)
+            {
+                VariableMapAsset map = AssetDatabase.LoadAssetAtPath<VariableMapAsset>(AssetDatabase.GUIDToAssetPath(guid));
+
+                foreach (string problem in map.Validate())
+                {
+                    problems.Add($"Variable map '{map.name}': {problem}");
+                }
+
+                if (!map.TryGetVariable(FieldVariables.CURRENT_FIELD, out VariableDefinition field) ||
+                    !map.TryGetVariable(FieldVariables.CURRENT_SPAWN, out VariableDefinition spawn))
+                {
+                    continue;
+                }
+
+                GameObject start = FindFieldPrefab(field.DefaultValue);
+
+                if (start == null)
+                {
+                    problems.Add($"Variable map '{map.name}': '{FieldVariables.CURRENT_FIELD}' does not default to a field in this database, so a new game has nowhere to begin. Choose one in the Variable Map inspector");
+                    continue;
+                }
+
+                int spawnId = (int)VariableDefaults.ToInteger(spawn.DefaultValue, VariableWidth.Int);
+
+                if (Array.Find(start.GetComponentsInChildren<SpawnPoint>(true), spawnPoint => spawnPoint.Id == spawnId) == null)
+                {
+                    problems.Add($"Variable map '{map.name}': '{FieldVariables.CURRENT_SPAWN}' defaults to spawn point [{spawnId}], which {start.name} does not have");
+                }
+            }
+        }
+
+        private GameObject FindFieldPrefab(ulong fieldNameHash)
+        {
+            foreach (FieldDatabaseAssetAuthoring field in m_Fields)
+            {
+                if (field.Prefab != null && Fnv1a64.Hash(field.Prefab.name) == fieldNameHash)
+                {
+                    return field.Prefab;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

@@ -5,7 +5,7 @@ using UnityEngine.Tilemaps;
 
 namespace RPGFramework.Field
 {
-    public sealed class TilemapMovementDriver : MonoBehaviour, IMovementDriver
+    internal sealed class TilemapMovementDriver : MonoBehaviour, IMovementDriver
     {
         private Transform       m_Transform;
         private Tilemap         m_Tilemap;

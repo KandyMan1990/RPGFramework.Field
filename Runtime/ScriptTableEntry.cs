@@ -1,6 +1,6 @@
 ﻿namespace RPGFramework.Field
 {
-    public sealed class ScriptTableEntry
+    internal sealed class ScriptTableEntry
     {
         public int    ScriptId;
         public byte[] Bytecode;

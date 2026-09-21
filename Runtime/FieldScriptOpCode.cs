@@ -1091,7 +1091,7 @@ namespace RPGFramework.Field
     /// <summary>
     /// Where the engine's opcode range ends and a game's begins.
     /// </summary>
-    public static class FieldScriptOpCodeRanges
+    internal static class FieldScriptOpCodeRanges
     {
         /// <summary>
         /// Highest value the framework will ever assign to one of its own opcodes.

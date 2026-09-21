@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace RPGFramework.Field.Editor
 {
     [CustomEditor(typeof(FieldScriptSource))]
-    public sealed class FieldScriptSourceEditor : UnityEditor.Editor
+    internal sealed class FieldScriptSourceEditor : UnityEditor.Editor
     {
         private FieldScriptSource m_Source;
         private HelpBox           m_CompileResult;
@@ -111,7 +111,7 @@ namespace RPGFramework.Field.Editor
 namespace RPGFramework.Field.Editor
 {
     [CreateAssetMenu(menuName = "RPG Framework/Field/Script Source", fileName = "FieldScriptSource")]
-    public sealed class FieldScriptSource : ScriptableObject
+    internal sealed class FieldScriptSource : ScriptableObject
     {
         [Tooltip("Unique script ID used by the VM")]
         public int ScriptId;

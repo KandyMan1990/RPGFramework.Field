@@ -6,9 +6,9 @@ namespace RPGFramework.Field
     [RequireComponent(typeof(BoxCollider))]
     public sealed class FieldCollisionTrigger : MonoBehaviour
     {
-        public event Action<int, int> OnEntered;
-        public event Action<int, int> OnGatewayEntered;
-        public event Action<int, int> OnLeft;
+        internal event Action<int, int> OnEntered;
+        internal event Action<int, int> OnGatewayEntered;
+        internal event Action<int, int> OnLeft;
 
         private FieldEntity m_Entity;
         private bool        m_IsActive;
@@ -87,17 +87,17 @@ namespace RPGFramework.Field
             return found;
         }
 
-        public void SetActive(bool active)
+        internal void SetActive(bool active)
         {
             m_IsActive = active;
         }
 
-        public void SetEntityShown(bool shown)
+        internal void SetEntityShown(bool shown)
         {
             m_IsEntityShown = shown;
         }
 
-        public void SetPlayerEntityId(int entityId)
+        internal void SetPlayerEntityId(int entityId)
         {
             m_PlayerEntityId = entityId;
         }

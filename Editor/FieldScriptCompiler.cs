@@ -9,7 +9,7 @@ using RPGFramework.Hashing;
 
 namespace RPGFramework.Field.Editor
 {
-    public static class FieldScriptCompiler
+    internal static class FieldScriptCompiler
     {
         /// <summary>
         /// Prefix marking a token as a variable name to resolve against the <see cref="VariableMapAsset" />

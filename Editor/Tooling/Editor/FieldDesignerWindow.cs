@@ -10,7 +10,7 @@ using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field.Editor
 {
-    public class FieldDesignerWindow : EditorWindow
+    internal class FieldDesignerWindow : EditorWindow
     {
         [SerializeField]
         private VisualTreeAsset m_Uxml;

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    public sealed class FieldExplorationInputContext : IInputContext
+    internal sealed class FieldExplorationInputContext : IInputContext
     {
         private readonly Func<FieldInteractionTrigger> m_GetBestInteractionTrigger;
         private readonly Action                        m_OpenConfigMenu;

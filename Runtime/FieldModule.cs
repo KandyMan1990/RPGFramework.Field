@@ -45,10 +45,11 @@ namespace RPGFramework.Field
         private readonly ITempMemoryArgs        m_TempMemoryArgs;
         private readonly IScreenFadeService     m_ScreenFadeService;
         private readonly IBattleArgsProvider    m_BattleArgsProvider;
-        private readonly IFieldArgsProvider     m_FieldArgsProvider;
+        private readonly IFieldArgsStore        m_FieldArgsStore;
         private readonly IMenuArgsProvider      m_MenuArgsProvider;
         private readonly IChangeModuleStore     m_ChangeModuleStore;
         private readonly IResumeModuleStore     m_ResumeModuleStore;
+        private readonly ICurrentModuleStore    m_CurrentModuleStore;
         private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
@@ -88,10 +89,11 @@ namespace RPGFramework.Field
                            ITempMemoryArgs       tempMemoryArgs,
                            IScreenFadeService    screenFadeService,
                            IBattleArgsProvider   battleArgsProvider,
-                           IFieldArgsProvider    fieldArgsProvider,
+                           IFieldArgsStore       fieldArgsStore,
                            IMenuArgsProvider     menuArgsProvider,
                            IChangeModuleStore    changeModuleStore,
                            IResumeModuleStore    resumeModuleStore,
+                           ICurrentModuleStore   currentModuleStore,
                            IFieldResumeDataStore fieldResumeDataStore)
         {
             m_CoreModule           = coreModule;
@@ -106,10 +108,11 @@ namespace RPGFramework.Field
             m_TempMemoryArgs       = tempMemoryArgs;
             m_ScreenFadeService    = screenFadeService;
             m_BattleArgsProvider   = battleArgsProvider;
-            m_FieldArgsProvider    = fieldArgsProvider;
+            m_FieldArgsStore       = fieldArgsStore;
             m_MenuArgsProvider     = menuArgsProvider;
             m_ChangeModuleStore    = changeModuleStore;
             m_ResumeModuleStore    = resumeModuleStore;
+            m_CurrentModuleStore   = currentModuleStore;
             m_FieldResumeDataStore = fieldResumeDataStore;
             m_DialogueChannels     = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
             m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
@@ -272,7 +275,7 @@ namespace RPGFramework.Field
 
         private void OnSetFieldModuleArgs(FieldArgs args)
         {
-            m_FieldArgsProvider.Set(args);
+            m_FieldArgsStore.Set(args);
             m_FieldTransitionRequested = true;
         }
 
@@ -310,7 +313,7 @@ namespace RPGFramework.Field
 
         private async Task<FieldEntity[]> PreLoadFieldAsync()
         {
-            FieldArgs fieldArgs = m_FieldArgsProvider.Get;
+            FieldArgs fieldArgs = m_FieldArgsStore.Get;
             m_FieldDatabaseAsset = m_FieldDatabase.Get(fieldArgs.FieldId);
 
             await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldDatabaseAsset.LocalisationSheets);
@@ -328,6 +331,8 @@ namespace RPGFramework.Field
         private async Task LoadNewFieldAsync()
         {
             FieldEntity[] entitiesInGameObject = await PreLoadFieldAsync();
+
+            m_CurrentModuleStore.SetModuleId(FieldConstants.MODULE_ID);
 
             FieldVM                  vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
@@ -468,7 +473,7 @@ namespace RPGFramework.Field
 
             if (m_InitialPlayerSpawn == null)
             {
-                FieldArgs fieldArgs = m_FieldArgsProvider.Get;
+                FieldArgs fieldArgs = m_FieldArgsStore.Get;
                 Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No spawn point with id [{fieldArgs.SpawnId}] in this field, so the player keeps whatever position its init script gave it");
             }
             else
