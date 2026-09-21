@@ -10,7 +10,7 @@ namespace RPGFramework.Field
     public enum FieldScriptPriority : byte
     {
         /// <summary>
-        /// The init script, then <see cref="FieldScriptType.Main" /> once every entity's init has run.
+        /// The init script, then <see cref="FieldScriptType.Default" /> once every entity's init has run.
         /// </summary>
         Main = 0,
 

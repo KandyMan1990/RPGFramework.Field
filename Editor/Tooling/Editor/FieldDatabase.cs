@@ -196,8 +196,8 @@ namespace RPGFramework.Field.Editor
                 problems.Add($"{entityName} has [{firstScriptType}] as its first script, but script 0 is run at field load as the init script. Reorder so the {nameof(FieldScriptType.Init)} script is first");
             }
 
-            int initScriptCount = 0;
-            int mainScriptCount = 0;
+            int initScriptCount    = 0;
+            int defaultScriptCount = 0;
 
             for (int i = 0; i < scriptDefinition.Scripts.Count; i++)
             {
@@ -208,9 +208,9 @@ namespace RPGFramework.Field.Editor
                     initScriptCount++;
                 }
 
-                if (scriptEntry.ScriptType == FieldScriptType.Main)
+                if (scriptEntry.ScriptType == FieldScriptType.Default)
                 {
-                    mainScriptCount++;
+                    defaultScriptCount++;
                 }
 
                 if (scriptEntry.CompiledScript == null)
@@ -265,9 +265,9 @@ namespace RPGFramework.Field.Editor
                 problems.Add($"{entityName} has {initScriptCount} {nameof(FieldScriptType.Init)} scripts, but only script 0 is run at load");
             }
 
-            if (mainScriptCount > 1)
+            if (defaultScriptCount > 1)
             {
-                problems.Add($"{entityName} has {mainScriptCount} {nameof(FieldScriptType.Main)} scripts, but only one is started after initialisation");
+                problems.Add($"{entityName} has {defaultScriptCount} {nameof(FieldScriptType.Default)} scripts, but only one is started after initialisation");
             }
 
             ValidateGateway(prefab, entity, entityName, problems);
@@ -292,7 +292,7 @@ namespace RPGFramework.Field.Editor
 
                 if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.StopsInit)
                 {
-                    problems.Add($"{scriptDescription} uses {name}, which waits or gives up the frame. Init runs straight through before the field is shown, so nothing after it would run — move it, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");
+                    problems.Add($"{scriptDescription} uses {name}, which waits or gives up the frame. Init runs straight through before the field is shown, so nothing after it would run — move it, and whatever follows it, into a {nameof(FieldScriptType.Default)} script");
                 }
             }
         }

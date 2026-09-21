@@ -379,7 +379,7 @@ namespace RPGFramework.Field
             SubscribeVm();
 
             InitialiseFieldScripts();
-            StartMainScripts(entitiesInGameObject);
+            StartDefaultScripts(entitiesInGameObject);
             InitialisePlayer();
 
             await PostFieldLoadAsync();
@@ -417,37 +417,37 @@ namespace RPGFramework.Field
 
             if (outcome == ScriptRunOutcome.Preempted)
             {
-                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script requested a more urgent script on its own entity, so init was stopped there and nothing after the request ran. Request it from {nameof(FieldScriptType.Main)} instead");
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script requested a more urgent script on its own entity, so init was stopped there and nothing after the request ran. Request it from {nameof(FieldScriptType.Default)} instead");
 
                 return;
             }
 
             if (outcome == ScriptRunOutcome.Waiting)
             {
-                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script waited or yielded, so it was stopped there and nothing after that ran. Init runs straight through before the field is shown and cannot wait — move the wait, and whatever follows it, into a {nameof(FieldScriptType.Main)} script");
+                Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script waited or yielded, so it was stopped there and nothing after that ran. Init runs straight through before the field is shown and cannot wait — move the wait, and whatever follows it, into a {nameof(FieldScriptType.Default)} script");
 
                 return;
             }
 
-            Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script ran {FieldVM.INIT_INSTRUCTION_CEILING} instructions without returning, so it was stopped there. It most likely loops — init has to run straight through to its RETURN; move looping behaviour into a {nameof(FieldScriptType.Main)} script");
+            Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script ran {FieldVM.INIT_INSTRUCTION_CEILING} instructions without returning, so it was stopped there. It most likely loops — init has to run straight through to its RETURN; move looping behaviour into a {nameof(FieldScriptType.Default)} script");
         }
 #endif
 
         /// <summary>
-        /// Start each entity's <see cref="FieldScriptType.Main" /> script, once every init has run.
+        /// Start each entity's <see cref="FieldScriptType.Default" /> script, once every init has run.
         /// <br /><br />
-        /// Main is where an entity's ongoing behaviour lives — a patrol route, an idle loop — and unlike
+        /// Default is where an entity's ongoing behaviour lives — a patrol route, an idle loop — and unlike
         /// init it is free to wait and to run for as long as the field does. It takes over init's slot,
         /// the least urgent, so a trigger firing preempts it however long it has been looping, and it
         /// resumes where it left off once the trigger's script returns.
         /// </summary>
-        private void StartMainScripts(FieldEntity[] entitiesInGameObject)
+        private void StartDefaultScripts(FieldEntity[] entitiesInGameObject)
         {
             foreach (FieldEntity entity in entitiesInGameObject)
             {
-                entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Main, out int eventId);
+                entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Default, out int eventId);
 
-                m_FieldContext.VM.StartMainScript(entity.EntityId, eventId);
+                m_FieldContext.VM.StartDefaultScript(entity.EntityId, eventId);
             }
         }
 

@@ -460,16 +460,16 @@ namespace RPGFramework.Field
         internal const int INIT_INSTRUCTION_CEILING = 1024;
 
         /// <summary>
-        /// Replace an entity's init script with its Main script, whether or not init returned. An entity
-        /// with no Main script is left with the slot empty.
+        /// Replace an entity's init script with its Default script, whether or not init returned. An entity
+        /// with no Default script is left with the slot empty.
         /// </summary>
-        internal void StartMainScript(int entityId, int mainEventId)
+        internal void StartDefaultScript(int entityId, int defaultEventId)
         {
             FieldEntityRuntime entity = m_Entities[entityId];
 
             m_Contexts.Remove((entityId, (byte)FieldScriptPriority.Main));
 
-            if (entity.TryGetScriptId(mainEventId, out int scriptId))
+            if (entity.TryGetScriptId(defaultEventId, out int scriptId))
             {
                 entity.ReplaceScriptInSlot(scriptId, (byte)FieldScriptPriority.Main);
                 return;

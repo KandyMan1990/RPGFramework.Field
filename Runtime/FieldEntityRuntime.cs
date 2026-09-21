@@ -129,8 +129,8 @@
         /// returning is what releases it.<br /><br />
         /// A script that is waiting still holds the entity — nothing below it runs while it waits. Only
         /// a <b>more urgent</b> priority arriving takes over, which is the point of the ordering: a trigger
-        /// preempts a Main script at <see cref="FieldScriptPriority.Main" /> however long that Main script has been
-        /// looping, and Main picks up again afterwards.
+        /// preempts a Default script at <see cref="FieldScriptPriority.Main" /> however long that Default script has
+        /// been looping, and Default picks up again afterwards.
         /// </summary>
         internal void Update(FieldVM vm)
         {
