@@ -417,18 +417,18 @@ namespace RPGFramework.Field
         /// Take a compiled script, unless it was compiled for a different bytecode layout.<br /><br />
         /// A stale script is refused rather than run. Its slot then finds no script and clears, so the
         /// entity goes quiet instead of executing the wrong instructions — see
-        /// <see cref="FieldCompiledScript.CURRENT_FORMAT_VERSION" /> for why that matters.
+        /// <see cref="FieldEntities.BYTECODE_FORMAT_VERSION" /> for why that matters.
         /// </summary>
-        internal void RegisterScript(int scriptId, FieldCompiledScript script)
+        internal void RegisterScript(int scriptId, uint formatVersion, byte[] bytecode)
         {
-            if (script.FormatVersion != FieldCompiledScript.CURRENT_FORMAT_VERSION)
+            if (formatVersion != FieldEntities.BYTECODE_FORMAT_VERSION)
             {
-                Debug.LogError($"{nameof(FieldVM)}::{nameof(RegisterScript)} [{script.name}] was compiled for bytecode format [{script.FormatVersion}] but this build reads format [{FieldCompiledScript.CURRENT_FORMAT_VERSION}], so it has not been loaded. Recompile it. Format [0] means it was compiled before the format carried a version");
+                Debug.LogError($"{nameof(FieldVM)}::{nameof(RegisterScript)} Script [{scriptId}] was compiled for bytecode format [{formatVersion}] but this build reads format [{FieldEntities.BYTECODE_FORMAT_VERSION}], so it has not been loaded. Export the field again. Format [0] means it was never exported");
 
                 return;
             }
 
-            m_Scripts.Add(scriptId, script.Bytecode);
+            m_Scripts.Add(scriptId, bytecode);
         }
 
         /// <summary>

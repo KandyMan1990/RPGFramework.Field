@@ -23,13 +23,11 @@ namespace RPGFramework.Field
 
         private FieldEntity m_Entity;
         private bool        m_IsActive;
-        private int         m_EntityId;
 
         private void Awake()
         {
             m_Entity   = GetComponentInParent<FieldEntity>();
             m_IsActive = true;
-            m_EntityId = m_Entity.EntityId;
         }
 
         internal void TryInteract()
@@ -39,12 +37,12 @@ namespace RPGFramework.Field
                 return;
             }
 
-            if (!m_Entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.OnInteraction, out int eventId))
+            if (!m_Entity.TryGetScriptIndex(FieldScriptType.OnInteraction, out int eventId))
             {
                 return;
             }
 
-            OnInteracted?.Invoke(m_EntityId, eventId);
+            OnInteracted?.Invoke(m_Entity.EntityId, eventId);
         }
 
         internal void SetActive(bool active)

@@ -39,6 +39,7 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         public bool OpensBlock { get; }
         public bool StopsInit  { get; }
+        public bool NeedsBody  { get; }
 
         public IReadOnlyList<FieldArgumentInfo> Arguments { get; }
 
@@ -50,6 +51,7 @@ namespace RPGFramework.Field.Editor
             Summary    = attribute.Summary;
             OpensBlock = attribute.OpensBlock;
             StopsInit  = attribute.StopsInit;
+            NeedsBody  = attribute.NeedsBody;
             Arguments  = arguments;
         }
     }

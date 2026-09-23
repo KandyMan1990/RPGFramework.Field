@@ -311,7 +311,7 @@ namespace RPGFramework.Field
             return m_CoreModule.RequestModuleChangeAsync();
         }
 
-        private async Task<FieldEntity[]> PreLoadFieldAsync()
+        private async Task<FieldEntities> PreLoadFieldAsync()
         {
             FieldArgs fieldArgs = m_FieldArgsStore.Get;
             m_FieldDatabaseAsset = m_FieldDatabase.Get(fieldArgs.FieldId);
@@ -322,61 +322,81 @@ namespace RPGFramework.Field
             SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
             m_InitialPlayerSpawn = Array.Find(spawnPoints, sp => sp.Id == fieldArgs.SpawnId);
 
-            FieldEntity[] entitiesInGameObject = fieldGameObject.GetComponentsInChildren<FieldEntity>();
-            m_Entities = new Dictionary<int, FieldEntityComponents>(entitiesInGameObject.Length);
+            FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
+            m_Entities = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
 
-            return entitiesInGameObject;
+            foreach (CompiledFieldEntity record in fieldEntities.Compiled)
+            {
+                AddEntityComponents(record);
+            }
+
+            return fieldEntities;
+        }
+
+        /// <summary>
+        /// An entity's body, bound to its record, with its triggers wired. An entity with no body still gets an entry,
+        /// so every id resolves; there is simply nothing in it.
+        /// </summary>
+        private void AddEntityComponents(CompiledFieldEntity record)
+        {
+            FieldEntityComponents entityComponents = new FieldEntityComponents();
+            m_Entities.Add(record.EntityId, entityComponents);
+
+            FieldEntity body = record.Body;
+
+            if (body == null)
+            {
+                return;
+            }
+
+            body.Bind(record);
+            entityComponents.SetEntity(body);
+
+            FieldCollisionTrigger collisionTrigger = body.GetComponentInChildren<FieldCollisionTrigger>();
+
+            if (collisionTrigger != null)
+            {
+                entityComponents.SetCollisionTrigger(collisionTrigger);
+                collisionTrigger.OnEntered        += OnCollisionTriggerEntered;
+                collisionTrigger.OnGatewayEntered += OnGatewayEntered;
+                collisionTrigger.OnLeft           += OnCollisionTriggerLeft;
+            }
+
+            FieldInteractionTrigger interactionTrigger = body.GetComponentInChildren<FieldInteractionTrigger>();
+
+            if (interactionTrigger != null)
+            {
+                entityComponents.SetInteractionTrigger(interactionTrigger);
+                interactionTrigger.OnInteracted += OnInteractionTriggered;
+            }
         }
 
         private async Task LoadNewFieldAsync()
         {
-            FieldEntity[] entitiesInGameObject = await PreLoadFieldAsync();
+            FieldEntities fieldEntities = await PreLoadFieldAsync();
 
             m_CurrentModuleStore.SetModuleId(FieldConstants.MODULE_ID);
 
             FieldVM                  vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
-            List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(entitiesInGameObject.Length);
+            List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(fieldEntities.Compiled.Count);
 
-            foreach (FieldEntity entity in entitiesInGameObject)
+            foreach (CompiledFieldEntity record in fieldEntities.Compiled)
             {
-                FieldEntityComponents entityComponents = new FieldEntityComponents();
-                entityComponents.SetEntity(entity);
+                int[] scriptIdsByEvent = new int[record.Scripts.Count];
 
-                m_Entities.Add(entity.EntityId, entityComponents);
-                FieldCollisionTrigger collisionTrigger = entity.GetComponentInChildren<FieldCollisionTrigger>();
-
-                if (collisionTrigger != null)
+                for (int i = 0; i < record.Scripts.Count; i++)
                 {
-                    entityComponents.SetCollisionTrigger(collisionTrigger);
-                    collisionTrigger.OnEntered        += OnCollisionTriggerEntered;
-                    collisionTrigger.OnGatewayEntered += OnGatewayEntered;
-                    collisionTrigger.OnLeft           += OnCollisionTriggerLeft;
+                    CompiledFieldScript script = record.Scripts[i];
+
+                    scriptIdsByEvent[i] = script.ScriptId;
+
+                    vm.RegisterScript(script.ScriptId, fieldEntities.FormatVersion, script.Bytecode);
                 }
 
-                FieldInteractionTrigger interactionTrigger = entity.GetComponentInChildren<FieldInteractionTrigger>();
-
-                if (interactionTrigger != null)
-                {
-                    entityComponents.SetInteractionTrigger(interactionTrigger);
-                    interactionTrigger.OnInteracted += OnInteractionTriggered;
-                }
-
-                List<ScriptEntry> scripts          = entity.ScriptDefinition.Scripts;
-                int[]             scriptIdsByEvent = new int[scripts.Count];
-
-                for (int i = 0; i < scripts.Count; i++)
-                {
-                    ScriptEntry scriptEntry = scripts[i];
-
-                    scriptIdsByEvent[i] = scriptEntry.CompiledScript.ScriptId;
-
-                    vm.RegisterScript(scriptEntry.CompiledScript.ScriptId, scriptEntry.CompiledScript);
-                }
-
-                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(entity.EntityId, scriptIdsByEvent);
+                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(record.EntityId, scriptIdsByEvent);
 
                 entities.Add(fieldEntityRuntime);
-                vm.RegisterEntity(entity.EntityId, fieldEntityRuntime);
+                vm.RegisterEntity(record.EntityId, fieldEntityRuntime);
             }
 
             m_FieldContext = new FieldContext(vm, entities);
@@ -384,7 +404,7 @@ namespace RPGFramework.Field
             SubscribeVm();
 
             InitialiseFieldScripts();
-            StartDefaultScripts(entitiesInGameObject);
+            StartDefaultScripts(fieldEntities);
             InitialisePlayer();
 
             await PostFieldLoadAsync();
@@ -446,13 +466,13 @@ namespace RPGFramework.Field
         /// the least urgent, so a trigger firing preempts it however long it has been looping, and it
         /// resumes where it left off once the trigger's script returns.
         /// </summary>
-        private void StartDefaultScripts(FieldEntity[] entitiesInGameObject)
+        private void StartDefaultScripts(FieldEntities fieldEntities)
         {
-            foreach (FieldEntity entity in entitiesInGameObject)
+            foreach (CompiledFieldEntity record in fieldEntities.Compiled)
             {
-                entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Default, out int eventId);
+                record.TryGetScriptIndex(FieldScriptType.Default, out int eventId);
 
-                m_FieldContext.VM.StartDefaultScript(entity.EntityId, eventId);
+                m_FieldContext.VM.StartDefaultScript(record.EntityId, eventId);
             }
         }
 
@@ -488,32 +508,7 @@ namespace RPGFramework.Field
 
         private async Task ResumeFieldAsync()
         {
-            FieldEntity[] entitiesInGameObject = await PreLoadFieldAsync();
-
-            foreach (FieldEntity entity in entitiesInGameObject)
-            {
-                FieldEntityComponents entityComponents = new FieldEntityComponents();
-                entityComponents.SetEntity(entity);
-
-                m_Entities.Add(entity.EntityId, entityComponents);
-                FieldCollisionTrigger collisionTrigger = entity.GetComponentInChildren<FieldCollisionTrigger>();
-
-                if (collisionTrigger != null)
-                {
-                    entityComponents.SetCollisionTrigger(collisionTrigger);
-                    collisionTrigger.OnEntered        += OnCollisionTriggerEntered;
-                    collisionTrigger.OnGatewayEntered += OnGatewayEntered;
-                    collisionTrigger.OnLeft           += OnCollisionTriggerLeft;
-                }
-
-                FieldInteractionTrigger interactionTrigger = entity.GetComponentInChildren<FieldInteractionTrigger>();
-
-                if (interactionTrigger != null)
-                {
-                    entityComponents.SetInteractionTrigger(interactionTrigger);
-                    interactionTrigger.OnInteracted += OnInteractionTriggered;
-                }
-            }
+            await PreLoadFieldAsync();
 
             SubscribeVm();
 
@@ -897,6 +892,11 @@ namespace RPGFramework.Field
         {
             foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
             {
+                if (entity.Value.Entity == null)
+                {
+                    continue;
+                }
+
                 m_FieldContext.SetEntityPositionAndRotation(entity.Key, entity.Value.Entity.transform);
 
                 if (entity.Value.MovementDriver != null)

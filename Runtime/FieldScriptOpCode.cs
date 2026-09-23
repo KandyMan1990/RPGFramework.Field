@@ -918,7 +918,7 @@ namespace RPGFramework.Field
 
         // Field models and animation (0x0500)
 
-        [FieldOpCode("SET_PLAYER_ENTITY", ArgumentLayout.Sequential, Summary = "Make this entity the one the player controls")]
+        [FieldOpCode("SET_PLAYER_ENTITY", ArgumentLayout.Sequential, Summary = "Make this entity the one the player controls", NeedsBody = true)]
         SetPlayerEntity = 0x0500,
 
         [FieldOpCode("LOCK_INPUT", ArgumentLayout.Sequential, Summary = "Take control away from the player, or give it back")]
@@ -931,7 +931,7 @@ namespace RPGFramework.Field
         SetFollowerEnabled   = 0x0505, // byte partySlot, bool following
         ResetFollowerTrail   = 0x0506, // forget the path followers are walking, after the leader is moved
 
-        [FieldOpCode("VISIBILITY", ArgumentLayout.Sequential, Summary = "Show or hide this entity")]
+        [FieldOpCode("VISIBILITY", ArgumentLayout.Sequential, Summary = "Show or hide this entity", NeedsBody = true)]
         [Argument(0, "isVisible", ArgumentType.Bool)]
         Visibility = 0x0507,
 
@@ -940,15 +940,15 @@ namespace RPGFramework.Field
         PushScriptActivation      = 0x050A,
         SetCollisionRadius        = 0x050B,
 
-        [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off")]
+        [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
         InteractionTriggerActivation = 0x050C,
 
-        [FieldOpCode("SET_INTERACTION_RANGE", ArgumentLayout.Sequential, Summary = "Set how close the player must be to interact with this entity")]
+        [FieldOpCode("SET_INTERACTION_RANGE", ArgumentLayout.Sequential, Summary = "Set how close the player must be to interact with this entity", NeedsBody = true)]
         [Argument(0, "radius", ArgumentType.Float)]
         SetInteractionRange = 0x050D,
 
-        [FieldOpCode("SET_ENTITY_POSITION", ArgumentLayout.Sequential, Summary = "Move this entity immediately, with no animation")]
+        [FieldOpCode("SET_ENTITY_POSITION", ArgumentLayout.Sequential, Summary = "Move this entity immediately, with no animation", NeedsBody = true)]
         [Argument(0, "x", ArgumentType.Float)]
         [Argument(1, "y", ArgumentType.Float)]
         [Argument(2, "z", ArgumentType.Float)]
@@ -958,7 +958,7 @@ namespace RPGFramework.Field
         SetEntityDrawOffset     = 0x0510,
         WaitForEntityDrawOffset = 0x0511,
 
-        [FieldOpCode("SET_MOVEMENT_SPEED", ArgumentLayout.Sequential, Summary = "Set how fast this entity moves")]
+        [FieldOpCode("SET_MOVEMENT_SPEED", ArgumentLayout.Sequential, Summary = "Set how fast this entity moves", NeedsBody = true)]
         [Argument(0, "movementSpeed", ArgumentType.Float)]
         SetMovementSpeed = 0x0512,
 
@@ -973,13 +973,13 @@ namespace RPGFramework.Field
         WaitForMovement             = 0x051B, // wait until this entity has finished moving
         FlushMovement               = 0x051C, // drop any queued movement for this entity
 
-        [FieldOpCode("SET_ENTITY_ROTATION", ArgumentLayout.Sequential, Summary = "Face this entity in a direction immediately")]
+        [FieldOpCode("SET_ENTITY_ROTATION", ArgumentLayout.Sequential, Summary = "Face this entity in a direction immediately", NeedsBody = true)]
         [Argument(0, "x", ArgumentType.Float)]
         [Argument(1, "y", ArgumentType.Float)]
         [Argument(2, "z", ArgumentType.Float)]
         SetEntityRotation = 0x051D,
 
-        [FieldOpCode("SET_ENTITY_ROTATION_OVER_TIME", ArgumentLayout.Sequential, Summary = "Turn this entity to face a direction over time, waiting until it has", StopsInit = true)]
+        [FieldOpCode("SET_ENTITY_ROTATION_OVER_TIME", ArgumentLayout.Sequential, Summary = "Turn this entity to face a direction over time, waiting until it has", StopsInit = true, NeedsBody = true)]
         [Argument(0, "x",            ArgumentType.Float)]
         [Argument(1, "y",            ArgumentType.Float)]
         [Argument(2, "z",            ArgumentType.Float)]
@@ -988,7 +988,7 @@ namespace RPGFramework.Field
         [Argument(5, "rotationType", ArgumentType.Byte, Description = "0 linear, 1 smooth")]
         SetEntityRotationOverTime = 0x051E,
 
-        [FieldOpCode("SET_DIRECTION_TO_FACE_ENTITY", ArgumentLayout.Sequential, Summary = "Face this entity towards another")]
+        [FieldOpCode("SET_DIRECTION_TO_FACE_ENTITY", ArgumentLayout.Sequential, Summary = "Face this entity towards another", NeedsBody = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         SetDirectionToFaceEntity = 0x051F,
 
@@ -1025,7 +1025,7 @@ namespace RPGFramework.Field
         CopyEntityInfo                   = 0x053E, // int sourceEntityId - take another entity's position and facing
         IsEntityTouching                 = 0x053F, // int otherEntityId, ushort destination
 
-        [FieldOpCode("COLLISION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's collision trigger on or off, and with it the entity's enter and leave scripts")]
+        [FieldOpCode("COLLISION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's collision trigger on or off, and with it the entity's enter and leave scripts", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
         CollisionTriggerActivation = 0x0540,
 

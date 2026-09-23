@@ -122,15 +122,36 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                FieldEntity[] entities = prefab.GetComponentsInChildren<FieldEntity>(true);
+                FieldEntities fieldEntities = prefab.GetComponent<FieldEntities>();
 
-                HashSet<int>            entityIds        = new HashSet<int>();
-                Dictionary<int, string> scriptIds        = new Dictionary<int, string>();
-                DialogueChannelUse      dialogueChannels = new DialogueChannelUse();
-
-                foreach (FieldEntity entity in entities)
+                if (fieldEntities == null)
                 {
-                    ValidateEntity(prefab, entity, entityIds, scriptIds, dialogueChannels, problems);
+                    problems.Add($"{prefab.name} has no {nameof(FieldEntities)} on its root, so it has no entities. Run RPG Framework / Field / Migrate Entities To Records");
+                    continue;
+                }
+
+                Dictionary<int, int> scriptCounts     = new Dictionary<int, int>();
+                HashSet<int>         entityIds        = new HashSet<int>();
+                HashSet<FieldEntity> bodies           = new HashSet<FieldEntity>();
+                DialogueChannelUse   dialogueChannels = new DialogueChannelUse();
+
+                foreach (FieldEntityRecord record in fieldEntities.Entities)
+                {
+                    scriptCounts[record.EntityId] = record.Scripts.Count;
+                }
+
+                foreach (FieldEntityRecord record in fieldEntities.Entities)
+                {
+                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, dialogueChannels, problems);
+                }
+
+                // A body no record claims is never bound, so its triggers never fire and nothing can move or show it.
+                foreach (FieldEntity body in prefab.GetComponentsInChildren<FieldEntity>(true))
+                {
+                    if (!bodies.Contains(body))
+                    {
+                        problems.Add($"{prefab.name} / '{body.name}' has a {nameof(FieldEntity)} no entity uses as its body, so nothing drives it. Give an entity it as its body in the Field Designer, or remove the component");
+                    }
                 }
 
                 dialogueChannels.Validate(prefab.name, problems);
@@ -209,8 +230,20 @@ namespace RPGFramework.Field.Editor
         /// collision — walk into one and both float away, with nothing to slow them — so it is refused here,
         /// where it can be fixed, rather than discovered in play.
         /// </summary>
-        private static void ValidateEntityPhysics(FieldEntity entity, string entityName, List<string> problems)
+        private static void ValidateEntityPhysics(FieldDimension dimension, FieldEntity entity, string entityName, List<string> problems)
         {
+            // The movement drivers look for a 3D body before a 2D one, so the wrong kind is not a slower entity but
+            // a still one.
+            if (dimension == FieldDimension.TwoD && entity.TryGetComponent(out Rigidbody _))
+            {
+                problems.Add($"{entityName} has a 3D {nameof(Rigidbody)} in a 2D field. Use a {nameof(Rigidbody2D)}, or set the field to 3D on its {nameof(FieldEntities)}");
+            }
+
+            if (dimension == FieldDimension.ThreeD && entity.TryGetComponent(out Rigidbody2D _))
+            {
+                problems.Add($"{entityName} has a {nameof(Rigidbody2D)} in a 3D field. Use a {nameof(Rigidbody)}, or set the field to 2D on its {nameof(FieldEntities)}");
+            }
+
             if (entity.TryGetComponent(out Rigidbody body) && !body.isKinematic)
             {
                 problems.Add($"{entityName} has a dynamic {nameof(Rigidbody)}. Field entities must be kinematic, so collisions cannot push them — tick Is Kinematic");
@@ -227,34 +260,36 @@ namespace RPGFramework.Field.Editor
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
         /// </summary>
-        private void ValidateEntity(GameObject prefab, FieldEntity entity, HashSet<int> entityIds, Dictionary<int, string> scriptIds, DialogueChannelUse dialogueChannels, List<string> problems)
+        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, DialogueChannelUse dialogueChannels, List<string> problems)
         {
-            FieldScriptDefinition scriptDefinition = entity.ScriptDefinition;
-
-            if (scriptDefinition == null)
-            {
-                problems.Add($"{prefab.name} / '{entity.name}' has no {nameof(FieldScriptDefinition)}");
-                return;
-            }
-
-            string entityName = $"{prefab.name} / '{scriptDefinition.EntityName}'";
+            string      entityName = $"{prefab.name} / '{record.Name}'";
+            FieldEntity body       = record.Body;
 
             // Scripts address each other by entity id, so two entities sharing one makes the target
             // ambiguous — and the VM's entity dictionary would throw on the duplicate key at load.
-            if (!entityIds.Add(scriptDefinition.EntityId))
+            if (!entityIds.Add(record.EntityId))
             {
-                problems.Add($"{entityName} reuses entity id [{scriptDefinition.EntityId}], which another entity in this field already has");
+                problems.Add($"{entityName} reuses entity id [{record.EntityId}], which another entity in this field already has");
             }
 
-            ValidateEntityPhysics(entity, entityName, problems);
+            if (body != null)
+            {
+                if (!bodies.Add(body))
+                {
+                    problems.Add($"{entityName} uses '{body.name}' as its body, which another entity already does");
+                }
 
-            if (scriptDefinition.Scripts == null || scriptDefinition.Scripts.Count == 0)
+                ValidateEntityPhysics(dimension, body, entityName, problems);
+                ValidateCollisionTrigger(dimension, body, entityName, problems);
+            }
+
+            if (record.Scripts.Count == 0)
             {
                 problems.Add($"{entityName} declares no scripts, so it has no init script");
                 return;
             }
 
-            FieldScriptType firstScriptType = scriptDefinition.Scripts[0].ScriptType;
+            FieldScriptType firstScriptType = record.Scripts[0].Type;
 
             if (firstScriptType != FieldScriptType.Init)
             {
@@ -264,64 +299,41 @@ namespace RPGFramework.Field.Editor
             int initScriptCount    = 0;
             int defaultScriptCount = 0;
 
-            for (int i = 0; i < scriptDefinition.Scripts.Count; i++)
+            for (int i = 0; i < record.Scripts.Count; i++)
             {
-                ScriptEntry scriptEntry = scriptDefinition.Scripts[i];
+                FieldScriptRecord script = record.Scripts[i];
 
-                if (scriptEntry.ScriptType == FieldScriptType.Init)
+                if (script.Type == FieldScriptType.Init)
                 {
                     initScriptCount++;
                 }
 
-                if (scriptEntry.ScriptType == FieldScriptType.Default)
+                if (script.Type == FieldScriptType.Default)
                 {
                     defaultScriptCount++;
                 }
 
-                if (scriptEntry.CompiledScript == null)
+                string scriptDescription = $"{entityName} script [{i}] ({script.Type})";
+                string text              = script.Text ?? string.Empty;
+
+                try
                 {
-                    problems.Add($"{entityName} script [{i}] ({scriptEntry.ScriptType}) has no compiled script assigned");
+                    FieldScriptCompiler.Compile(text);
+                }
+                catch (Exception e)
+                {
+                    problems.Add($"{scriptDescription} does not compile: {e.Message}");
                     continue;
                 }
 
-                if (scriptEntry.CompiledScript.Bytecode == null || scriptEntry.CompiledScript.Bytecode.Length == 0)
-                {
-                    problems.Add($"{entityName} script [{i}] ({scriptEntry.ScriptType}) compiled to no bytecode — recompile it from its {nameof(FieldScriptSource)}");
-                }
+                string[] lines = text.Split('\n');
 
-                // The authored script id is the runtime address: it is what the VM registers scripts
-                // under and what triggers and script-request opcodes name. Two scripts sharing one in the
-                // same field means the second silently replaces the first.
-                int scriptId = scriptEntry.CompiledScript.ScriptId;
-
-                string scriptDescription = $"{entityName} script [{i}] ({scriptEntry.ScriptType})";
-
-                if (scriptIds.TryGetValue(scriptId, out string owner))
-                {
-                    problems.Add($"{scriptDescription} uses script id [{scriptId}], which {owner} already uses");
-                }
-                else
-                {
-                    scriptIds.Add(scriptId, scriptDescription);
-                }
-
-                if (scriptId < 0 || scriptId > ushort.MaxValue)
-                {
-                    problems.Add($"{scriptDescription} has script id [{scriptId}], outside the 0..{ushort.MaxValue} a script-request opcode can address");
-                }
-
-                if (!FieldCompiledScriptAssets.TryFindSource(scriptEntry.CompiledScript, out FieldScriptSource source))
-                {
-                    problems.Add($"{scriptDescription} has no {nameof(FieldScriptSource)} beside it, so it cannot be recompiled or checked. A compiled script is written next to the source it came from");
-                    continue;
-                }
-
-                string[] lines = source.ScriptText.Split('\n');
-
-                ValidateInitScript(scriptEntry, scriptDescription, lines, problems);
-                ValidateTriggerSwitches(entity, scriptDescription, lines, problems);
+                ValidateInitScript(script.Type, scriptDescription, lines, problems);
+                ValidateBodyOpcodes(body, scriptDescription, lines, problems);
+                ValidateScriptRequests(record, scriptCounts, scriptDescription, lines, problems);
+                ValidateTriggerSwitches(body, scriptDescription, lines, problems);
                 ValidateMapJumps(scriptDescription, lines, problems);
-                ValidateGatewayScript(scriptEntry, scriptDescription, lines, problems);
+                ValidateGatewayScript(script.Type, scriptDescription, lines, problems);
                 dialogueChannels.Read(lines, scriptDescription);
             }
 
@@ -335,7 +347,139 @@ namespace RPGFramework.Field.Editor
                 problems.Add($"{entityName} has {defaultScriptCount} {nameof(FieldScriptType.Default)} scripts, but only one is started after initialisation");
             }
 
-            ValidateGateway(prefab, entity, entityName, problems);
+            ValidateGateway(prefab, record, entityName, problems);
+        }
+
+        /// <summary>
+        /// A collision trigger is only a trigger if something can enter it, and only in the dimension the field is
+        /// built in: a 3D collider reports nothing to a 2D body, and the other way round.
+        /// </summary>
+        private static void ValidateCollisionTrigger(FieldDimension dimension, FieldEntity body, string entityName, List<string> problems)
+        {
+            FieldCollisionTrigger trigger = body.GetComponentInChildren<FieldCollisionTrigger>(true);
+
+            if (trigger == null)
+            {
+                return;
+            }
+
+            bool has3D = trigger.TryGetComponent(out Collider collider3D);
+            bool has2D = trigger.TryGetComponent(out Collider2D collider2D);
+
+            if (!has3D && !has2D)
+            {
+                problems.Add($"{entityName}'s {nameof(FieldCollisionTrigger)} has no collider, so nothing can enter or leave it");
+                return;
+            }
+
+            if (has3D && !collider3D.isTrigger)
+            {
+                problems.Add($"{entityName}'s {nameof(FieldCollisionTrigger)} has a solid collider, so it blocks the player instead of letting them through — tick Is Trigger");
+            }
+
+            if (has2D && !collider2D.isTrigger)
+            {
+                problems.Add($"{entityName}'s {nameof(FieldCollisionTrigger)} has a solid 2D collider, so it blocks the player instead of letting them through — tick Is Trigger");
+            }
+
+            if (dimension == FieldDimension.ThreeD && !has3D)
+            {
+                problems.Add($"{entityName}'s {nameof(FieldCollisionTrigger)} has only a 2D collider in a 3D field, so the player never enters it");
+            }
+
+            if (dimension == FieldDimension.TwoD && !has2D)
+            {
+                problems.Add($"{entityName}'s {nameof(FieldCollisionTrigger)} has only a 3D collider in a 2D field, so the player never enters it");
+            }
+        }
+
+        private static bool HasScript(FieldEntityRecord record, FieldScriptType scriptType)
+        {
+            bool hasScript = record.Scripts.Exists(script => script.Type == scriptType);
+
+            return hasScript;
+        }
+
+        /// <summary>
+        /// A script request names an entity by id and one of its scripts by event id — a position in that entity's
+        /// list. Deleting either leaves the number pointing at nothing, or at whatever moved into its place, and the
+        /// VM looks entities up by id with nothing to say when one is missing.
+        /// </summary>
+        private static void ValidateScriptRequests(FieldEntityRecord record, Dictionary<int, int> scriptCounts, string scriptDescription, string[] lines, List<string> problems)
+        {
+            foreach (string line in lines)
+            {
+                string[] parts = line.Trim().Split(' ');
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                bool requestsAnother = opCode.OpCode == FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy       ||
+                                       opCode.OpCode == FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted ||
+                                       opCode.OpCode == FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished;
+
+                if (requestsAnother && parts.Length >= 4)
+                {
+                    ValidateScriptRequest(parts[1], parts[3], scriptCounts, parts[0], scriptDescription, problems);
+                    continue;
+                }
+
+                // RETURN_TO_SCRIPT hands the slot to another of this entity's own scripts.
+                if (opCode.OpCode == FieldScriptOpCode.ReturnToAnotherScript && parts.Length >= 2)
+                {
+                    ValidateScriptRequest(record.EntityId.ToString(CultureInfo.InvariantCulture), parts[1], scriptCounts, parts[0], scriptDescription, problems);
+                }
+            }
+        }
+
+        private static void ValidateScriptRequest(string entityToken, string eventToken, Dictionary<int, int> scriptCounts, string opCodeName, string scriptDescription, List<string> problems)
+        {
+            // A request worked out while playing is only known then.
+            if (entityToken.StartsWith("$") || eventToken.StartsWith("$"))
+            {
+                return;
+            }
+
+            if (!int.TryParse(entityToken, NumberStyles.Integer, CultureInfo.InvariantCulture, out int entityId) ||
+                !int.TryParse(eventToken,  NumberStyles.Integer, CultureInfo.InvariantCulture, out int eventId))
+            {
+                return;
+            }
+
+            if (!scriptCounts.TryGetValue(entityId, out int count))
+            {
+                problems.Add($"{scriptDescription} uses {opCodeName} on entity [{entityId}], which this field has no entity for");
+                return;
+            }
+
+            if (eventId < 0 || eventId >= count)
+            {
+                problems.Add($"{scriptDescription} uses {opCodeName} to run event [{eventId}] on entity [{entityId}], which has {count} script(s), so there is no such event");
+            }
+        }
+
+        /// <summary>
+        /// An entity with no body has nowhere to be, nothing to show and nothing to walk into, so an opcode that acts
+        /// on any of that has no answer. Give the entity a body, or move the opcode to an entity that has one.
+        /// </summary>
+        private static void ValidateBodyOpcodes(FieldEntity body, string scriptDescription, string[] lines, List<string> problems)
+        {
+            if (body != null)
+            {
+                return;
+            }
+
+            foreach (string line in lines)
+            {
+                string name = line.Trim().Split(' ')[0];
+
+                if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.NeedsBody)
+                {
+                    problems.Add($"{scriptDescription} uses {name}, which acts on the entity's presence in the field, but the entity has no body. Give it one in the Field Designer, or move the opcode to an entity that has one");
+                }
+            }
         }
 
         /// <summary>
@@ -344,9 +488,9 @@ namespace RPGFramework.Field.Editor
         /// stops it there and everything after it never runs. The opcodes that do that declare
         /// <see cref="FieldOpCodeAttribute.StopsInit" />, so this reads the table rather than a list kept here.
         /// </summary>
-        private static void ValidateInitScript(ScriptEntry scriptEntry, string scriptDescription, string[] lines, List<string> problems)
+        private static void ValidateInitScript(FieldScriptType scriptType, string scriptDescription, string[] lines, List<string> problems)
         {
-            if (scriptEntry.ScriptType != FieldScriptType.Init)
+            if (scriptType != FieldScriptType.Init)
             {
                 return;
             }
@@ -366,10 +510,10 @@ namespace RPGFramework.Field.Editor
         /// A script switching a trigger its entity does not have. The field module reaches for the trigger
         /// without looking, so this is the only place the mistake can be caught.
         /// </summary>
-        private static void ValidateTriggerSwitches(FieldEntity entity, string scriptDescription, string[] lines, List<string> problems)
+        private static void ValidateTriggerSwitches(FieldEntity body, string scriptDescription, string[] lines, List<string> problems)
         {
-            bool hasCollisionTrigger   = entity.GetComponentInChildren<FieldCollisionTrigger>(true)   != null;
-            bool hasInteractionTrigger = entity.GetComponentInChildren<FieldInteractionTrigger>(true) != null;
+            bool hasCollisionTrigger   = body != null && body.GetComponentInChildren<FieldCollisionTrigger>(true)   != null;
+            bool hasInteractionTrigger = body != null && body.GetComponentInChildren<FieldInteractionTrigger>(true) != null;
 
             foreach (string line in lines)
             {
@@ -401,10 +545,10 @@ namespace RPGFramework.Field.Editor
         /// point of the switch. Other script types are left alone: a cutscene ending in a map jump is ordinary, and
         /// only entering the trigger is what the switch is about.
         /// </summary>
-        private static void ValidateGatewayScript(ScriptEntry scriptEntry, string scriptDescription, string[] lines, List<string> problems)
+        private static void ValidateGatewayScript(FieldScriptType scriptType, string scriptDescription, string[] lines, List<string> problems)
         {
-            bool isGateway = scriptEntry.ScriptType == FieldScriptType.Gateway;
-            bool isOnEnter = scriptEntry.ScriptType == FieldScriptType.OnEnter;
+            bool isGateway = scriptType == FieldScriptType.Gateway;
+            bool isOnEnter = scriptType == FieldScriptType.OnEnter;
 
             if (!isGateway && !isOnEnter)
             {
@@ -496,19 +640,19 @@ namespace RPGFramework.Field.Editor
         /// A gateway has to be reachable and must not be where a player arrives: a spawn point inside one sends the
         /// player straight back out the moment they land.
         /// </summary>
-        private static void ValidateGateway(GameObject prefab, FieldEntity entity, string entityName, List<string> problems)
+        private static void ValidateGateway(GameObject prefab, FieldEntityRecord record, string entityName, List<string> problems)
         {
-            if (!entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.Gateway, out _))
+            if (!HasScript(record, FieldScriptType.Gateway))
             {
                 return;
             }
 
-            if (entity.ScriptDefinition.TryGetScriptIndex(FieldScriptType.OnEnter, out _))
+            if (HasScript(record, FieldScriptType.OnEnter))
             {
                 problems.Add($"{entityName} has both a {nameof(FieldScriptType.Gateway)} and an {nameof(FieldScriptType.OnEnter)} script. Both run on entering, in the same slot, so only one would — put the other on its own entity");
             }
 
-            FieldCollisionTrigger trigger = entity.GetComponentInChildren<FieldCollisionTrigger>(true);
+            FieldCollisionTrigger trigger = record.Body == null ? null : record.Body.GetComponentInChildren<FieldCollisionTrigger>(true);
 
             if (trigger == null)
             {
@@ -516,19 +660,9 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            if (!trigger.TryGetComponent(out BoxCollider box))
-            {
-                return;
-            }
-
-            if (!box.isTrigger)
-            {
-                problems.Add($"{entityName}'s gateway has a solid {nameof(BoxCollider)}, so it blocks the player instead of letting them through — tick Is Trigger");
-            }
-
             foreach (SpawnPoint spawnPoint in prefab.GetComponentsInChildren<SpawnPoint>(true))
             {
-                if (Contains(box, spawnPoint.Position))
+                if (Contains(trigger, spawnPoint.Position))
                 {
                     problems.Add($"{prefab.name} / spawn point '{spawnPoint.name}' is inside {entityName}'s gateway, so a player arriving there leaves again at once");
                 }
@@ -536,16 +670,34 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Worked out from the box's own space, because a prefab that is not in a scene has no physics bounds.
+        /// Worked out from the box's own space, because a prefab that is not in a scene has no physics bounds. Only a
+        /// box is tested; a trigger of another shape is left alone rather than guessed at.
         /// </summary>
-        private static bool Contains(BoxCollider box, Vector3 worldPoint)
+        private static bool Contains(FieldCollisionTrigger trigger, Vector3 worldPoint)
         {
-            Vector3 local  = box.transform.InverseTransformPoint(worldPoint) - box.center;
-            Vector3 extent = box.size * 0.5f;
+            Vector3 local = trigger.transform.InverseTransformPoint(worldPoint);
 
-            bool inside = Mathf.Abs(local.x) <= extent.x && Mathf.Abs(local.y) <= extent.y && Mathf.Abs(local.z) <= extent.z;
+            if (trigger.TryGetComponent(out BoxCollider box))
+            {
+                Vector3 offset = local - box.center;
+                Vector3 extent = box.size * 0.5f;
 
-            return inside;
+                bool insideBox = Mathf.Abs(offset.x) <= extent.x && Mathf.Abs(offset.y) <= extent.y && Mathf.Abs(offset.z) <= extent.z;
+
+                return insideBox;
+            }
+
+            if (trigger.TryGetComponent(out BoxCollider2D box2D))
+            {
+                Vector2 offset2D = (Vector2)local - box2D.offset;
+                Vector2 extent2D = box2D.size * 0.5f;
+
+                bool insideBox2D = Mathf.Abs(offset2D.x) <= extent2D.x && Mathf.Abs(offset2D.y) <= extent2D.y;
+
+                return insideBox2D;
+            }
+
+            return false;
         }
 
         public void BuildAssetBundles()
@@ -573,20 +725,29 @@ namespace RPGFramework.Field.Editor
 
             AssetBundleBuild[] fieldsToBuild = new AssetBundleBuild[count];
 
-            for (int i = 0; i < count; i++)
+            // Each field is bundled from a copy with its scripts compiled, so the prefab being edited keeps only text.
+            AssetDatabase.DeleteAsset(FieldExport.BUILD_COPY_FOLDER);
+            AssetDatabase.CreateFolder(Path.GetDirectoryName(FieldExport.BUILD_COPY_FOLDER), Path.GetFileName(FieldExport.BUILD_COPY_FOLDER));
+
+            try
             {
-                string prefabPath = AssetDatabase.GetAssetPath(m_Fields[i].Prefab);
+                for (int i = 0; i < count; i++)
+                {
+                    fieldsToBuild[i] = new AssetBundleBuild
+                                       {
+                                           assetBundleName = m_Fields[i].Prefab.name,
+                                           assetNames      = new string[] { FieldExport.WriteBuildCopy(m_Fields[i].Prefab) }
+                                       };
+                }
 
-                fieldsToBuild[i] = new AssetBundleBuild
-                                   {
-                                       assetBundleName = m_Fields[i].Prefab.name,
-                                       assetNames      = new string[] { prefabPath }
-                                   };
+                const BuildAssetBundleOptions options = BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode;
+
+                BuildPipeline.BuildAssetBundles(m_AssetBundlesPath, fieldsToBuild, options, EditorUserBuildSettings.activeBuildTarget);
             }
-
-            const BuildAssetBundleOptions options = BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode;
-
-            BuildPipeline.BuildAssetBundles(m_AssetBundlesPath, fieldsToBuild, options, EditorUserBuildSettings.activeBuildTarget);
+            finally
+            {
+                AssetDatabase.DeleteAsset(FieldExport.BUILD_COPY_FOLDER);
+            }
 
             AssetDatabase.Refresh();
         }

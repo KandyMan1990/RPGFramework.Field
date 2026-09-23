@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    [RequireComponent(typeof(BoxCollider))]
     public sealed class FieldCollisionTrigger : MonoBehaviour
     {
         internal event Action<int, int> OnEntered;
@@ -13,7 +12,6 @@ namespace RPGFramework.Field
         private FieldEntity m_Entity;
         private bool        m_IsActive;
         private bool        m_IsEntityShown;
-        private int         m_EntityId;
         private int         m_PlayerEntityId;
 
         private void Awake()
@@ -21,7 +19,6 @@ namespace RPGFramework.Field
             m_Entity         = GetComponentInParent<FieldEntity>();
             m_IsActive       = true;
             m_IsEntityShown  = true;
-            m_EntityId       = m_Entity.EntityId;
             m_PlayerEntityId = FieldEntity.NO_ENTITY;
         }
 
@@ -49,12 +46,12 @@ namespace RPGFramework.Field
         {
             if (TryGetPlayerScript(other, FieldScriptType.OnEnter, out int eventId))
             {
-                OnEntered?.Invoke(m_EntityId, eventId);
+                OnEntered?.Invoke(m_Entity.EntityId, eventId);
             }
 
             if (TryGetPlayerScript(other, FieldScriptType.Gateway, out int gatewayEventId))
             {
-                OnGatewayEntered?.Invoke(m_EntityId, gatewayEventId);
+                OnGatewayEntered?.Invoke(m_Entity.EntityId, gatewayEventId);
             }
         }
 
@@ -62,7 +59,7 @@ namespace RPGFramework.Field
         {
             if (TryGetPlayerScript(other, FieldScriptType.OnLeave, out int eventId))
             {
-                OnLeft?.Invoke(m_EntityId, eventId);
+                OnLeft?.Invoke(m_Entity.EntityId, eventId);
             }
         }
 
@@ -82,7 +79,7 @@ namespace RPGFramework.Field
                 return false;
             }
 
-            bool found = m_Entity.ScriptDefinition.TryGetScriptIndex(scriptType, out eventId);
+            bool found = m_Entity.TryGetScriptIndex(scriptType, out eventId);
 
             return found;
         }

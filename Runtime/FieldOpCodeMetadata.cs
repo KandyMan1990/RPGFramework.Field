@@ -171,6 +171,13 @@ namespace RPGFramework.Field
         /// </summary>
         public bool StopsInit { get; set; }
 
+        /// <summary>
+        /// True when the opcode acts on the entity's presence in the scene — where it is, which way it faces, whether
+        /// it is seen, what can be walked into or talked to. An entity with no body has none of that, so export
+        /// refuses one of these in its scripts rather than leaving a null to be found in play.
+        /// </summary>
+        public bool NeedsBody { get; set; }
+
         public FieldOpCodeAttribute(string scriptName, ArgumentLayout layout)
         {
             ScriptName = scriptName;
