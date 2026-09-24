@@ -235,6 +235,10 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityToFaceEntity       += OnRequestSetEntityToFaceEntity;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      += OnRequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetBaseAnimation            += OnRequestSetBaseAnimation;
+            m_FieldContext.VM.RequestPlayAnimation               += OnRequestPlayAnimation;
+            m_FieldContext.VM.IsEntityAnimating                  =  IsEntityAnimating;
+            m_FieldContext.VM.RequestPushAnimationState          += OnRequestPushAnimationState;
+            m_FieldContext.VM.RequestPopAnimationState           += OnRequestPopAnimationState;
             m_FieldContext.VM.RequestSetAnimationSpeed           += OnRequestSetAnimationSpeed;
             m_FieldContext.VM.RequestStopAnimation               += OnRequestStopAnimation;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    += OnRequestSetMainMenuAccessibility;
@@ -265,6 +269,10 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetMainMenuAccessibility    -= OnRequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestStopAnimation               -= OnRequestStopAnimation;
             m_FieldContext.VM.RequestSetAnimationSpeed           -= OnRequestSetAnimationSpeed;
+            m_FieldContext.VM.RequestPopAnimationState           -= OnRequestPopAnimationState;
+            m_FieldContext.VM.RequestPushAnimationState          -= OnRequestPushAnimationState;
+            m_FieldContext.VM.IsEntityAnimating                  =  null;
+            m_FieldContext.VM.RequestPlayAnimation               -= OnRequestPlayAnimation;
             m_FieldContext.VM.RequestSetBaseAnimation            -= OnRequestSetBaseAnimation;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= OnRequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= OnRequestSetEntityToFaceEntity;
@@ -604,6 +612,11 @@ namespace RPGFramework.Field
             foreach ((int entityId, float multiplier) in m_FieldContext.AnimationSpeeds)
             {
                 GetAnimationDriver(entityId).SetSpeedMultiplier(multiplier);
+            }
+
+            foreach ((int entityId, PlayAnimationArgs args) in m_FieldContext.PlayedAnimations)
+            {
+                GetAnimationDriver(entityId).Play(m_AnimationNames[args.NameHash], args.Mode, args.From, args.To);
             }
 
             foreach ((int entityId, bool active) in m_FieldContext.CollisionTriggersActive)
@@ -1086,9 +1099,40 @@ namespace RPGFramework.Field
             m_FieldContext.SetAnimationSpeed(entityId, multiplier);
         }
 
+        private void OnRequestPlayAnimation(int entityId, PlayAnimationArgs args)
+        {
+            GetAnimationDriver(entityId).Play(m_AnimationNames[args.NameHash], args.Mode, args.From, args.To);
+            m_FieldContext.SetPlayedAnimation(entityId, args);
+        }
+
+        private bool IsEntityAnimating(int entityId)
+        {
+            FieldEntityComponents entity = m_Entities[entityId];
+
+            if (entity.AnimationDriver == null)
+            {
+                return false;
+            }
+
+            bool isAnimating = entity.AnimationDriver.IsPlaying;
+
+            return isAnimating;
+        }
+
+        private void OnRequestPushAnimationState(int entityId)
+        {
+            GetAnimationDriver(entityId).PushState();
+        }
+
+        private void OnRequestPopAnimationState(int entityId)
+        {
+            GetAnimationDriver(entityId).PopState();
+        }
+
         private void OnRequestStopAnimation(int entityId)
         {
             GetAnimationDriver(entityId).ReturnToBase();
+            m_FieldContext.ClearPlayedAnimation(entityId);
         }
 
         private IAnimationDriver GetAnimationDriver(int entityId)

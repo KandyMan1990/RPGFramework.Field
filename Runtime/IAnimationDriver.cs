@@ -20,7 +20,26 @@ namespace RPGFramework.Field
         /// </summary>
         void SetSpeedMultiplier(float multiplier);
 
+        /// <summary>
+        /// Play an animation over the top of the base one. <paramref name="from" /> and <paramref name="to" /> are
+        /// normalised, 0 the beginning and 1 the end, so a range means the same thing whatever the clip's length.
+        /// </summary>
+        void Play(string stateName, AnimationPlayMode mode, float from, float to);
+
+        /// <summary>
+        /// False once the played animation has reached its end, which a looping one does on every pass — so a script
+        /// waiting on a loop waits one time round rather than forever.
+        /// </summary>
+        bool IsPlaying { get; }
+
         void ReturnToBase();
+
+        /// <summary>
+        /// Remember what is playing and where it has got to, so an interruption can put it back.
+        /// </summary>
+        void PushState();
+
+        void PopState();
 
         /// <summary>
         /// A suspended field freezes. Unity advances an Animator itself, so unlike movement — which stops simply by

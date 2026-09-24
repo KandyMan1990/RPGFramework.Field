@@ -32,6 +32,10 @@ namespace RPGFramework.Field
         internal event Action<int, int>                           RequestSetEntityToFaceEntity;
         internal event Action<int, float>                         RequestSetEntityMovementSpeed;
         internal event Action<int, ulong>                         RequestSetBaseAnimation;
+        internal event Action<int, PlayAnimationArgs>             RequestPlayAnimation;
+        internal Func<int, bool>                                  IsEntityAnimating;
+        internal event Action<int>                                RequestPushAnimationState;
+        internal event Action<int>                                RequestPopAnimationState;
         internal event Action<int, float>                         RequestSetAnimationSpeed;
         internal event Action<int>                                RequestStopAnimation;
         internal event Action<bool>                               RequestSetMainMenuAccessibility;
@@ -338,16 +342,21 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.SetBaseAnimation, SetBaseAnimationOpcodeHandler },
                        // { FieldScriptOpCode.SetLadderAnimations, SetLadderAnimationsOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationOnceAsync, PlayAnimationOnceAsyncOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
-                       // { FieldScriptOpCode.PlayPartialAnimation, PlayPartialAnimationOpcodeHandler },
+                       { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
+                       { FieldScriptOpCode.PlayAnimationOnceAsync, PlayAnimationOnceAsyncOpcodeHandler },
+                       { FieldScriptOpCode.PlayAnimationHoldingAsync, PlayAnimationHoldingAsyncOpcodeHandler },
+                       { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
+                       { FieldScriptOpCode.PlayPartialAnimationAndWait, PlayPartialAnimationAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.PlayPartialAnimationAndHold, PlayPartialAnimationAndHoldOpcodeHandler },
+                       { FieldScriptOpCode.PlayPartialAnimationAsync, PlayPartialAnimationAsyncOpcodeHandler },
+                       { FieldScriptOpCode.PlayPartialAnimationHoldingAsync, PlayPartialAnimationHoldingAsyncOpcodeHandler },
+                       { FieldScriptOpCode.PlayPartialAnimationLooping, PlayPartialAnimationLoopingOpcodeHandler },
                        { FieldScriptOpCode.SetAnimationSpeed, SetAnimationSpeedOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForAnimation, WaitForAnimationOpcodeHandler },
+                       { FieldScriptOpCode.WaitForAnimation, WaitForAnimationOpcodeHandler },
                        { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.PushAnimationState, PushAnimationStateOpcodeHandler },
-                       // { FieldScriptOpCode.PopAnimationState, PopAnimationStateOpcodeHandler },
+                       { FieldScriptOpCode.PushAnimationState, PushAnimationStateOpcodeHandler },
+                       { FieldScriptOpCode.PopAnimationState, PopAnimationStateOpcodeHandler },
                        // { FieldScriptOpCode.InitialiseHeadFacing, InitialiseHeadFacingOpcodeHandler },
                        // { FieldScriptOpCode.SetHeadFacingEntity, SetHeadFacingEntityOpcodeHandler },
                        // { FieldScriptOpCode.SetHeadFacingPlayer, SetHeadFacingPlayerOpcodeHandler },
@@ -1916,6 +1925,105 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Play an animation, wait for it, then go back to the base animation.
+        /// </summary>
+        private void PlayAnimationOnceAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, false, true);
+        }
+
+        /// <summary>
+        /// Play an animation, wait for it, then hold its last frame.
+        /// </summary>
+        private void PlayAnimationStopOnLastFrameWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, false, true);
+        }
+
+        /// <summary>
+        /// Start an animation and carry on.
+        /// </summary>
+        private void PlayAnimationOnceAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, false, false);
+        }
+
+        /// <summary>
+        /// Start an animation that holds its last frame, and carry on.
+        /// </summary>
+        private void PlayAnimationHoldingAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, false, false);
+        }
+
+        /// <summary>
+        /// Start an animation looping, and carry on.
+        /// </summary>
+        private void PlayAnimationLoopingOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.Loop, false, false);
+        }
+
+        /// <summary>
+        /// Play part of an animation, wait for it, then go back to the base animation.
+        /// </summary>
+        private void PlayPartialAnimationAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, true, true);
+        }
+
+        /// <summary>
+        /// Play part of an animation, wait for it, then hold its last frame.
+        /// </summary>
+        private void PlayPartialAnimationAndHoldOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, true, true);
+        }
+
+        /// <summary>
+        /// Start part of an animation and carry on.
+        /// </summary>
+        private void PlayPartialAnimationAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, true, false);
+        }
+
+        /// <summary>
+        /// Start part of an animation that holds its last frame, and carry on.
+        /// </summary>
+        private void PlayPartialAnimationHoldingAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, true, false);
+        }
+
+        /// <summary>
+        /// Start part of an animation looping, and carry on.
+        /// </summary>
+        private void PlayPartialAnimationLoopingOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            PlayAnimation(ctx, AnimationPlayMode.Loop, true, false);
+        }
+
+        /// <summary>
+        /// The ten play opcodes differ only in what happens at the end, whether a range was given, and whether the
+        /// script waits, so they read their arguments in one place.
+        /// </summary>
+        private void PlayAnimation(ScriptExecutionContext ctx, AnimationPlayMode mode, bool partial, bool waits)
+        {
+            SequentialSources sources   = default;
+            ulong             nameHash  = ReadUlong(ctx);
+            float             from      = partial ? ReadArgumentFloat(ctx, ref sources) : 0f;
+            float             to        = partial ? ReadArgumentFloat(ctx, ref sources) : 1f;
+
+            RequestPlayAnimation?.Invoke(ctx.EntityId, new PlayAnimationArgs(nameHash, mode, from, to));
+
+            if (waits)
+            {
+                ctx.Block(new WaitUntilBlock(() => !IsEntityAnimating(ctx.EntityId)));
+            }
+        }
+
+        /// <summary>
         /// Scale how fast this entity's animation plays.
         /// </summary>
         private void SetAnimationSpeedOpcodeHandler(ScriptExecutionContext ctx)
@@ -1927,11 +2035,35 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Wait until the animation this entity is playing has reached its end.
+        /// </summary>
+        private void WaitForAnimationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsEntityAnimating(ctx.EntityId)));
+        }
+
+        /// <summary>
         /// Drop whatever this entity is playing and return it to its base animation.
         /// </summary>
         private void StopAnimationOpcodeHandler(ScriptExecutionContext ctx)
         {
             RequestStopAnimation?.Invoke(ctx.EntityId);
+        }
+
+        /// <summary>
+        /// Remember what this entity is playing and where it has got to.
+        /// </summary>
+        private void PushAnimationStateOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestPushAnimationState?.Invoke(ctx.EntityId);
+        }
+
+        /// <summary>
+        /// Put back what <c>PUSH_ANIMATION_STATE</c> remembered.
+        /// </summary>
+        private void PopAnimationStateOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestPopAnimationState?.Invoke(ctx.EntityId);
         }
 
         /// <summary>

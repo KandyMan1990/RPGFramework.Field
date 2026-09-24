@@ -999,40 +999,95 @@ namespace RPGFramework.Field
         [FieldOpCode("SET_BASE_ANIMATION", ArgumentLayout.Sequential, Summary = "Set what this entity does when no script is animating it", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "state", ArgumentType.AnimationName, Description = "the state it rests in; a locomotion blend tree reads the entity's speed from there")]
         SetBaseAnimation = 0x0524,
-        SetLadderAnimations              = 0x0525, // the climbing animations, as SetBaseAnimation is for walking
-        PlayAnimationLooping             = 0x0526,
-        PlayAnimationOnceAndWait         = 0x0527,
-        PlayAnimationOnceAsync           = 0x0528,
-        PlayAnimationStopOnLastFrameWait = 0x0529,
-        PlayPartialAnimation             = 0x052A,
+
+        SetLadderAnimations = 0x0525, // the climbing animations, as SetBaseAnimation is for walking
+
+        [FieldOpCode("PLAY_ANIMATION_AND_WAIT", ArgumentLayout.Sequential, Summary = "Play an animation, wait for it, then go back to the base animation", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        PlayAnimationOnceAndWait = 0x0526,
+
+        [FieldOpCode("PLAY_ANIMATION_AND_HOLD", ArgumentLayout.Sequential, Summary = "Play an animation, wait for it, then hold its last frame", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        PlayAnimationStopOnLastFrameWait = 0x0527,
+
+        [FieldOpCode("PLAY_ANIMATION", ArgumentLayout.Sequential, Summary = "Start an animation and carry on; it returns to the base animation", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        PlayAnimationOnceAsync = 0x0528,
+
+        [FieldOpCode("PLAY_ANIMATION_HOLDING", ArgumentLayout.Sequential, Summary = "Start an animation and carry on; it holds its last frame", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        PlayAnimationHoldingAsync = 0x0529,
+
+        [FieldOpCode("PLAY_ANIMATION_LOOPING", ArgumentLayout.Sequential, Summary = "Start an animation looping and carry on", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        PlayAnimationLooping = 0x052A,
+
+        [FieldOpCode("PLAY_PART_OF_ANIMATION_AND_WAIT", ArgumentLayout.Sequential, Summary = "Play part of an animation, wait for it, then go back to the base", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        PlayPartialAnimationAndWait = 0x052B,
+
+        [FieldOpCode("PLAY_PART_OF_ANIMATION_AND_HOLD", ArgumentLayout.Sequential, Summary = "Play part of an animation, wait for it, then hold its last frame", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        PlayPartialAnimationAndHold = 0x052C,
+
+        [FieldOpCode("PLAY_PART_OF_ANIMATION", ArgumentLayout.Sequential, Summary = "Start part of an animation and carry on; it returns to the base", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        PlayPartialAnimationAsync = 0x052D,
+
+        [FieldOpCode("PLAY_PART_OF_ANIMATION_HOLDING", ArgumentLayout.Sequential, Summary = "Start part of an animation and carry on; it holds its last frame", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        PlayPartialAnimationHoldingAsync = 0x052E,
+
+        [FieldOpCode("PLAY_PART_OF_ANIMATION_LOOPING", ArgumentLayout.Sequential, Summary = "Start part of an animation looping and carry on", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
+        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        PlayPartialAnimationLooping = 0x052F,
+
         [FieldOpCode("SET_ANIMATION_SPEED", ArgumentLayout.Sequential, Summary = "Scale how fast this entity's animation plays", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "multiplier", ArgumentType.Float, Description = "1 is as authored, 2 twice as fast, 0.5 half")]
-        SetAnimationSpeed = 0x052B,
-        WaitForAnimation                 = 0x052C, // waits for the animation to complete that has been previously played using any of the animation opcodes.
+        SetAnimationSpeed = 0x0530,
+
+        [FieldOpCode("WAIT_FOR_ANIMATION", ArgumentLayout.Sequential, Summary = "Wait until the animation this entity is playing has finished", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
+        WaitForAnimation = 0x0531,
+
         [FieldOpCode("STOP_ANIMATION", ArgumentLayout.Sequential, Summary = "Drop whatever is playing and go back to the base animation", NeedsBody = true, NeedsAnimator = true)]
-        StopAnimation = 0x052D,
-        PushAnimationState               = 0x052E, // remember what is playing, so an interruption can restore it
-        PopAnimationState                = 0x052F,
-        InitialiseHeadFacing             = 0x0530, // begin head tracking on this entity, before any SetHeadFacing*
-        SetHeadFacingEntity              = 0x0531, // int targetEntityId, int frameCount - turn the head only, body unchanged
-        SetHeadFacingPlayer              = 0x0532, // int frameCount - track the player entity with the head only
-        SetHeadFacingLimit               = 0x0533, // byte yawLimit, byte pitchLimit, byte rollLimit - stop the head over-rotating
-        SetHeadPose                      = 0x0534, // byte pose (0 neutral, 1 up, 2 down)
-        StopHeadFacing                   = 0x0535, // return the head to neutral and leave tracking
-        WaitForHeadFacing                = 0x0536, // wait until the head has reached where it was sent
-        SetFootstepSound                 = 0x0537, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
-        SetFootstepsEnabled              = 0x0538, // bool enabled
-        SetEntityShadeLevel              = 0x0539, // float level
-        GetEntityPosition                = 0x053A,
-        GetEntityDirection               = 0x053B,
-        GetPartyMemberPosition           = 0x053C,
-        GetPartyMemberDirection          = 0x053D,
-        CopyEntityInfo                   = 0x053E, // int sourceEntityId - take another entity's position and facing
-        IsEntityTouching                 = 0x053F, // int otherEntityId, ushort destination
+        StopAnimation = 0x0532,
+
+        [FieldOpCode("PUSH_ANIMATION_STATE", ArgumentLayout.Sequential, Summary = "Remember what this entity is playing and where it has got to, so an interruption can put it back", NeedsBody = true, NeedsAnimator = true)]
+        PushAnimationState = 0x0533,
+
+        [FieldOpCode("POP_ANIMATION_STATE", ArgumentLayout.Sequential, Summary = "Put back what PUSH_ANIMATION_STATE remembered", NeedsBody = true, NeedsAnimator = true)]
+        PopAnimationState = 0x0534,
+
+        InitialiseHeadFacing             = 0x0535, // begin head tracking on this entity, before any SetHeadFacing*
+        SetHeadFacingEntity              = 0x0536, // int targetEntityId, int frameCount - turn the head only, body unchanged
+        SetHeadFacingPlayer              = 0x0537, // int frameCount - track the player entity with the head only
+        SetHeadFacingLimit               = 0x0538, // byte yawLimit, byte pitchLimit, byte rollLimit - stop the head over-rotating
+        SetHeadPose                      = 0x0539, // byte pose (0 neutral, 1 up, 2 down)
+        StopHeadFacing                   = 0x053A, // return the head to neutral and leave tracking
+        WaitForHeadFacing                = 0x053B, // wait until the head has reached where it was sent
+        SetFootstepSound                 = 0x053C, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
+        SetFootstepsEnabled              = 0x053D, // bool enabled
+        SetEntityShadeLevel              = 0x053E, // float level
+        GetEntityPosition                = 0x053F,
+        GetEntityDirection               = 0x0540,
+        GetPartyMemberPosition           = 0x0541,
+        GetPartyMemberDirection          = 0x0542,
+        CopyEntityInfo                   = 0x0543, // int sourceEntityId - take another entity's position and facing
+        IsEntityTouching                 = 0x0544, // int otherEntityId, ushort destination
 
         [FieldOpCode("COLLISION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's collision trigger on or off, and with it the entity's enter and leave scripts", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
-        CollisionTriggerActivation = 0x0540,
+        CollisionTriggerActivation = 0x0545,
 
         // Screen and field effects (0x0600)
         SubtractiveScreenFade = 0x0600, // float r, float g, float b, float duration
@@ -1104,8 +1159,8 @@ namespace RPGFramework.Field
         public const ushort ENGINE_MAX = 0x7FFF;
 
         /// <summary>
-        /// First value available to a game. Dispatch tests this bit to choose between the framework's
-        /// opcode table and the game's, so the two can never collide or renumber each other.
+        /// First value available to a game, so the framework's opcodes and a game's can never collide or renumber
+        /// each other. Reserved only: nothing dispatches on it yet, and a game cannot register a handler.
         /// </summary>
         public const ushort GAME_BASE = 0x8000;
 

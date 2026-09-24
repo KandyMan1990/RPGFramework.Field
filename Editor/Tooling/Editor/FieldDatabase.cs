@@ -546,6 +546,7 @@ namespace RPGFramework.Field.Editor
                 }
 
                 ValidatePlaybackSpeed(animator, state, stateName, scriptDescription, problems);
+                ValidateStateStays(animator, state, stateName, scriptDescription, problems);
             }
         }
 
@@ -598,6 +599,27 @@ namespace RPGFramework.Field.Editor
                 }
 
                 problems.Add($"{scriptDescription} names the animation [{stateName}], whose speed in the controller on [{animator.gameObject.name}] is multiplied by the parameter [{parameter.name}]. Nothing sets it and it defaults to 0, so the animation will hold its first frame. Give it a default of 1, or clear the state's speed multiplier");
+            }
+        }
+
+        /// <summary>
+        /// A state the controller leaves by itself — an exit time with no condition — ends before a script expects: a
+        /// played animation stops short and cannot be held or looped, and a base animation drifts off into another
+        /// state. It is a controller built for something that drives it differently, as a character controller does.
+        /// </summary>
+        private static void ValidateStateStays(Animator animator, AnimatorState state, string stateName, string scriptDescription, List<string> problems)
+        {
+            foreach (AnimatorStateTransition transition in state.transitions)
+            {
+                if (!transition.hasExitTime || transition.conditions.Length > 0)
+                {
+                    continue;
+                }
+
+                string destination = transition.destinationState != null        ? transition.destinationState.name :
+                                     transition.destinationStateMachine != null ? transition.destinationStateMachine.name : "the exit";
+
+                problems.Add($"{scriptDescription} names the animation [{stateName}], which the controller on [{animator.gameObject.name}] leaves by itself {transition.exitTime:0.##} of the way through, for [{destination}]. It would stop short of its end, and could not be held or looped. Turn off that transition's exit time, or give it a condition");
             }
         }
 
