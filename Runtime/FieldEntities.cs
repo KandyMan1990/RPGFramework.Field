@@ -34,18 +34,24 @@ namespace RPGFramework.Field
         [HideInInspector]
         private List<CompiledFieldEntity> m_Compiled = new List<CompiledFieldEntity>();
 
-        internal FieldDimension                     Dimension     => m_Dimension;
-        internal List<FieldEntityRecord>            Entities      => m_Entities;
-        internal IReadOnlyList<CompiledFieldEntity> Compiled      => m_Compiled;
-        internal uint                               FormatVersion => m_FormatVersion;
+        [SerializeField]
+        [HideInInspector]
+        private List<string> m_AnimationNames = new List<string>();
+
+        internal FieldDimension                     Dimension      => m_Dimension;
+        internal List<FieldEntityRecord>            Entities       => m_Entities;
+        internal IReadOnlyList<CompiledFieldEntity> Compiled       => m_Compiled;
+        internal uint                               FormatVersion  => m_FormatVersion;
+        internal IReadOnlyList<string>              AnimationNames => m_AnimationNames;
 
         /// <summary>
         /// Export only: replace the authored records with what they compiled to.
         /// </summary>
-        internal void SetCompiled(List<CompiledFieldEntity> compiled)
+        internal void SetCompiled(List<CompiledFieldEntity> compiled, List<string> animationNames)
         {
-            m_Compiled      = compiled;
-            m_FormatVersion = BYTECODE_FORMAT_VERSION;
+            m_Compiled       = compiled;
+            m_AnimationNames = animationNames;
+            m_FormatVersion  = BYTECODE_FORMAT_VERSION;
 
             m_Entities.Clear();
         }

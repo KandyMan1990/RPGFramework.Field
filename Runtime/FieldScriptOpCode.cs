@@ -996,16 +996,21 @@ namespace RPGFramework.Field
         SetDirectionToPartyMember        = 0x0521, // byte partySlot
         TurnEntityToAnotherEntity        = 0x0522, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SET_ENTITY_ROTATION_OVER_TIME with smooth)
         TurnToPartyMember                = 0x0523,
-        SetBaseAnimation                 = 0x0524,
+        [FieldOpCode("SET_BASE_ANIMATION", ArgumentLayout.Sequential, Summary = "Set what this entity does when no script is animating it", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "state", ArgumentType.AnimationName, Description = "the state it rests in; a locomotion blend tree reads the entity's speed from there")]
+        SetBaseAnimation = 0x0524,
         SetLadderAnimations              = 0x0525, // the climbing animations, as SetBaseAnimation is for walking
         PlayAnimationLooping             = 0x0526,
         PlayAnimationOnceAndWait         = 0x0527,
         PlayAnimationOnceAsync           = 0x0528,
         PlayAnimationStopOnLastFrameWait = 0x0529,
         PlayPartialAnimation             = 0x052A,
-        SetAnimationSpeed                = 0x052B,
+        [FieldOpCode("SET_ANIMATION_SPEED", ArgumentLayout.Sequential, Summary = "Scale how fast this entity's animation plays", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "multiplier", ArgumentType.Float, Description = "1 is as authored, 2 twice as fast, 0.5 half")]
+        SetAnimationSpeed = 0x052B,
         WaitForAnimation                 = 0x052C, // waits for the animation to complete that has been previously played using any of the animation opcodes.
-        StopAnimation                    = 0x052D,
+        [FieldOpCode("STOP_ANIMATION", ArgumentLayout.Sequential, Summary = "Drop whatever is playing and go back to the base animation", NeedsBody = true, NeedsAnimator = true)]
+        StopAnimation = 0x052D,
         PushAnimationState               = 0x052E, // remember what is playing, so an interruption can restore it
         PopAnimationState                = 0x052F,
         InitialiseHeadFacing             = 0x0530, // begin head tracking on this entity, before any SetHeadFacing*

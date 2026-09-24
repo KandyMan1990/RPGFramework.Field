@@ -38,21 +38,24 @@ namespace RPGFramework.Field.Editor
         /// True when instructions nest inside this one, such as an <c>IF</c>.
         /// </summary>
         public bool OpensBlock { get; }
-        public bool StopsInit  { get; }
-        public bool NeedsBody  { get; }
+
+        public bool StopsInit     { get; }
+        public bool NeedsBody     { get; }
+        public bool NeedsAnimator { get; }
 
         public IReadOnlyList<FieldArgumentInfo> Arguments { get; }
 
         internal FieldOpCodeInfo(FieldScriptOpCode opCode, FieldOpCodeAttribute attribute, List<FieldArgumentInfo> arguments)
         {
-            OpCode     = opCode;
-            ScriptName = attribute.ScriptName;
-            Layout     = attribute.Layout;
-            Summary    = attribute.Summary;
-            OpensBlock = attribute.OpensBlock;
-            StopsInit  = attribute.StopsInit;
-            NeedsBody  = attribute.NeedsBody;
-            Arguments  = arguments;
+            OpCode        = opCode;
+            ScriptName    = attribute.ScriptName;
+            Layout        = attribute.Layout;
+            Summary       = attribute.Summary;
+            OpensBlock    = attribute.OpensBlock;
+            StopsInit     = attribute.StopsInit;
+            NeedsBody     = attribute.NeedsBody;
+            NeedsAnimator = attribute.NeedsAnimator;
+            Arguments     = arguments;
         }
     }
 

@@ -14,5 +14,6 @@ namespace RPGFramework.Field
         void          StartRotation(SetEntityRotationAsyncArgs args);
         void          ResumeRotation(RotationState             rotationState);
         RotationState GetRotationState();
+        Vector3       CurrentVelocity { get; }
     }
 }

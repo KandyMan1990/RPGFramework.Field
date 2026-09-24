@@ -11,6 +11,7 @@ namespace RPGFramework.Field
         private const float SKIN_WIDTH     = 0.01f;
         private const int   MAX_SLIDES     = 3;
         private const float MIN_MOTION_SQR = 0.000001f;
+        private const float MIN_MOVE_INPUT_SQR = 0.0001f;
 
         private static readonly ContactFilter2D SOLID_ONLY = new ContactFilter2D { useTriggers = false };
 
@@ -86,9 +87,21 @@ namespace RPGFramework.Field
             return m_RotationState;
         }
 
+        Vector3 IMovementDriver.CurrentVelocity
+        {
+            get
+            {
+                Vector3 currentVelocity = m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR
+                                              ? Vector3.zero
+                                              : m_MoveInput.normalized * m_Speed;
+
+                return currentVelocity;
+            }
+        }
+
         private void HandleMovement(float deltaTime)
         {
-            if (m_MoveInput.sqrMagnitude < 0.0001f)
+            if (m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR)
             {
                 return;
             }

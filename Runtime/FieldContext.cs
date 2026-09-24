@@ -21,6 +21,8 @@ namespace RPGFramework.Field
         internal IReadOnlyDictionary<int, bool>          CollisionTriggersActive => m_CollisionTriggersActive;
         internal IReadOnlyDictionary<int, float>         InteractionRanges       => m_InteractionRanges;
         internal IReadOnlyDictionary<int, float>         MovementSpeeds          => m_MovementSpeeds;
+        internal IReadOnlyDictionary<int, ulong>         BaseAnimations          => m_BaseAnimations;
+        internal IReadOnlyDictionary<int, float>         AnimationSpeeds         => m_AnimationSpeeds;
         internal bool                                    GatewaysActive          => m_GatewaysActive;
         internal bool                                    MainMenuAccessible      => m_MainMenuAccessible;
         internal bool                                    IsInputLockedByScript   => m_IsInputLockedByScript;
@@ -35,6 +37,8 @@ namespace RPGFramework.Field
         private readonly Dictionary<int, bool>          m_CollisionTriggersActive;
         private readonly Dictionary<int, float>         m_InteractionRanges;
         private readonly Dictionary<int, float>         m_MovementSpeeds;
+        private readonly Dictionary<int, ulong>         m_BaseAnimations;
+        private readonly Dictionary<int, float>         m_AnimationSpeeds;
         private          FieldEntityRuntime             m_PlayerEntity;
         private          bool                           m_GatewaysActive;
         private          bool                           m_MainMenuAccessible;
@@ -53,6 +57,8 @@ namespace RPGFramework.Field
             m_CollisionTriggersActive = new Dictionary<int, bool>();
             m_InteractionRanges       = new Dictionary<int, float>();
             m_MovementSpeeds          = new Dictionary<int, float>();
+            m_BaseAnimations          = new Dictionary<int, ulong>();
+            m_AnimationSpeeds         = new Dictionary<int, float>();
             m_GatewaysActive          = true;
             m_MainMenuAccessible      = true;
         }
@@ -94,6 +100,10 @@ namespace RPGFramework.Field
         internal void SetInteractionRange(int entityId, float range) => m_InteractionRanges[entityId] = range;
 
         internal void SetMovementSpeed(int entityId, float speed) => m_MovementSpeeds[entityId] = speed;
+
+        internal void SetBaseAnimation(int entityId, ulong stateNameHash) => m_BaseAnimations[entityId] = stateNameHash;
+
+        internal void SetAnimationSpeed(int entityId, float multiplier) => m_AnimationSpeeds[entityId] = multiplier;
 
         internal void SetGatewaysActive(bool active) => m_GatewaysActive = active;
 

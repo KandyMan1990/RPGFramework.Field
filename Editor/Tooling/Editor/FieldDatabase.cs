@@ -6,6 +6,7 @@ using System.Text;
 using RPGFramework.Core.Memory;
 using RPGFramework.Hashing;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
 namespace RPGFramework.Field.Editor
@@ -330,6 +331,7 @@ namespace RPGFramework.Field.Editor
 
                 ValidateInitScript(script.Type, scriptDescription, lines, problems);
                 ValidateBodyOpcodes(body, scriptDescription, lines, problems);
+                ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
                 ValidateScriptRequests(record, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
                 ValidateMapJumps(scriptDescription, lines, problems);
@@ -479,6 +481,173 @@ namespace RPGFramework.Field.Editor
                 {
                     problems.Add($"{scriptDescription} uses {name}, which acts on the entity's presence in the field, but the entity has no body. Give it one in the Field Designer, or move the opcode to an entity that has one");
                 }
+            }
+        }
+
+        /// <summary>
+        /// An animation opcode needs something to animate. The Animator lives on the visuals a game supplies rather
+        /// than on the body the framework builds, so a body with no visuals, or visuals with no Animator, has
+        /// nothing for these to drive.
+        /// </summary>
+        private static void ValidateAnimationOpcodes(FieldEntity body, string scriptDescription, string[] lines, List<string> problems)
+        {
+            if (body == null)
+            {
+                return;
+            }
+
+            Animator animator = body.GetComponentInChildren<Animator>(true);
+
+            foreach (string line in lines)
+            {
+                string[] parts = line.Trim().Split(' ');
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsAnimator)
+                {
+                    continue;
+                }
+
+                if (animator == null)
+                {
+                    problems.Add($"{scriptDescription} uses {parts[0]}, but the entity's body has no Animator. Give its visuals one, or move the opcode to an entity whose visuals animate");
+                    continue;
+                }
+
+                if (animator.runtimeAnimatorController == null)
+                {
+                    problems.Add($"{scriptDescription} uses {parts[0]}, but the Animator on [{animator.gameObject.name}] has no controller, so it plays nothing and the entity holds its bind pose");
+                    continue;
+                }
+
+                ValidateAnimationNames(animator, opCode, parts, scriptDescription, problems);
+            }
+        }
+
+        /// <summary>
+        /// A state the controller does not have. The name is hashed into the bytecode, so nothing downstream can tell
+        /// it was a typo — the entity simply stays as it was.
+        /// </summary>
+        private static void ValidateAnimationNames(Animator animator, FieldOpCodeInfo opCode, string[] parts, string scriptDescription, List<string> problems)
+        {
+            for (int argument = 0; argument < opCode.Arguments.Count; argument++)
+            {
+                if (opCode.Arguments[argument].Type != ArgumentType.AnimationName || argument + 1 >= parts.Length)
+                {
+                    continue;
+                }
+
+                string                      stateName = parts[argument + 1];
+                Dictionary<string, AnimatorState> states  = States(animator);
+
+                if (!states.TryGetValue(stateName, out AnimatorState state))
+                {
+                    problems.Add(NoSuchStateProblem(animator, states, stateName, scriptDescription));
+                    continue;
+                }
+
+                ValidatePlaybackSpeed(animator, state, stateName, scriptDescription, problems);
+            }
+        }
+
+        /// <summary>
+        /// Arguments are read one word at a time, so a state whose name contains a space is cut at the first and can
+        /// never be named. Saying which state was meant turns a confusing miss into a rename.
+        /// </summary>
+        private static string NoSuchStateProblem(Animator animator, Dictionary<string, AnimatorState> states, string stateName, string scriptDescription)
+        {
+            foreach (string candidate in states.Keys)
+            {
+                if (!candidate.StartsWith(stateName + " ", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                return $"{scriptDescription} names the animation [{stateName}], which is [{candidate}] on [{animator.gameObject.name}] cut at its first space. An animation name is read one word at a time, so rename the state without spaces";
+            }
+
+            string noSuchState = $"{scriptDescription} names the animation [{stateName}], which the controller on [{animator.gameObject.name}] has no state for. It has {string.Join(", ", states.Keys)}";
+
+            return noSuchState;
+        }
+
+        /// <summary>
+        /// A state that will not advance. A state's playback speed can be multiplied by a float parameter, which is
+        /// how a controller matches a walk cycle to input; the framework writes only the parameters in
+        /// <c>AnimatorAnimationDriver</c>, so any other one sits at its default. A default of zero holds the
+        /// animation on its first frame while the pose still changes, which reads as a rig that will not animate.
+        /// </summary>
+        private static void ValidatePlaybackSpeed(Animator animator, AnimatorState state, string stateName, string scriptDescription, List<string> problems)
+        {
+            if (state.speed == 0f)
+            {
+                problems.Add($"{scriptDescription} names the animation [{stateName}], whose speed is 0 in the controller on [{animator.gameObject.name}], so it will hold its first frame");
+
+                return;
+            }
+
+            if (!state.speedParameterActive)
+            {
+                return;
+            }
+
+            foreach (AnimatorControllerParameter parameter in Controller(animator).parameters)
+            {
+                if (parameter.name != state.speedParameter || parameter.defaultFloat != 0f)
+                {
+                    continue;
+                }
+
+                problems.Add($"{scriptDescription} names the animation [{stateName}], whose speed in the controller on [{animator.gameObject.name}] is multiplied by the parameter [{parameter.name}]. Nothing sets it and it defaults to 0, so the animation will hold its first frame. Give it a default of 1, or clear the state's speed multiplier");
+            }
+        }
+
+        /// <summary>
+        /// Every state in the controller by name, sub-state machines included. Reached through the editor's controller
+        /// type because a running Animator cannot be asked what states it has.
+        /// </summary>
+        private static Dictionary<string, AnimatorState> States(Animator animator)
+        {
+            Dictionary<string, AnimatorState> states = new Dictionary<string, AnimatorState>();
+
+            AnimatorController controller = Controller(animator);
+
+            if (controller == null)
+            {
+                return states;
+            }
+
+            foreach (AnimatorControllerLayer layer in controller.layers)
+            {
+                CollectStates(layer.stateMachine, states);
+            }
+
+            return states;
+        }
+
+        private static AnimatorController Controller(Animator animator)
+        {
+            RuntimeAnimatorController runtime = animator.runtimeAnimatorController;
+
+            if (runtime is AnimatorOverrideController overrideController)
+            {
+                runtime = overrideController.runtimeAnimatorController;
+            }
+
+            AnimatorController controller = runtime as AnimatorController;
+
+            return controller;
+        }
+
+        private static void CollectStates(AnimatorStateMachine stateMachine, Dictionary<string, AnimatorState> states)
+        {
+            foreach (ChildAnimatorState state in stateMachine.states)
+            {
+                states[state.state.name] = state.state;
+            }
+
+            foreach (ChildAnimatorStateMachine child in stateMachine.stateMachines)
+            {
+                CollectStates(child.stateMachine, states);
             }
         }
 

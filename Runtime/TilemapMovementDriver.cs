@@ -98,6 +98,18 @@ namespace RPGFramework.Field
             return m_RotationState;
         }
 
+        Vector3 IMovementDriver.CurrentVelocity
+        {
+            get
+            {
+                Vector3 currentVelocity = m_Moving
+                                              ? (m_Target - m_Transform.position).normalized * m_Speed
+                                              : Vector3.zero;
+
+                return currentVelocity;
+            }
+        }
+
         private static Vector3Int Quantize(Vector3 move)
         {
             if (move.sqrMagnitude < 0.0001f)

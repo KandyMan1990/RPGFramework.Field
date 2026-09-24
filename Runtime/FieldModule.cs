@@ -19,6 +19,7 @@ using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
 using RPGFramework.Field.SharedTypes.Constants;
 using RPGFramework.Field.SharedTypes.Providers;
+using RPGFramework.Hashing;
 using RPGFramework.Localisation;
 using RPGFramework.Menu.SharedTypes;
 using RPGFramework.Menu.SharedTypes.Constants;
@@ -66,6 +67,7 @@ namespace RPGFramework.Field
         private FieldContext                           m_FieldContext;
         private SpawnPoint                             m_InitialPlayerSpawn;
         private Dictionary<int, FieldEntityComponents> m_Entities;
+        private Dictionary<ulong, string>              m_AnimationNames;
         private int                                    m_PlayerEntityId;
 
         private bool               m_FieldTransitionRequested;
@@ -175,6 +177,10 @@ namespace RPGFramework.Field
             foreach (FieldEntityComponents entity in m_Entities.Values)
             {
                 entity.MovementDriver?.Tick(deltaTime);
+
+                Vector3 velocity = entity.MovementDriver?.CurrentVelocity ?? Vector3.zero;
+
+                entity.AnimationDriver?.Tick(velocity);
             }
 
 #if UNITY_EDITOR
@@ -228,6 +234,9 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsEntityRotating                   =  IsEntityRotating;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       += OnRequestSetEntityToFaceEntity;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      += OnRequestSetEntityMovementSpeed;
+            m_FieldContext.VM.RequestSetBaseAnimation            += OnRequestSetBaseAnimation;
+            m_FieldContext.VM.RequestSetAnimationSpeed           += OnRequestSetAnimationSpeed;
+            m_FieldContext.VM.RequestStopAnimation               += OnRequestStopAnimation;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    += OnRequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestCreateDialogueWindow        += OnRequestCreateDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindow          += OnRequestShowDialogueWindow;
@@ -254,6 +263,9 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetMessageVariable          -= OnRequestSetMessageVariable;
             m_FieldContext.VM.RequestCreateDialogueWindow        -= OnRequestCreateDialogueWindow;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    -= OnRequestSetMainMenuAccessibility;
+            m_FieldContext.VM.RequestStopAnimation               -= OnRequestStopAnimation;
+            m_FieldContext.VM.RequestSetAnimationSpeed           -= OnRequestSetAnimationSpeed;
+            m_FieldContext.VM.RequestSetBaseAnimation            -= OnRequestSetBaseAnimation;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= OnRequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= OnRequestSetEntityToFaceEntity;
             m_FieldContext.VM.IsEntityRotating                   =  null;
@@ -323,7 +335,8 @@ namespace RPGFramework.Field
             m_InitialPlayerSpawn = Array.Find(spawnPoints, sp => sp.Id == fieldArgs.SpawnId);
 
             FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
-            m_Entities = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
+            m_Entities       = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
+            m_AnimationNames = BuildAnimationNames(fieldEntities);
 
             foreach (CompiledFieldEntity record in fieldEntities.Compiled)
             {
@@ -331,6 +344,22 @@ namespace RPGFramework.Field
             }
 
             return fieldEntities;
+        }
+
+        /// <summary>
+        /// Scripts name an animation by its hash; an Animator wants the name. Export keeps the names the hashes came
+        /// from, so the field rebuilds the way back on load.
+        /// </summary>
+        private static Dictionary<ulong, string> BuildAnimationNames(FieldEntities fieldEntities)
+        {
+            Dictionary<ulong, string> animationNames = new Dictionary<ulong, string>(fieldEntities.AnimationNames.Count);
+
+            foreach (string animationName in fieldEntities.AnimationNames)
+            {
+                animationNames[Fnv1a64.Hash(animationName)] = animationName;
+            }
+
+            return animationNames;
         }
 
         /// <summary>
@@ -567,6 +596,16 @@ namespace RPGFramework.Field
                 GetMovementDriver(entityId).SetMoveSpeed(speed);
             }
 
+            foreach ((int entityId, ulong stateNameHash) in m_FieldContext.BaseAnimations)
+            {
+                GetAnimationDriver(entityId).SetBaseAnimation(m_AnimationNames[stateNameHash]);
+            }
+
+            foreach ((int entityId, float multiplier) in m_FieldContext.AnimationSpeeds)
+            {
+                GetAnimationDriver(entityId).SetSpeedMultiplier(multiplier);
+            }
+
             foreach ((int entityId, bool active) in m_FieldContext.CollisionTriggersActive)
             {
                 m_Entities[entityId].CollisionTrigger.SetActive(active);
@@ -607,6 +646,11 @@ namespace RPGFramework.Field
 
             UpdateManager.UnregisterUpdatable(this);
             UpdateManager.UnregisterFixedUpdatable(this);
+
+            foreach (FieldEntityComponents entity in m_Entities.Values)
+            {
+                entity.AnimationDriver?.SetPaused(true);
+            }
 
             UnsubscribeVm();
 
@@ -1028,6 +1072,37 @@ namespace RPGFramework.Field
         {
             GetMovementDriver(entityId).SetMoveSpeed(movementSpeed);
             m_FieldContext.SetMovementSpeed(entityId, movementSpeed);
+        }
+
+        private void OnRequestSetBaseAnimation(int entityId, ulong stateNameHash)
+        {
+            GetAnimationDriver(entityId).SetBaseAnimation(m_AnimationNames[stateNameHash]);
+            m_FieldContext.SetBaseAnimation(entityId, stateNameHash);
+        }
+
+        private void OnRequestSetAnimationSpeed(int entityId, float multiplier)
+        {
+            GetAnimationDriver(entityId).SetSpeedMultiplier(multiplier);
+            m_FieldContext.SetAnimationSpeed(entityId, multiplier);
+        }
+
+        private void OnRequestStopAnimation(int entityId)
+        {
+            GetAnimationDriver(entityId).ReturnToBase();
+        }
+
+        private IAnimationDriver GetAnimationDriver(int entityId)
+        {
+            FieldEntityComponents entity          = m_Entities[entityId];
+            IAnimationDriver      animationDriver = entity.AnimationDriver;
+
+            if (animationDriver == null)
+            {
+                animationDriver = AnimationDriverFactory.Create(entity.Entity.gameObject);
+                entity.SetAnimationDriver(animationDriver);
+            }
+
+            return animationDriver;
         }
 
         private IMovementDriver GetMovementDriver(int entityId)

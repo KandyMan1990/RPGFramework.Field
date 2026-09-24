@@ -487,7 +487,7 @@ namespace RPGFramework.Field.Editor
 
             m_ScriptBlockContainer.Add(BuildEntityHeader());
             m_ScriptBlockContainer.Add(BuildScriptHeader(index, m_SelectedScript));
-            m_ScriptBlockContainer.Add(new FieldScriptBlockEditor(m_SelectedScript.Text, OnScriptTextChanged));
+            m_ScriptBlockContainer.Add(new FieldScriptBlockEditor(m_SelectedScript.Text, m_SelectedEntity.Body, OnScriptTextChanged));
         }
 
         /// <summary>

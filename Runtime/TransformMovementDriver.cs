@@ -7,6 +7,8 @@ namespace RPGFramework.Field
 {
     internal sealed class TransformMovementDriver : MonoBehaviour, IMovementDriver
     {
+        private const float MIN_MOVE_INPUT_SQR = 0.0001f;
+
         private Transform       m_Transform;
         private float           m_Speed;
         private Vector3         m_MoveInput;
@@ -73,9 +75,21 @@ namespace RPGFramework.Field
             return m_RotationState;
         }
 
+        Vector3 IMovementDriver.CurrentVelocity
+        {
+            get
+            {
+                Vector3 currentVelocity = m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR
+                                              ? Vector3.zero
+                                              : m_MoveInput.normalized * m_Speed;
+
+                return currentVelocity;
+            }
+        }
+
         private void HandleMovement(float deltaTime)
         {
-            if (m_MoveInput.sqrMagnitude < 0.0001f)
+            if (m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR)
             {
                 return;
             }

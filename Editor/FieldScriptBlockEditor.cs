@@ -5,6 +5,7 @@ using RPGFramework.Core.Memory;
 using RPGFramework.Audio.Music;
 using RPGFramework.Audio.Sfx;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -23,6 +24,9 @@ namespace RPGFramework.Field.Editor
         private readonly List<FieldScriptBlock> m_Blocks;
         private readonly VisualElement          m_BlockList;
         private readonly Action<string>         m_OnChanged;
+        private readonly FieldEntity            m_Body;
+
+        private List<string> m_AnimationNames;
 
         private VariableMapAsset m_VariableMap;
 
@@ -39,9 +43,10 @@ namespace RPGFramework.Field.Editor
         // Keyed by track name: which stem states exist depends on which track is being layered.
         private readonly Dictionary<string, List<string>> m_StateNamesByTrack = new Dictionary<string, List<string>>();
 
-        public FieldScriptBlockEditor(string scriptText, Action<string> onChanged)
+        public FieldScriptBlockEditor(string scriptText, FieldEntity body, Action<string> onChanged)
         {
             m_OnChanged = onChanged;
+            m_Body      = body;
             m_Blocks    = FieldScriptBlocks.Parse(scriptText);
 
             Add(BuildToolbar());
@@ -422,6 +427,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.SoundName:
                 case ArgumentType.MusicNameHint:
                 case ArgumentType.MusicStateName:
+                case ArgumentType.AnimationName:
                 {
                     // Offered as a list so a name cannot be mistyped. A field name is checked when the
                     // script compiles, but a music or sound name is not — it is hashed as written, and a
@@ -604,8 +610,66 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicStateName:
                     return GetMusicStateChoices(block);
 
+                case ArgumentType.AnimationName:
+                    return m_AnimationNames ??= GatherAnimationNames();
+
                 default:
                     return new List<string>();
+            }
+        }
+
+        /// <summary>
+        /// Every state in the entity's Animator controller, sub-state machines included. Offered rather than typed so
+        /// a name cannot be mistyped — it is hashed into the bytecode, where a typo is indistinguishable from a state
+        /// that does not exist. A name with a space in it is left out: arguments are read one word at a time, so it
+        /// could not be written down.
+        /// </summary>
+        private List<string> GatherAnimationNames()
+        {
+            List<string> animationNames = new List<string>();
+
+            Animator animator = m_Body == null ? null : m_Body.GetComponentInChildren<Animator>(true);
+
+            if (animator == null || animator.runtimeAnimatorController == null)
+            {
+                return animationNames;
+            }
+
+            RuntimeAnimatorController runtime = animator.runtimeAnimatorController;
+
+            if (runtime is AnimatorOverrideController overrideController)
+            {
+                runtime = overrideController.runtimeAnimatorController;
+            }
+
+            if (runtime is not AnimatorController controller)
+            {
+                return animationNames;
+            }
+
+            foreach (AnimatorControllerLayer layer in controller.layers)
+            {
+                CollectAnimationNames(layer.stateMachine, animationNames);
+            }
+
+            animationNames.Sort(StringComparer.Ordinal);
+
+            return animationNames;
+        }
+
+        private static void CollectAnimationNames(AnimatorStateMachine stateMachine, List<string> animationNames)
+        {
+            foreach (ChildAnimatorState state in stateMachine.states)
+            {
+                if (!state.state.name.Contains(' '))
+                {
+                    animationNames.Add(state.state.name);
+                }
+            }
+
+            foreach (ChildAnimatorStateMachine child in stateMachine.stateMachines)
+            {
+                CollectAnimationNames(child.stateMachine, animationNames);
             }
         }
 

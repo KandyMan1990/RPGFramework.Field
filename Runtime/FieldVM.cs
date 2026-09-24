@@ -31,6 +31,9 @@ namespace RPGFramework.Field
         internal Func<int, bool>                                  IsEntityRotating;
         internal event Action<int, int>                           RequestSetEntityToFaceEntity;
         internal event Action<int, float>                         RequestSetEntityMovementSpeed;
+        internal event Action<int, ulong>                         RequestSetBaseAnimation;
+        internal event Action<int, float>                         RequestSetAnimationSpeed;
+        internal event Action<int>                                RequestStopAnimation;
         internal event Action<bool>                               RequestSetMainMenuAccessibility;
         internal event Action<DialogueWindowArgs>                 RequestCreateDialogueWindow;
         internal event Action<byte, ulong, bool>                  RequestShowDialogueWindow;
@@ -333,16 +336,16 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetDirectionToPartyMember, SetDirectionToPartyMemberOpcodeHandler },
                        // { FieldScriptOpCode.TurnEntityToAnotherEntity, TurnEntityToAnotherEntityOpcodeHandler },
                        // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.SetBaseAnimation, SetBaseAnimationOpcodeHandler },
+                       { FieldScriptOpCode.SetBaseAnimation, SetBaseAnimationOpcodeHandler },
                        // { FieldScriptOpCode.SetLadderAnimations, SetLadderAnimationsOpcodeHandler },
                        // { FieldScriptOpCode.PlayAnimationLooping, PlayAnimationLoopingOpcodeHandler },
                        // { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
                        // { FieldScriptOpCode.PlayAnimationOnceAsync, PlayAnimationOnceAsyncOpcodeHandler },
                        // { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
                        // { FieldScriptOpCode.PlayPartialAnimation, PlayPartialAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.SetAnimationSpeed, SetAnimationSpeedOpcodeHandler },
+                       { FieldScriptOpCode.SetAnimationSpeed, SetAnimationSpeedOpcodeHandler },
                        // { FieldScriptOpCode.WaitForAnimation, WaitForAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
+                       { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
                        // { FieldScriptOpCode.PushAnimationState, PushAnimationStateOpcodeHandler },
                        // { FieldScriptOpCode.PopAnimationState, PopAnimationStateOpcodeHandler },
                        // { FieldScriptOpCode.InitialiseHeadFacing, InitialiseHeadFacingOpcodeHandler },
@@ -1900,6 +1903,35 @@ namespace RPGFramework.Field
             SequentialSources sources        = default;
             byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
             RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, targetEntityId);
+        }
+
+        /// <summary>
+        /// Set what this entity animates as when no script is animating it.
+        /// </summary>
+        private void SetBaseAnimationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ulong stateNameHash = ReadUlong(ctx);
+
+            RequestSetBaseAnimation?.Invoke(ctx.EntityId, stateNameHash);
+        }
+
+        /// <summary>
+        /// Scale how fast this entity's animation plays.
+        /// </summary>
+        private void SetAnimationSpeedOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources    = default;
+            float             multiplier = ReadArgumentFloat(ctx, ref sources);
+
+            RequestSetAnimationSpeed?.Invoke(ctx.EntityId, multiplier);
+        }
+
+        /// <summary>
+        /// Drop whatever this entity is playing and return it to its base animation.
+        /// </summary>
+        private void StopAnimationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestStopAnimation?.Invoke(ctx.EntityId);
         }
 
         /// <summary>

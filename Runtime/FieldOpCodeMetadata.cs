@@ -92,6 +92,12 @@ namespace RPGFramework.Field
         MusicStateName,
 
         /// <summary>
+        /// An animation on this entity, authored by name and encoded as that name's 64-bit hash. Export keeps the
+        /// names alongside the compiled field, because an Animator is addressed by the name and not by a hash.
+        /// </summary>
+        AnimationName,
+
+        /// <summary>
         /// A music track named only so that tooling knows whose stem states to offer. <b>Authored into the
         /// script text and never emitted to bytecode.</b><br /><br />
         /// <c>MUSIC_STEM_STATE</c> applies to whatever is playing, so the bytecode has no business
@@ -177,6 +183,12 @@ namespace RPGFramework.Field
         /// refuses one of these in its scripts rather than leaving a null to be found in play.
         /// </summary>
         public bool NeedsBody { get; set; }
+
+        /// <summary>
+        /// True when the opcode drives the entity's animation. The Animator belongs to the visuals a game supplies,
+        /// not to the body the framework builds, so export refuses one of these on an entity whose visuals have none.
+        /// </summary>
+        public bool NeedsAnimator { get; set; }
 
         public FieldOpCodeAttribute(string scriptName, ArgumentLayout layout)
         {
