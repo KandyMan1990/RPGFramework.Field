@@ -22,6 +22,7 @@ namespace RPGFramework.Field
         private float         m_Speed;
         private Vector3       m_MoveInput;
         private RotationState m_RotationState;
+        private ScriptedMove  m_ScriptedMove;
 
         public void Init(Rigidbody rb, float speed)
         {
@@ -89,16 +90,43 @@ namespace RPGFramework.Field
         {
             get
             {
-                Vector3 currentVelocity = m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR
+                Vector3 heading = m_ScriptedMove.Active ? m_ScriptedMove.Target - m_Rigidbody.position : m_MoveInput;
+
+                Vector3 currentVelocity = heading.sqrMagnitude < MIN_MOVE_INPUT_SQR
                                               ? Vector3.zero
-                                              : m_MoveInput.normalized * m_Speed;
+                                              : heading.normalized * m_Speed;
 
                 return currentVelocity;
             }
         }
 
+        void IMovementDriver.MoveTo(Vector3 target, float stopDistance, bool faceTravel)
+        {
+            m_ScriptedMove = new ScriptedMove
+                             {
+                                 Active       = true,
+                                 Target       = target,
+                                 StopDistance = stopDistance,
+                                 FaceTravel   = faceTravel
+                             };
+        }
+
+        void IMovementDriver.StopMove()
+        {
+            m_ScriptedMove.Active = false;
+        }
+
+        bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
+
         private void HandleMovement(float deltaTime)
         {
+            if (m_ScriptedMove.Active)
+            {
+                HandleScriptedMove(deltaTime);
+
+                return;
+            }
+
             if (m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR)
             {
                 return;
@@ -110,6 +138,27 @@ namespace RPGFramework.Field
 
             m_Rigidbody.MovePosition(target);
             m_Rigidbody.MoveRotation(Quaternion.LookRotation(direction));
+        }
+
+        private void HandleScriptedMove(float deltaTime)
+        {
+            Vector3 origin = Depenetrate(m_Rigidbody.position);
+            Vector3 motion = m_ScriptedMove.Motion(origin, m_Speed * deltaTime);
+            Vector3 target = SweepAndSlide(origin, motion);
+
+            m_Rigidbody.MovePosition(target);
+
+            Vector3 facing = Vector3.ProjectOnPlane(motion, Vector3.up);
+
+            if (m_ScriptedMove.FaceTravel && facing.sqrMagnitude > MIN_MOTION_SQR)
+            {
+                m_Rigidbody.MoveRotation(Quaternion.LookRotation(facing));
+            }
+
+            if (m_ScriptedMove.HasArrived(target))
+            {
+                m_ScriptedMove.Active = false;
+            }
         }
 
         private Vector3 SweepAndSlide(Vector3 origin, Vector3 motion)

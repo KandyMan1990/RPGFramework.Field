@@ -24,6 +24,7 @@ namespace RPGFramework.Field
         private float         m_Speed;
         private Vector3       m_MoveInput;
         private RotationState m_RotationState;
+        private ScriptedMove  m_ScriptedMove;
 
         public void Init(Rigidbody2D rb, float speed)
         {
@@ -91,16 +92,43 @@ namespace RPGFramework.Field
         {
             get
             {
-                Vector3 currentVelocity = m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR
+                Vector3 heading = m_ScriptedMove.Active ? m_ScriptedMove.Target - (Vector3)m_Rigidbody.position : m_MoveInput;
+
+                Vector3 currentVelocity = heading.sqrMagnitude < MIN_MOVE_INPUT_SQR
                                               ? Vector3.zero
-                                              : m_MoveInput.normalized * m_Speed;
+                                              : heading.normalized * m_Speed;
 
                 return currentVelocity;
             }
         }
 
+        void IMovementDriver.MoveTo(Vector3 target, float stopDistance, bool faceTravel)
+        {
+            m_ScriptedMove = new ScriptedMove
+                             {
+                                 Active       = true,
+                                 Target       = new Vector3(target.x, target.y, 0f),
+                                 StopDistance = stopDistance,
+                                 FaceTravel   = faceTravel
+                             };
+        }
+
+        void IMovementDriver.StopMove()
+        {
+            m_ScriptedMove.Active = false;
+        }
+
+        bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
+
         private void HandleMovement(float deltaTime)
         {
+            if (m_ScriptedMove.Active)
+            {
+                HandleScriptedMove(deltaTime);
+
+                return;
+            }
+
             if (m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR)
             {
                 return;
@@ -111,6 +139,20 @@ namespace RPGFramework.Field
             Vector2 target   = SweepAndSlide(origin, velocity * deltaTime);
 
             m_Rigidbody.MovePosition(target);
+        }
+
+        private void HandleScriptedMove(float deltaTime)
+        {
+            Vector2 origin = Depenetrate(m_Rigidbody.position);
+            Vector2 motion = m_ScriptedMove.Motion(origin, m_Speed * deltaTime);
+            Vector2 target = SweepAndSlide(origin, motion);
+
+            m_Rigidbody.MovePosition(target);
+
+            if (m_ScriptedMove.HasArrived(target))
+            {
+                m_ScriptedMove.Active = false;
+            }
         }
 
         private Vector2 SweepAndSlide(Vector2 origin, Vector2 motion)

@@ -31,6 +31,9 @@ namespace RPGFramework.Field
         internal Func<int, bool>                                  IsEntityRotating;
         internal event Action<int, int>                           RequestSetEntityToFaceEntity;
         internal event Action<int, float>                         RequestSetEntityMovementSpeed;
+        internal event Action<int, MoveEntityArgs>                RequestMoveEntity;
+        internal Func<int, bool>                                  IsEntityMoving;
+        internal event Action<int>                                RequestStopMovement;
         internal event Action<int, ulong>                         RequestSetBaseAnimation;
         internal event Action<int, PlayAnimationArgs>             RequestPlayAnimation;
         internal Func<int, bool>                                  IsEntityAnimating;
@@ -323,16 +326,20 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetEntityDrawOffset, SetEntityDrawOffsetOpcodeHandler },
                        // { FieldScriptOpCode.WaitForEntityDrawOffset, WaitForEntityDrawOffsetOpcodeHandler },
                        { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
-                       // { FieldScriptOpCode.MoveEntityToXYWalkAnimation, MoveEntityToXYWalkAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.MoveEntityToXYNoAnimation, MoveEntityToXYNoAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.MoveFieldObject, MoveFieldObjectOpcodeHandler },
-                       // { FieldScriptOpCode.MoveEntityToAnotherEntity, MoveEntityToAnotherEntityOpcodeHandler },
+                       { FieldScriptOpCode.MoveEntityAndWait, MoveEntityAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.MoveEntity, MoveEntityOpcodeHandler },
+                       { FieldScriptOpCode.GlideEntityAndWait, GlideEntityAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.GlideEntity, GlideEntityOpcodeHandler },
+                       { FieldScriptOpCode.SlideEntityAndWait, SlideEntityAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.SlideEntity, SlideEntityOpcodeHandler },
+                       { FieldScriptOpCode.MoveEntityToEntityAndWait, MoveEntityToEntityAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.MoveEntityToEntity, MoveEntityToEntityOpcodeHandler },
                        // { FieldScriptOpCode.MoveToPartyMember, MoveToPartyMemberOpcodeHandler },
                        // { FieldScriptOpCode.MakeEntityJump, MakeEntityJumpOpcodeHandler },
                        // { FieldScriptOpCode.JumpToPartyMember, JumpToPartyMemberOpcodeHandler },
                        // { FieldScriptOpCode.ClimbLadder, ClimbLadderOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForMovement, WaitForMovementOpcodeHandler },
-                       // { FieldScriptOpCode.FlushMovement, FlushMovementOpcodeHandler },
+                       { FieldScriptOpCode.WaitForMovement, WaitForMovementOpcodeHandler },
+                       { FieldScriptOpCode.StopMovement, StopMovementOpcodeHandler },
                        { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
                        { FieldScriptOpCode.SetEntityRotationOverTime, SetEntityRotationOverTimeOpcodeHandler },
                        { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
@@ -1869,6 +1876,119 @@ namespace RPGFramework.Field
             SequentialSources sources       = default;
             float             movementSpeed = ReadArgumentFloat(ctx, ref sources);
             RequestSetEntityMovementSpeed?.Invoke(ctx.EntityId, movementSpeed);
+        }
+
+        /// <summary>
+        /// Walk this entity to a point, and wait until it arrives.
+        /// </summary>
+        private void MoveEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToPoint(ctx, MoveStyle.Walk, true);
+        }
+
+        /// <summary>
+        /// Start this entity walking to a point, and carry on.
+        /// </summary>
+        private void MoveEntityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToPoint(ctx, MoveStyle.Walk, false);
+        }
+
+        /// <summary>
+        /// Move this entity to a point facing its way, without walking, and wait until it arrives.
+        /// </summary>
+        private void GlideEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToPoint(ctx, MoveStyle.Glide, true);
+        }
+
+        /// <summary>
+        /// Start this entity moving to a point facing its way, without walking, and carry on.
+        /// </summary>
+        private void GlideEntityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToPoint(ctx, MoveStyle.Glide, false);
+        }
+
+        /// <summary>
+        /// Move this entity to a point without turning or walking, and wait until it arrives.
+        /// </summary>
+        private void SlideEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToPoint(ctx, MoveStyle.Slide, true);
+        }
+
+        /// <summary>
+        /// Start this entity moving to a point without turning or walking, and carry on.
+        /// </summary>
+        private void SlideEntityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToPoint(ctx, MoveStyle.Slide, false);
+        }
+
+        /// <summary>
+        /// Walk this entity up to another, and wait until it arrives.
+        /// </summary>
+        private void MoveEntityToEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToEntity(ctx, MoveStyle.Walk, true);
+        }
+
+        /// <summary>
+        /// Start this entity walking up to another, and carry on.
+        /// </summary>
+        private void MoveEntityToEntityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            MoveEntityToEntity(ctx, MoveStyle.Walk, false);
+        }
+
+        /// <summary>
+        /// The eight moves differ only in how the entity carries itself, where it is going, and whether the script
+        /// waits, so they read their arguments in two places.
+        /// </summary>
+        private void MoveEntityToPoint(ScriptExecutionContext ctx, MoveStyle style, bool waits)
+        {
+            SequentialSources sources = default;
+            float             x       = ReadArgumentFloat(ctx, ref sources);
+            float             y       = ReadArgumentFloat(ctx, ref sources);
+            float             z       = ReadArgumentFloat(ctx, ref sources);
+
+            MoveEntity(ctx, new MoveEntityArgs(new Vector3(x, y, z), FieldEntity.NO_ENTITY, 0f, style), waits);
+        }
+
+        private void MoveEntityToEntity(ScriptExecutionContext ctx, MoveStyle style, bool waits)
+        {
+            SequentialSources sources        = default;
+            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
+            float             stopDistance   = ReadArgumentFloat(ctx, ref sources);
+
+            MoveEntity(ctx, new MoveEntityArgs(Vector3.zero, targetEntityId, stopDistance, style), waits);
+        }
+
+        private void MoveEntity(ScriptExecutionContext ctx, MoveEntityArgs args, bool waits)
+        {
+            RequestMoveEntity?.Invoke(ctx.EntityId, args);
+
+            if (waits)
+            {
+                ctx.Block(new WaitUntilBlock(() => !IsEntityMoving(ctx.EntityId)));
+            }
+        }
+
+        /// <summary>
+        /// Wait until this entity has arrived where a script sent it.
+        /// </summary>
+        private void WaitForMovementOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsEntityMoving(ctx.EntityId)));
+        }
+
+        /// <summary>
+        /// Stop this entity where it is.
+        /// </summary>
+        private void StopMovementOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestStopMovement?.Invoke(ctx.EntityId);
         }
 
         /// <summary>

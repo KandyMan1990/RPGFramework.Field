@@ -132,6 +132,7 @@ namespace RPGFramework.Field.Editor
                 }
 
                 Dictionary<int, int> scriptCounts     = new Dictionary<int, int>();
+                HashSet<int>         withBodies       = new HashSet<int>();
                 HashSet<int>         entityIds        = new HashSet<int>();
                 HashSet<FieldEntity> bodies           = new HashSet<FieldEntity>();
                 DialogueChannelUse   dialogueChannels = new DialogueChannelUse();
@@ -139,11 +140,16 @@ namespace RPGFramework.Field.Editor
                 foreach (FieldEntityRecord record in fieldEntities.Entities)
                 {
                     scriptCounts[record.EntityId] = record.Scripts.Count;
+
+                    if (record.Body != null)
+                    {
+                        withBodies.Add(record.EntityId);
+                    }
                 }
 
                 foreach (FieldEntityRecord record in fieldEntities.Entities)
                 {
-                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, dialogueChannels, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, dialogueChannels, problems);
                 }
 
                 // A body no record claims is never bound, so its triggers never fire and nothing can move or show it.
@@ -261,7 +267,7 @@ namespace RPGFramework.Field.Editor
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
         /// </summary>
-        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, DialogueChannelUse dialogueChannels, List<string> problems)
+        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, HashSet<int> withBodies, DialogueChannelUse dialogueChannels, List<string> problems)
         {
             string      entityName = $"{prefab.name} / '{record.Name}'";
             FieldEntity body       = record.Body;
@@ -331,6 +337,7 @@ namespace RPGFramework.Field.Editor
 
                 ValidateInitScript(script.Type, scriptDescription, lines, problems);
                 ValidateBodyOpcodes(body, scriptDescription, lines, problems);
+                ValidateEntityTargets(scriptCounts, withBodies, scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
                 ValidateScriptRequests(record, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
@@ -459,6 +466,44 @@ namespace RPGFramework.Field.Editor
             if (eventId < 0 || eventId >= count)
             {
                 problems.Add($"{scriptDescription} uses {opCodeName} to run event [{eventId}] on entity [{entityId}], which has {count} script(s), so there is no such event");
+            }
+        }
+
+        /// <summary>
+        /// An opcode acting on the entity's presence that names another entity — to face it, to walk up to it — acts
+        /// toward that entity's body, so the one it names needs a body too.
+        /// </summary>
+        private static void ValidateEntityTargets(Dictionary<int, int> scriptCounts, HashSet<int> withBodies, string scriptDescription, string[] lines, List<string> problems)
+        {
+            foreach (string line in lines)
+            {
+                string[] parts = line.Trim().Split(' ');
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsBody)
+                {
+                    continue;
+                }
+
+                for (int argument = 0; argument < opCode.Arguments.Count && argument + 1 < parts.Length; argument++)
+                {
+                    string token = parts[argument + 1];
+
+                    // One worked out while playing is only known then.
+                    if (opCode.Arguments[argument].Type != ArgumentType.EntityId || token.StartsWith("$") ||
+                        !int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out int targetEntityId))
+                    {
+                        continue;
+                    }
+
+                    if (!scriptCounts.ContainsKey(targetEntityId))
+                    {
+                        problems.Add($"{scriptDescription} uses {parts[0]} toward entity [{targetEntityId}], which this field has no entity for");
+                    }
+                    else if (!withBodies.Contains(targetEntityId))
+                    {
+                        problems.Add($"{scriptDescription} uses {parts[0]} toward entity [{targetEntityId}], which has no body to face or walk up to. Give it one in the Field Designer");
+                    }
+                }
             }
         }
 

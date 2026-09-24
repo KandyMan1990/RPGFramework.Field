@@ -176,9 +176,11 @@ namespace RPGFramework.Field
 
             foreach (FieldEntityComponents entity in m_Entities.Values)
             {
+                UpdateMove(entity);
+
                 entity.MovementDriver?.Tick(deltaTime);
 
-                Vector3 velocity = entity.MovementDriver?.CurrentVelocity ?? Vector3.zero;
+                Vector3 velocity = IsMovingWithoutWalking(entity) ? Vector3.zero : entity.MovementDriver?.CurrentVelocity ?? Vector3.zero;
 
                 entity.AnimationDriver?.Tick(velocity);
             }
@@ -234,6 +236,9 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsEntityRotating                   =  IsEntityRotating;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       += OnRequestSetEntityToFaceEntity;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      += OnRequestSetEntityMovementSpeed;
+            m_FieldContext.VM.RequestMoveEntity                  += OnRequestMoveEntity;
+            m_FieldContext.VM.IsEntityMoving                     =  IsEntityMoving;
+            m_FieldContext.VM.RequestStopMovement                += OnRequestStopMovement;
             m_FieldContext.VM.RequestSetBaseAnimation            += OnRequestSetBaseAnimation;
             m_FieldContext.VM.RequestPlayAnimation               += OnRequestPlayAnimation;
             m_FieldContext.VM.IsEntityAnimating                  =  IsEntityAnimating;
@@ -274,6 +279,9 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsEntityAnimating                  =  null;
             m_FieldContext.VM.RequestPlayAnimation               -= OnRequestPlayAnimation;
             m_FieldContext.VM.RequestSetBaseAnimation            -= OnRequestSetBaseAnimation;
+            m_FieldContext.VM.RequestStopMovement                -= OnRequestStopMovement;
+            m_FieldContext.VM.IsEntityMoving                     =  null;
+            m_FieldContext.VM.RequestMoveEntity                  -= OnRequestMoveEntity;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= OnRequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= OnRequestSetEntityToFaceEntity;
             m_FieldContext.VM.IsEntityRotating                   =  null;
@@ -602,6 +610,11 @@ namespace RPGFramework.Field
             foreach ((int entityId, float speed) in m_FieldContext.MovementSpeeds)
             {
                 GetMovementDriver(entityId).SetMoveSpeed(speed);
+            }
+
+            foreach ((int entityId, MoveEntityArgs move) in m_FieldContext.MovesInProgress)
+            {
+                OnRequestMoveEntity(entityId, move);
             }
 
             foreach ((int entityId, ulong stateNameHash) in m_FieldContext.BaseAnimations)
@@ -947,6 +960,8 @@ namespace RPGFramework.Field
 
         private void StoreToTempMemory()
         {
+            m_FieldContext.ClearMovesInProgress();
+
             foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
             {
                 if (entity.Value.Entity == null)
@@ -961,6 +976,11 @@ namespace RPGFramework.Field
                     RotationState rotationState = entity.Value.MovementDriver.GetRotationState();
 
                     m_FieldContext.SetEntityRotationState(entity.Key, rotationState);
+                }
+
+                if (entity.Value.HasMove && entity.Value.MovementDriver.IsMovingToTarget)
+                {
+                    m_FieldContext.SetMoveInProgress(entity.Key, entity.Value.Move);
                 }
             }
 
@@ -1147,6 +1167,65 @@ namespace RPGFramework.Field
             }
 
             return animationDriver;
+        }
+
+        private void OnRequestMoveEntity(int entityId, MoveEntityArgs args)
+        {
+            FieldEntityComponents entity = m_Entities[entityId];
+
+            entity.SetMove(args);
+            GetMovementDriver(entityId).MoveTo(MoveTarget(args), args.StopDistance, args.Style != MoveStyle.Slide);
+        }
+
+        private bool IsEntityMoving(int entityId)
+        {
+            IMovementDriver movementDriver = m_Entities[entityId].MovementDriver;
+
+            bool isMoving = movementDriver != null && movementDriver.IsMovingToTarget;
+
+            return isMoving;
+        }
+
+        private void OnRequestStopMovement(int entityId)
+        {
+            FieldEntityComponents entity = m_Entities[entityId];
+
+            entity.MovementDriver?.StopMove();
+            entity.ClearMove();
+        }
+
+        private void UpdateMove(FieldEntityComponents entity)
+        {
+            if (!entity.HasMove)
+            {
+                return;
+            }
+
+            if (!entity.MovementDriver.IsMovingToTarget)
+            {
+                entity.ClearMove();
+
+                return;
+            }
+
+            if (entity.Move.FollowsEntity)
+            {
+                entity.MovementDriver.MoveTo(MoveTarget(entity.Move), entity.Move.StopDistance, entity.Move.Style != MoveStyle.Slide);
+            }
+        }
+
+        private Vector3 MoveTarget(MoveEntityArgs args)
+        {
+            Vector3 target = args.FollowsEntity ? m_Entities[args.TargetEntityId].Entity.transform.position : args.Target;
+
+            return target;
+        }
+
+        private static bool IsMovingWithoutWalking(FieldEntityComponents entity)
+        {
+            bool isMovingWithoutWalking = entity.HasMove && entity.Move.Style != MoveStyle.Walk && entity.MovementDriver.IsMovingToTarget;
+
+            return isMovingWithoutWalking;
         }
 
         private IMovementDriver GetMovementDriver(int entityId)

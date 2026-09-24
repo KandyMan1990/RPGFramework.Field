@@ -15,5 +15,8 @@ namespace RPGFramework.Field
         void          ResumeRotation(RotationState             rotationState);
         RotationState GetRotationState();
         Vector3       CurrentVelocity { get; }
+        void          MoveTo(Vector3 target, float stopDistance, bool faceTravel);
+        void          StopMove();
+        bool          IsMovingToTarget { get; }
     }
 }

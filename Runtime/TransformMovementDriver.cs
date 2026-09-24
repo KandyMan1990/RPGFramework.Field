@@ -13,6 +13,7 @@ namespace RPGFramework.Field
         private float           m_Speed;
         private Vector3         m_MoveInput;
         private RotationState   m_RotationState;
+        private ScriptedMove    m_ScriptedMove;
 
         public void Init(Transform entityTransform, float speed)
         {
@@ -79,16 +80,43 @@ namespace RPGFramework.Field
         {
             get
             {
-                Vector3 currentVelocity = m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR
+                Vector3 heading = m_ScriptedMove.Active ? m_ScriptedMove.Target - m_Transform.position : m_MoveInput;
+
+                Vector3 currentVelocity = heading.sqrMagnitude < MIN_MOVE_INPUT_SQR
                                               ? Vector3.zero
-                                              : m_MoveInput.normalized * m_Speed;
+                                              : heading.normalized * m_Speed;
 
                 return currentVelocity;
             }
         }
 
+        void IMovementDriver.MoveTo(Vector3 target, float stopDistance, bool faceTravel)
+        {
+            m_ScriptedMove = new ScriptedMove
+                             {
+                                 Active       = true,
+                                 Target       = target,
+                                 StopDistance = stopDistance,
+                                 FaceTravel   = faceTravel
+                             };
+        }
+
+        void IMovementDriver.StopMove()
+        {
+            m_ScriptedMove.Active = false;
+        }
+
+        bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
+
         private void HandleMovement(float deltaTime)
         {
+            if (m_ScriptedMove.Active)
+            {
+                HandleScriptedMove(deltaTime);
+
+                return;
+            }
+
             if (m_MoveInput.sqrMagnitude < MIN_MOVE_INPUT_SQR)
             {
                 return;
@@ -98,6 +126,25 @@ namespace RPGFramework.Field
 
             m_Transform.position += direction * (m_Speed * deltaTime);
             m_Transform.forward  =  direction;
+        }
+
+        private void HandleScriptedMove(float deltaTime)
+        {
+            Vector3 motion = m_ScriptedMove.Motion(m_Transform.position, m_Speed * deltaTime);
+
+            m_Transform.position += motion;
+
+            Vector3 facing = Vector3.ProjectOnPlane(motion, Vector3.up);
+
+            if (m_ScriptedMove.FaceTravel && facing.sqrMagnitude > MIN_MOVE_INPUT_SQR)
+            {
+                m_Transform.forward = facing.normalized;
+            }
+
+            if (m_ScriptedMove.HasArrived(m_Transform.position))
+            {
+                m_ScriptedMove.Active = false;
+            }
         }
 
         private void HandleRotation(float deltaTime)

@@ -7,12 +7,15 @@ namespace RPGFramework.Field
 {
     internal sealed class TilemapMovementDriver : MonoBehaviour, IMovementDriver
     {
+        private const float MIN_FACING_SQR = 0.0001f;
+
         private Transform       m_Transform;
         private Tilemap         m_Tilemap;
         private float           m_Speed;
         private Vector3         m_Target;
         private bool            m_Moving;
         private RotationState   m_RotationState;
+        private ScriptedMove    m_ScriptedMove;
 
         public void Init(Transform entityTransform, Tilemap tilemap, float speed)
         {
@@ -24,7 +27,7 @@ namespace RPGFramework.Field
 
         void IMovementDriver.SetMoveInput(Vector3 move)
         {
-            if (m_Moving)
+            if (m_Moving || m_ScriptedMove.Active)
             {
                 return;
             }
@@ -102,13 +105,36 @@ namespace RPGFramework.Field
         {
             get
             {
-                Vector3 currentVelocity = m_Moving
-                                              ? (m_Target - m_Transform.position).normalized * m_Speed
-                                              : Vector3.zero;
+                Vector3 currentVelocity = m_ScriptedMove.Active ? (m_ScriptedMove.Target - m_Transform.position).normalized * m_Speed :
+                                          m_Moving              ? (m_Target - m_Transform.position).normalized * m_Speed : Vector3.zero;
 
                 return currentVelocity;
             }
         }
+
+        /// <summary>
+        /// A scripted move goes straight to its point rather than cell by cell, so it can finish between cells; the
+        /// next step the player takes starts from the cell it ended in. A cell step already under way gives way to it.
+        /// </summary>
+        void IMovementDriver.MoveTo(Vector3 target, float stopDistance, bool faceTravel)
+        {
+            m_Moving = false;
+
+            m_ScriptedMove = new ScriptedMove
+                             {
+                                 Active       = true,
+                                 Target       = target,
+                                 StopDistance = stopDistance,
+                                 FaceTravel   = faceTravel
+                             };
+        }
+
+        void IMovementDriver.StopMove()
+        {
+            m_ScriptedMove.Active = false;
+        }
+
+        bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
 
         private static Vector3Int Quantize(Vector3 move)
         {
@@ -162,6 +188,13 @@ namespace RPGFramework.Field
 
         private void HandleMovement(float deltaTime)
         {
+            if (m_ScriptedMove.Active)
+            {
+                HandleScriptedMove(deltaTime);
+
+                return;
+            }
+
             if (!m_Moving)
             {
                 return;
@@ -179,6 +212,25 @@ namespace RPGFramework.Field
             {
                 m_Transform.position = m_Target;
                 m_Moving             = false;
+            }
+        }
+
+        private void HandleScriptedMove(float deltaTime)
+        {
+            Vector3 motion = m_ScriptedMove.Motion(m_Transform.position, m_Speed * deltaTime);
+
+            m_Transform.position += motion;
+
+            Vector3 facing = Vector3.ProjectOnPlane(motion, Vector3.up);
+
+            if (m_ScriptedMove.FaceTravel && facing.sqrMagnitude > MIN_FACING_SQR)
+            {
+                m_Transform.forward = facing.normalized;
+            }
+
+            if (m_ScriptedMove.HasArrived(m_Transform.position))
+            {
+                m_ScriptedMove.Active = false;
             }
         }
 
