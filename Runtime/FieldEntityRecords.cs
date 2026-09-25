@@ -58,6 +58,9 @@ namespace RPGFramework.Field
         [TextArea(3, 20)]
         private string m_Text;
 
+        [SerializeField]
+        private FieldScriptPriority m_Slot;
+
         internal FieldScriptRecord(FieldScriptType type, string name, string text)
         {
             m_Type = type;
@@ -65,15 +68,18 @@ namespace RPGFramework.Field
             m_Text = text;
         }
 
-        internal FieldScriptType Type => m_Type;
-        internal string          Name => m_Name;
-        internal string          Text => m_Text;
+        internal FieldScriptType     Type => m_Type;
+        internal string              Name => m_Name;
+        internal string              Text => m_Text;
+        internal FieldScriptPriority Slot => m_Slot;
 
         internal void SetType(FieldScriptType type) => m_Type = type;
 
         internal void SetName(string name) => m_Name = name;
 
         internal void SetText(string text) => m_Text = text;
+
+        internal void SetSlot(FieldScriptPriority slot) => m_Slot = slot;
     }
 
     /// <summary>
@@ -136,15 +142,20 @@ namespace RPGFramework.Field
         [SerializeField]
         private byte[] m_Bytecode;
 
-        internal CompiledFieldScript(FieldScriptType type, int scriptId, byte[] bytecode)
+        [SerializeField]
+        private FieldScriptPriority m_ChosenSlot;
+
+        internal CompiledFieldScript(FieldScriptType type, int scriptId, byte[] bytecode, FieldScriptPriority chosenSlot)
         {
-            m_Type     = type;
-            m_ScriptId = scriptId;
-            m_Bytecode = bytecode;
+            m_Type       = type;
+            m_ScriptId   = scriptId;
+            m_Bytecode   = bytecode;
+            m_ChosenSlot = chosenSlot;
         }
 
         internal FieldScriptType Type     => m_Type;
         internal int             ScriptId => m_ScriptId;
         internal byte[]          Bytecode => m_Bytecode;
+        internal byte            Slot     => FieldScriptSlots.For(m_Type, m_ChosenSlot);
     }
 }

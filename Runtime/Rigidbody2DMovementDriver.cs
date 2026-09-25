@@ -169,14 +169,12 @@ namespace RPGFramework.Field
 
                 int hitCount = m_Rigidbody.Cast(heading, SOLID_ONLY, m_Hits, distance + SKIN_WIDTH);
 
-                if (hitCount == 0)
+                if (!TryGetNearestHit(hitCount, out RaycastHit2D nearest))
                 {
                     position += motion;
 
                     break;
                 }
-
-                RaycastHit2D nearest = NearestHit(hitCount);
 
                 float travelled = Mathf.Max(nearest.distance - SKIN_WIDTH, 0f);
 
@@ -202,7 +200,7 @@ namespace RPGFramework.Field
                 {
                     Collider2D other = m_Overlaps[i];
 
-                    if (other.attachedRigidbody == m_Rigidbody)
+                    if (other.attachedRigidbody == m_Rigidbody || !FieldEntity.Blocks(other))
                     {
                         continue;
                     }
@@ -240,19 +238,24 @@ namespace RPGFramework.Field
             return solid.ToArray();
         }
 
-        private RaycastHit2D NearestHit(int hitCount)
+        private bool TryGetNearestHit(int hitCount, out RaycastHit2D nearest)
         {
-            RaycastHit2D nearest = m_Hits[0];
+            nearest = default;
 
-            for (int i = 1; i < hitCount; i++)
+            bool found = false;
+
+            for (int i = 0; i < hitCount; i++)
             {
-                if (m_Hits[i].distance < nearest.distance)
+                if (!FieldEntity.Blocks(m_Hits[i].collider) || found && m_Hits[i].distance >= nearest.distance)
                 {
-                    nearest = m_Hits[i];
+                    continue;
                 }
+
+                nearest = m_Hits[i];
+                found   = true;
             }
 
-            return nearest;
+            return found;
         }
 
         private void HandleRotation(float deltaTime)

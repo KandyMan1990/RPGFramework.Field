@@ -425,22 +425,35 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                bool requestsAnother = opCode.OpCode == FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy       ||
-                                       opCode.OpCode == FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted ||
-                                       opCode.OpCode == FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished;
+                int entityArgument = ArgumentIndex(opCode, ArgumentType.EntityId);
+                int eventArgument  = ArgumentIndex(opCode, ArgumentType.EventId);
 
-                if (requestsAnother && parts.Length >= 4)
+                if (eventArgument < 0 || eventArgument + 1 >= parts.Length || entityArgument + 1 >= parts.Length)
                 {
-                    ValidateScriptRequest(parts[1], parts[3], scriptCounts, parts[0], scriptDescription, problems);
                     continue;
                 }
 
-                // RETURN_TO_SCRIPT hands the slot to another of this entity's own scripts.
-                if (opCode.OpCode == FieldScriptOpCode.ReturnToAnotherScript && parts.Length >= 2)
+                // With no entity named, the event is one of this entity's own, as RETURN_TO_SCRIPT's is.
+                string entityToken = entityArgument < 0 ? record.EntityId.ToString(CultureInfo.InvariantCulture) : parts[entityArgument + 1];
+
+                ValidateScriptRequest(entityToken, parts[eventArgument + 1], scriptCounts, parts[0], scriptDescription, problems);
+            }
+        }
+
+        private static int ArgumentIndex(FieldOpCodeInfo opCode, ArgumentType type)
+        {
+            int argumentIndex = -1;
+
+            for (int argument = 0; argument < opCode.Arguments.Count; argument++)
+            {
+                if (opCode.Arguments[argument].Type == type)
                 {
-                    ValidateScriptRequest(record.EntityId.ToString(CultureInfo.InvariantCulture), parts[1], scriptCounts, parts[0], scriptDescription, problems);
+                    argumentIndex = argument;
+                    break;
                 }
             }
+
+            return argumentIndex;
         }
 
         private static void ValidateScriptRequest(string entityToken, string eventToken, Dictionary<int, int> scriptCounts, string opCodeName, string scriptDescription, List<string> problems)

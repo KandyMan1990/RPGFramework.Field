@@ -32,7 +32,7 @@ namespace RPGFramework.Field.Editor
 
                 foreach (FieldScriptRecord script in record.Scripts)
                 {
-                    scripts.Add(new CompiledFieldScript(script.Type, scriptId, FieldScriptCompiler.Compile(script.Text)));
+                    scripts.Add(new CompiledFieldScript(script.Type, scriptId, FieldScriptCompiler.Compile(script.Text), script.Slot));
                     scriptId++;
                 }
 

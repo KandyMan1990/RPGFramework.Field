@@ -487,7 +487,7 @@ namespace RPGFramework.Field.Editor
 
             m_ScriptBlockContainer.Add(BuildEntityHeader());
             m_ScriptBlockContainer.Add(BuildScriptHeader(index, m_SelectedScript));
-            m_ScriptBlockContainer.Add(new FieldScriptBlockEditor(m_SelectedScript.Text, m_SelectedEntity.Body, OnScriptTextChanged));
+            m_ScriptBlockContainer.Add(new FieldScriptBlockEditor(m_SelectedScript.Text, m_OpenFieldEntities, m_SelectedEntity, OnScriptTextChanged));
         }
 
         /// <summary>
@@ -671,10 +671,13 @@ namespace RPGFramework.Field.Editor
             Label scriptTitle = new Label($"Event {eventId}");
             scriptTitle.style.unityFontStyleAndWeight = FontStyle.Bold;
 
+            DropdownField slot = BuildSlotChoice(script);
+
             EnumField scriptType = new EnumField("Type", script.Type);
             scriptType.RegisterValueChangedCallback(e =>
                                                     {
                                                         script.SetType((FieldScriptType)e.newValue);
+                                                        slot.style.display = script.Type == FieldScriptType.Requested ? DisplayStyle.Flex : DisplayStyle.None;
                                                         m_HasUnsavedChanges = true;
                                                         m_EntityScriptListView.RefreshItems();
                                                     });
@@ -697,11 +700,42 @@ namespace RPGFramework.Field.Editor
 
             header.Add(scriptTitle);
             header.Add(scriptType);
+            header.Add(slot);
             header.Add(scriptName);
             header.Add(buttons);
             header.Add(m_ScriptStatus);
 
             return header;
+        }
+
+        /// <summary>
+        /// Only a requested script chooses its slot; every other type runs in its event's. The slot is what may
+        /// interrupt it — anything more urgent — so a script that must not be cut short by the player walking into a
+        /// trigger sits above that trigger's slot. Main is not offered: a request into it is refused whenever a Default
+        /// script runs.
+        /// </summary>
+        private DropdownField BuildSlotChoice(FieldScriptRecord script)
+        {
+            List<string> labels = new List<string>();
+
+            for (int slot = (int)FieldScriptPriority.Unassigned; slot < FieldEntityRuntime.PRIORITY_COUNT; slot++)
+            {
+                labels.Add($"{slot}: {(FieldScriptPriority)slot}");
+            }
+
+            byte current = FieldScriptSlots.For(FieldScriptType.Requested, script.Slot);
+
+            DropdownField field = new DropdownField("Runs in slot", labels, current - (int)FieldScriptPriority.Unassigned);
+            field.tooltip       = "What may interrupt this script: anything in a more urgent slot. Slot 1 is interrupted by every event; slot 7 by none, but shares it with talking to this entity";
+            field.style.display = script.Type == FieldScriptType.Requested ? DisplayStyle.Flex : DisplayStyle.None;
+
+            field.RegisterValueChangedCallback(e =>
+                                               {
+                                                   script.SetSlot((FieldScriptPriority)(labels.IndexOf(e.newValue) + (int)FieldScriptPriority.Unassigned));
+                                                   m_HasUnsavedChanges = true;
+                                               });
+
+            return field;
         }
 
         /// <summary>

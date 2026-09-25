@@ -24,7 +24,8 @@ namespace RPGFramework.Field.Editor
         private readonly List<FieldScriptBlock> m_Blocks;
         private readonly VisualElement          m_BlockList;
         private readonly Action<string>         m_OnChanged;
-        private readonly FieldEntity            m_Body;
+        private readonly FieldEntities          m_Field;
+        private readonly FieldEntityRecord      m_Entity;
 
         private List<string> m_AnimationNames;
 
@@ -43,10 +44,11 @@ namespace RPGFramework.Field.Editor
         // Keyed by track name: which stem states exist depends on which track is being layered.
         private readonly Dictionary<string, List<string>> m_StateNamesByTrack = new Dictionary<string, List<string>>();
 
-        public FieldScriptBlockEditor(string scriptText, FieldEntity body, Action<string> onChanged)
+        public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, Action<string> onChanged)
         {
             m_OnChanged = onChanged;
-            m_Body      = body;
+            m_Field     = field;
+            m_Entity    = entity;
             m_Blocks    = FieldScriptBlocks.Parse(scriptText);
 
             Add(BuildToolbar());
@@ -321,6 +323,72 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
+        /// The field's entities by name, writing the id. Choosing one rebuilds the block, since which scripts it offers
+        /// for an event beside it depends on which entity is named.
+        /// </summary>
+        private DropdownField EntityDropdown(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            List<string> labels = new List<string>(m_Field.Entities.Count);
+            string       shown  = current;
+
+            foreach (FieldEntityRecord entity in m_Field.Entities)
+            {
+                string entityLabel = $"{entity.EntityId}: {entity.Name}";
+
+                labels.Add(entityLabel);
+
+                if (entity.EntityId.ToString(System.Globalization.CultureInfo.InvariantCulture) == current)
+                {
+                    shown = entityLabel;
+                }
+            }
+
+            DropdownField field = new DropdownField(label, labels, 0);
+            field.SetValueWithoutNotify(shown);
+
+            field.RegisterValueChangedCallback(e =>
+            {
+                FieldEntityRecord chosen = m_Field.Entities[labels.IndexOf(e.newValue)];
+                Set(block, argumentIndex, chosen.EntityId.ToString(System.Globalization.CultureInfo.InvariantCulture), true);
+            });
+
+            return field;
+        }
+
+        /// <summary>
+        /// Whose scripts an event id counts: the entity the block names, or with none named this entity's own, as
+        /// <c>RETURN_TO_SCRIPT</c>'s. A named entity written as a variable, or one the field no longer has, cannot be
+        /// known here.
+        /// </summary>
+        private bool TryGetEventOwner(FieldScriptBlock block, out FieldEntityRecord owner)
+        {
+            owner = m_Entity;
+
+            for (int i = 0; i < block.OpCode.Arguments.Count; i++)
+            {
+                if (block.OpCode.Arguments[i].Type != ArgumentType.EntityId)
+                {
+                    continue;
+                }
+
+                string named = i < block.Arguments.Count ? block.Arguments[i] : string.Empty;
+                owner        = m_Field.Entities.Find(entity => entity.EntityId.ToString(System.Globalization.CultureInfo.InvariantCulture) == named);
+                break;
+            }
+
+            bool hasOwner = owner != null;
+
+            return hasOwner;
+        }
+
+        private static string DescribeScript(FieldScriptRecord script, int eventId)
+        {
+            string description = string.IsNullOrEmpty(script.Name) ? $"{eventId}: {script.Type}" : $"{eventId}: {script.Name} ({script.Type})";
+
+            return description;
+        }
+
+        /// <summary>
         /// A choice of 0 to <paramref name="count" /> - 1, labelled, writing the number. A number outside the range is
         /// shown as written rather than quietly changed.
         /// </summary>
@@ -372,10 +440,15 @@ namespace RPGFramework.Field.Editor
                     return field;
                 }
 
+                case ArgumentType.EntityId:
+                    return EntityDropdown(block, argumentIndex, label, current);
+
+                case ArgumentType.EventId when TryGetEventOwner(block, out FieldEntityRecord owner):
+                    return IndexDropdown(block, argumentIndex, label, current, owner.Scripts.Count, i => DescribeScript(owner.Scripts[i], i));
+
                 case ArgumentType.Byte:
                 case ArgumentType.UShort:
                 case ArgumentType.Int:
-                case ArgumentType.EntityId:
                 case ArgumentType.EventId:
                 {
                     IntegerField field = new IntegerField(label) { value = ParseInt(current) };
@@ -628,7 +701,7 @@ namespace RPGFramework.Field.Editor
         {
             List<string> animationNames = new List<string>();
 
-            Animator animator = m_Body == null ? null : m_Body.GetComponentInChildren<Animator>(true);
+            Animator animator = m_Entity.Body == null ? null : m_Entity.Body.GetComponentInChildren<Animator>(true);
 
             if (animator == null || animator.runtimeAnimatorController == null)
             {

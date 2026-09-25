@@ -51,4 +51,50 @@ namespace RPGFramework.Field
         /// </summary>
         Interaction = 7
     }
+
+    internal static class FieldScriptSlots
+    {
+        /// <summary>
+        /// A script runs in the slot its type belongs to however it starts — by the event the type is named for, or
+        /// by another script's request — so the engine and a script can never disagree about where it goes. A
+        /// requested script has no event, so it chooses: the slot decides what may interrupt it.
+        /// </summary>
+        /// <param name="chosen">
+        /// A requested script's choice. <see cref="FieldScriptPriority.Main" /> is never one — it would be refused
+        /// whenever a Default script runs — so it stands for none chosen, which is also what a script saved before
+        /// the choice existed reads as.
+        /// </param>
+        internal static byte For(FieldScriptType type, FieldScriptPriority chosen)
+        {
+            FieldScriptPriority slot;
+
+            switch (type)
+            {
+                case FieldScriptType.OnEnter:
+                case FieldScriptType.Gateway:
+                    slot = FieldScriptPriority.Enter;
+                    break;
+
+                case FieldScriptType.OnLeave:
+                    slot = FieldScriptPriority.Leave;
+                    break;
+
+                case FieldScriptType.OnInteraction:
+                    slot = FieldScriptPriority.Interaction;
+                    break;
+
+                case FieldScriptType.Requested:
+                    slot = chosen == FieldScriptPriority.Main ? FieldScriptPriority.Unassigned : chosen;
+                    break;
+
+                default:
+                    slot = FieldScriptPriority.Main;
+                    break;
+            }
+
+            byte forType = (byte)slot;
+
+            return forType;
+        }
+    }
 }

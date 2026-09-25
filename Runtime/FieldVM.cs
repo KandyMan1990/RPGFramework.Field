@@ -20,6 +20,7 @@ namespace RPGFramework.Field
         internal event Action<ulong>                              RequestSfx;
         internal event Action<FieldEntityRuntime>                 RequestSetPlayerEntity;
         internal event Action<int, bool>                          RequestSetEntityVisible;
+        internal event Action<int, bool>                          RequestSetEntitySolid;
         internal event Action<bool>                               RequestSetGatewayTriggersActive;
         internal event Action<int, bool>                          RequestSetInteractionTriggerActive;
         internal event Action<int, bool>                          RequestSetCollisionTriggerActive;
@@ -316,7 +317,7 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.ResetFollowerTrail, ResetFollowerTrailOpcodeHandler },
                        { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
                        // { FieldScriptOpCode.SetEntityActive, SetEntityActiveOpcodeHandler },
-                       // { FieldScriptOpCode.EntitySolidity, EntitySolidityOpcodeHandler },
+                       { FieldScriptOpCode.EntitySolidity, EntitySolidityOpcodeHandler },
                        // { FieldScriptOpCode.PushScriptActivation, PushScriptActivationOpcodeHandler },
                        // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
                        { FieldScriptOpCode.InteractionTriggerActivation, InteractabilityOpcodeHandler },
@@ -454,16 +455,16 @@ namespace RPGFramework.Field
         /// Start one of an entity's scripts by event id, for something the engine initiates rather than
         /// another script — a collision or interaction trigger. Refused if the slot is busy.
         /// </summary>
-        internal void RequestScript(int entityId, int eventId, byte priority)
+        internal void RequestScript(int entityId, int eventId)
         {
             FieldEntityRuntime entity = m_Entities[entityId];
 
-            if (!entity.TryGetScriptId(eventId, out int scriptId))
+            if (!entity.TryGetScript(eventId, out int scriptId, out byte slot))
             {
                 return;
             }
 
-            entity.TryRequestScript(scriptId, priority);
+            entity.TryRequestScript(scriptId, slot);
         }
 
         /// <summary>
@@ -1115,25 +1116,19 @@ namespace RPGFramework.Field
             ushort            targetEventId;
 
             targetEntityId = ReadArgumentByte(ctx, ref sources);
-            priority       = ReadArgumentByte(ctx, ref sources);
             targetEventId  = ReadArgumentUshort(ctx, ref sources);
 
             targetScriptId = 0;
+            priority       = 0;
 
             if (!m_Entities.TryGetValue(targetEntityId, out target))
             {
                 return false;
             }
 
-            if (priority >= FieldEntityRuntime.PRIORITY_COUNT)
-            {
-                target = null;
-                return false;
-            }
-
-            // The request names an event id relative to the target entity, which the entity resolves to
-            // the field-wide script id the VM holds bytecode under.
-            if (!target.TryGetScriptId(targetEventId, out targetScriptId))
+            // The request names an event id relative to the target entity, which the entity resolves to the
+            // field-wide script id the VM holds bytecode under, and to the slot that script's type runs in.
+            if (!target.TryGetScript(targetEventId, out targetScriptId, out priority))
             {
                 target = null;
                 return false;
@@ -1836,6 +1831,16 @@ namespace RPGFramework.Field
             SequentialSources sources   = default;
             bool              isVisible = ReadArgumentBool(ctx, ref sources);
             RequestSetEntityVisible?.Invoke(ctx.EntityId, isVisible);
+        }
+
+        /// <summary>
+        /// Let other entities walk through this one, or block them again.
+        /// </summary>
+        private void EntitySolidityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            bool              isSolid = ReadArgumentBool(ctx, ref sources);
+            RequestSetEntitySolid?.Invoke(ctx.EntityId, isSolid);
         }
 
         /// <summary>

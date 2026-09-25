@@ -249,6 +249,13 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         private static void WriteSequential(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref VariableMapAsset variableMap)
         {
+            // A surplus argument would otherwise be dropped without a word, and the ones before it read as meaning
+            // something else — as an old REQUEST_SCRIPT's slot would read as its event.
+            if (parts.Length - 1 > opCode.Arguments.Count)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} takes {opCode.Arguments.Count} argument(s), but was given {parts.Length - 1}");
+            }
+
             bw.Write((ushort)opCode.OpCode);
 
             int sourcesPosition = -1;

@@ -173,7 +173,7 @@ namespace RPGFramework.Field
                 float   distance = motion.magnitude;
                 Vector3 heading  = motion / distance;
 
-                if (!m_Rigidbody.SweepTest(heading, out RaycastHit hit, distance + SKIN_WIDTH, QueryTriggerInteraction.Ignore))
+                if (!TrySweep(heading, distance + SKIN_WIDTH, out RaycastHit hit))
                 {
                     position += motion;
 
@@ -191,6 +191,39 @@ namespace RPGFramework.Field
             return position;
         }
 
+        /// <summary>
+        /// The nearest thing the body would hit. The single-hit sweep cannot skip a collider, so only when it lands on
+        /// an entity others may walk through is every hit asked for — rare enough that its allocation is not paid on
+        /// every step.
+        /// </summary>
+        private bool TrySweep(Vector3 heading, float distance, out RaycastHit nearest)
+        {
+            if (!m_Rigidbody.SweepTest(heading, out nearest, distance, QueryTriggerInteraction.Ignore))
+            {
+                return false;
+            }
+
+            if (FieldEntity.Blocks(nearest.collider))
+            {
+                return true;
+            }
+
+            bool found = false;
+
+            foreach (RaycastHit hit in m_Rigidbody.SweepTestAll(heading, distance, QueryTriggerInteraction.Ignore))
+            {
+                if (!FieldEntity.Blocks(hit.collider) || found && hit.distance >= nearest.distance)
+                {
+                    continue;
+                }
+
+                nearest = hit;
+                found   = true;
+            }
+
+            return found;
+        }
+
         private Vector3 Depenetrate(Vector3 position)
         {
             foreach (Collider own in m_SolidColliders)
@@ -205,7 +238,7 @@ namespace RPGFramework.Field
                 {
                     Collider other = m_Overlaps[i];
 
-                    if (other.attachedRigidbody == m_Rigidbody)
+                    if (other.attachedRigidbody == m_Rigidbody || !FieldEntity.Blocks(other))
                     {
                         continue;
                     }

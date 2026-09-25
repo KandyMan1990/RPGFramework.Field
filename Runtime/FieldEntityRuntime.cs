@@ -21,15 +21,18 @@
         internal int  EntityId { get; }
         private  bool IsActive { get; }
 
-        private readonly int[] m_ScriptIdBySlot;
-        private readonly int[] m_ScriptIdByEvent;
+        private readonly int[]  m_ScriptIdBySlot;
+        private readonly int[]  m_ScriptIdByEvent;
+        private readonly byte[] m_SlotByEvent;
 
-        internal FieldEntityRuntime(int entityId, int[] scriptIdsByEvent)
+        /// <param name="slotsByEvent">The slot each script runs in, from its type — see <see cref="FieldScriptSlots" />.</param>
+        internal FieldEntityRuntime(int entityId, int[] scriptIdsByEvent, byte[] slotsByEvent)
         {
             EntityId = entityId;
             IsActive = true;
 
             m_ScriptIdByEvent = scriptIdsByEvent;
+            m_SlotByEvent     = slotsByEvent;
             m_ScriptIdBySlot  = new int[PRIORITY_COUNT];
 
             for (int i = 0; i < PRIORITY_COUNT; i++)
@@ -55,6 +58,18 @@
             scriptId = m_ScriptIdByEvent[eventId];
 
             return true;
+        }
+
+        /// <summary>
+        /// Resolve one of this entity's event ids to the script the VM holds, and the slot it runs in.
+        /// </summary>
+        internal bool TryGetScript(int eventId, out int scriptId, out byte slot)
+        {
+            bool found = TryGetScriptId(eventId, out scriptId);
+
+            slot = found ? m_SlotByEvent[eventId] : (byte)0;
+
+            return found;
         }
 
         internal bool IsSlotOccupied(byte priority)

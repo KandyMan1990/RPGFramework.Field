@@ -21,6 +21,7 @@ namespace RPGFramework.Field
 
         internal int  EntityId         => m_Record != null ? m_Record.EntityId : NO_ENTITY;
         internal bool HasVisibleObject => m_VisibleObject != null;
+        internal bool IsSolid          { get; private set; } = true;
 
         private void Awake()
         {
@@ -45,6 +46,28 @@ namespace RPGFramework.Field
         internal void SetVisibleObject(GameObject visibleObject)
         {
             m_VisibleObject = visibleObject;
+        }
+
+        /// <summary>
+        /// Whether other entities are stopped by this one. Its own movement is unaffected, as the reference's through
+        /// flag is: it is read only when something else moves into it.
+        /// </summary>
+        internal void SetSolid(bool solid)
+        {
+            IsSolid = solid;
+        }
+
+        /// <summary>
+        /// Whether a collider stops a moving entity: anything that is not an entity does, and an entity does unless a
+        /// script has let others walk through it.
+        /// </summary>
+        internal static bool Blocks(Component collider)
+        {
+            FieldEntity entity = collider.GetComponentInParent<FieldEntity>();
+
+            bool blocks = entity == null || entity.IsSolid;
+
+            return blocks;
         }
 
         internal void SetVisible(bool visible)

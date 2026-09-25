@@ -8,22 +8,19 @@ namespace RPGFramework.Field
         [FieldOpCode("RETURN", ArgumentLayout.Sequential, Summary = "End this script and free its priority slot")]
         Return = 0x0000,
 
-        [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts. Does nothing if that priority slot is busy", StopsInit = true)]
+        [FieldOpCode("REQUEST_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of an entity's scripts. Does nothing if the slot its type runs in is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "7 most urgent. Shared with the event that runs in that slot")]
-        [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
+        [Argument(1, "targetEventId",  ArgumentType.EventId, Description = "which of that entity's scripts; its type decides its slot")]
         RunAnotherEntityScriptUnlessBusy = 0x0001,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait until it starts. Does nothing if that priority slot is busy", StopsInit = true)]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of an entity's scripts and wait until it starts. Does nothing if the slot its type runs in is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "7 most urgent. Shared with the event that runs in that slot")]
-        [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
+        [Argument(1, "targetEventId",  ArgumentType.EventId, Description = "which of that entity's scripts; its type decides its slot")]
         RunAnotherEntityScriptWaitUntilStarted = 0x0002,
 
-        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of another entity's scripts and wait for it to finish. Does nothing if that priority slot is busy", StopsInit = true)]
+        [FieldOpCode("REQUEST_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of an entity's scripts and wait for it to finish. Does nothing if the slot its type runs in is busy", StopsInit = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
-        [Argument(1, "priority",       ArgumentType.Priority, Description = "7 most urgent. Shared with the event that runs in that slot")]
-        [Argument(2, "targetEventId",  ArgumentType.EventId,  Description = "the script's index within that entity")]
+        [Argument(1, "targetEventId",  ArgumentType.EventId, Description = "which of that entity's scripts; its type decides its slot")]
         RunAnotherEntityScriptWaitUntilFinished = 0x0003,
 
         RunPartyMemberScriptUnlessBusy        = 0x0004, // as REQUEST_SCRIPT but addressed to a party slot rather than an entity id
@@ -936,7 +933,11 @@ namespace RPGFramework.Field
         Visibility = 0x0507,
 
         SetEntityActive           = 0x0508, // bool active - inactive stops its scripts, hides it and removes its collision
-        EntitySolidity            = 0x0509,
+
+        [FieldOpCode("SOLIDITY", ArgumentLayout.Sequential, Summary = "Let other entities walk through this one, or block them again", NeedsBody = true)]
+        [Argument(0, "isSolid", ArgumentType.Bool)]
+        EntitySolidity = 0x0509,
+
         PushScriptActivation      = 0x050A,
         SetCollisionRadius        = 0x050B,
 

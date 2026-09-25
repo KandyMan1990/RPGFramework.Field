@@ -225,6 +225,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSfx                         += OnRequestSfx;
             m_FieldContext.VM.RequestSetPlayerEntity             += OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSetEntityVisible            += OnRequestSetEntityVisible;
+            m_FieldContext.VM.RequestSetEntitySolid              += OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    += OnRequestSetGatewayTriggersActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive += OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetCollisionTriggerActive   += OnRequestSetCollisionTriggerActive;
@@ -293,6 +294,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetCollisionTriggerActive   -= OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= OnRequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetEntitySolid              -= OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetEntityVisible            -= OnRequestSetEntityVisible;
             m_FieldContext.VM.RequestSetPlayerEntity             -= OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSfx                         -= OnRequestSfx;
@@ -427,18 +429,20 @@ namespace RPGFramework.Field
 
             foreach (CompiledFieldEntity record in fieldEntities.Compiled)
             {
-                int[] scriptIdsByEvent = new int[record.Scripts.Count];
+                int[]  scriptIdsByEvent = new int[record.Scripts.Count];
+                byte[] slotsByEvent     = new byte[record.Scripts.Count];
 
                 for (int i = 0; i < record.Scripts.Count; i++)
                 {
                     CompiledFieldScript script = record.Scripts[i];
 
                     scriptIdsByEvent[i] = script.ScriptId;
+                    slotsByEvent[i]     = script.Slot;
 
                     vm.RegisterScript(script.ScriptId, fieldEntities.FormatVersion, script.Bytecode);
                 }
 
-                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(record.EntityId, scriptIdsByEvent);
+                FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(record.EntityId, scriptIdsByEvent, slotsByEvent);
 
                 entities.Add(fieldEntityRuntime);
                 vm.RegisterEntity(record.EntityId, fieldEntityRuntime);
@@ -600,6 +604,11 @@ namespace RPGFramework.Field
             foreach ((int entityId, bool active) in m_FieldContext.InteractionsActive)
             {
                 m_Entities[entityId].InteractionTrigger.SetActive(active);
+            }
+
+            foreach ((int entityId, bool solid) in m_FieldContext.Solidity)
+            {
+                m_Entities[entityId].Entity.SetSolid(solid);
             }
 
             foreach ((int entityId, float range) in m_FieldContext.InteractionRanges)
@@ -785,6 +794,12 @@ namespace RPGFramework.Field
             ShowOrHideEntity(entityId, visible);
         }
 
+        private void OnRequestSetEntitySolid(int entityId, bool solid)
+        {
+            m_Entities[entityId].Entity.SetSolid(solid);
+            m_FieldContext.SetSolid(entityId, solid);
+        }
+
         private void ShowOrHideEntity(int entityId, bool visible)
         {
             FieldEntityComponents entity = m_Entities[entityId];
@@ -804,17 +819,17 @@ namespace RPGFramework.Field
 
         private void OnCollisionTriggerEntered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Enter);
+            m_FieldContext.VM.RequestScript(entityId, eventId);
         }
 
         private void OnCollisionTriggerLeft(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Leave);
+            m_FieldContext.VM.RequestScript(entityId, eventId);
         }
 
         private void OnInteractionTriggered(int entityId, int eventId)
         {
-            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Interaction);
+            m_FieldContext.VM.RequestScript(entityId, eventId);
         }
 
         private bool IsPlayerFacingEntity(int entityId)
@@ -1016,7 +1031,7 @@ namespace RPGFramework.Field
                 return;
             }
 
-            m_FieldContext.VM.RequestScript(entityId, eventId, (byte)FieldScriptPriority.Enter);
+            m_FieldContext.VM.RequestScript(entityId, eventId);
         }
 
         private void OnRequestSetCollisionTriggerActive(int entityId, bool active)
