@@ -55,12 +55,14 @@ namespace RPGFramework.Field
 
         void IMovementDriver.SetPosition(Vector3 position)
         {
-            m_Rigidbody.MovePosition(position);
+            m_Rigidbody.position           = position;
+            m_Rigidbody.transform.position = position;
         }
 
         void IMovementDriver.SetRotation(Quaternion rotation)
         {
-            m_Rigidbody.MoveRotation(rotation);
+            m_Rigidbody.rotation           = rotation;
+            m_Rigidbody.transform.rotation = rotation;
         }
 
         void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
