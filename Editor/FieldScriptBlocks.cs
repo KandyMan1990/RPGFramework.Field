@@ -31,6 +31,14 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         public List<FieldScriptBlock> Children { get; }
 
+        /// <summary>
+        /// The name, for a <c>LABEL</c>: a place a jump can go to. Null for everything else. Not an opcode — it emits
+        /// nothing — but a block of its own so it can be placed, moved and named like one.
+        /// </summary>
+        public string LabelName { get; private set; }
+
+        public bool IsLabel => LabelName != null;
+
         /// <summary>The instructions that run when the comparison does not hold. Null when there is no ELSE.</summary>
         public List<FieldScriptBlock> ElseChildren { get; private set; }
 
@@ -63,6 +71,18 @@ namespace RPGFramework.Field.Editor
             OpCode    = null;
             Arguments = new List<string>();
             RawLine   = rawLine;
+        }
+
+        public static FieldScriptBlock CreateLabel(string name)
+        {
+            FieldScriptBlock label = new FieldScriptBlock(null, new List<string>()) { LabelName = name };
+
+            return label;
+        }
+
+        public void RenameLabel(string name)
+        {
+            LabelName = name;
         }
 
         /// <summary>
@@ -98,6 +118,7 @@ namespace RPGFramework.Field.Editor
                     return "$";
 
                 case ArgumentType.LocalisationKeyList:
+                case ArgumentType.Label:
                     return string.Empty;
 
                 case ArgumentType.Comparison:
@@ -113,6 +134,13 @@ namespace RPGFramework.Field.Editor
 
         public string ToLine()
         {
+            if (IsLabel)
+            {
+                string labelLine = $"{FieldScriptBlocks.LABEL_BLOCK} {LabelName}".TrimEnd();
+
+                return labelLine;
+            }
+
             if (!IsRecognised)
             {
                 return RawLine;
@@ -151,6 +179,12 @@ namespace RPGFramework.Field.Editor
         public const string END_BLOCK = "END_IF";
 
         public const string ELSE_BLOCK = "ELSE";
+
+        /// <summary>
+        /// Marks a place a jump can go to. Not an opcode either: it emits nothing, and the compiler turns a jump's
+        /// label into the byte it needs.
+        /// </summary>
+        public const string LABEL_BLOCK = "LABEL";
 
         private const string INDENT = "    ";
 
@@ -216,6 +250,13 @@ namespace RPGFramework.Field.Editor
                 }
 
                 string[] parts = line.Split(' ');
+
+                // Anything but exactly one name is kept as written rather than guessed at.
+                if (parts[0] == LABEL_BLOCK && parts.Length == 2)
+                {
+                    body.Add(FieldScriptBlock.CreateLabel(parts[1]));
+                    continue;
+                }
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {

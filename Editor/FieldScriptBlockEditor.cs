@@ -62,7 +62,7 @@ namespace RPGFramework.Field.Editor
             toolbar.style.flexDirection = FlexDirection.Row;
             toolbar.style.marginBottom  = 6;
 
-            Button addButton = new Button(() => ShowOpCodePicker(m_Blocks)) { text = "Add block" };
+            MenuButton addButton = new MenuButton(menu => FillOpCodeMenu(menu, m_Blocks)) { text = "Add block" };
             addButton.style.flexGrow = 1;
 
             toolbar.Add(addButton);
@@ -71,11 +71,16 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// A searchable list of every opcode that can actually run, grouped the way the enum groups them.
+        /// Every opcode that can actually run, grouped the way the enum groups them.
         /// </summary>
-        private void ShowOpCodePicker(List<FieldScriptBlock> target)
+        private void FillOpCodeMenu(DropdownMenu menu, List<FieldScriptBlock> target)
         {
-            GenericMenu menu = new GenericMenu();
+            menu.AppendAction($"Flow/{FieldScriptBlocks.LABEL_BLOCK}  —  Mark a place a jump can go to", _ =>
+                                                                                                         {
+                                                                                                             target.Add(FieldScriptBlock.CreateLabel(NextLabelName()));
+                                                                                                             RebuildBlockList();
+                                                                                                             NotifyChanged();
+                                                                                                         });
 
             foreach (FieldOpCodeInfo opCode in FieldOpCodeCatalogue.All)
             {
@@ -86,15 +91,13 @@ namespace RPGFramework.Field.Editor
 
                 FieldOpCodeInfo captured = opCode;
 
-                menu.AddItem(new GUIContent(label), false, () =>
-                                                           {
-                                                               target.Add(FieldScriptBlock.CreateEmpty(captured));
-                                                               RebuildBlockList();
-                                                               NotifyChanged();
-                                                           });
+                menu.AppendAction(label, _ =>
+                                         {
+                                             target.Add(WithFirstLabel(FieldScriptBlock.CreateEmpty(captured)));
+                                             RebuildBlockList();
+                                             NotifyChanged();
+                                         });
             }
-
-            menu.ShowAsContext();
         }
 
         /// <summary>
@@ -151,9 +154,16 @@ namespace RPGFramework.Field.Editor
             root.style.paddingLeft     = 6;
             root.style.paddingRight    = 6;
             root.style.borderLeftWidth = 3;
-            root.style.borderLeftColor = block.IsRecognised ? new Color(0.35f, 0.55f, 0.85f) : new Color(0.85f, 0.55f, 0.2f);
+            root.style.borderLeftColor = block.IsLabel      ? new Color(0.55f, 0.75f, 0.45f) :
+                                         block.IsRecognised ? new Color(0.35f, 0.55f, 0.85f) : new Color(0.85f, 0.55f, 0.2f);
 
             root.Add(BuildBlockHeader(block, index, owner));
+
+            if (block.IsLabel)
+            {
+                root.Add(BuildLabelName(block));
+                return root;
+            }
 
             if (!block.IsRecognised)
             {
@@ -252,7 +262,7 @@ namespace RPGFramework.Field.Editor
 
             AddBlocks(body, children);
 
-            Button addInside = new Button(() => ShowOpCodePicker(children)) { text = addLabel };
+            MenuButton addInside = new MenuButton(menu => FillOpCodeMenu(menu, children)) { text = addLabel };
             addInside.style.marginTop = 4;
 
             body.Add(addInside);
@@ -266,10 +276,10 @@ namespace RPGFramework.Field.Editor
             header.style.flexDirection = FlexDirection.Row;
             header.style.alignItems    = Align.Center;
 
-            Label name = new Label(block.IsRecognised ? block.OpCode.ScriptName : "Unrecognised");
+            Label name = new Label(block.IsLabel ? FieldScriptBlocks.LABEL_BLOCK : block.IsRecognised ? block.OpCode.ScriptName : "Unrecognised");
             name.style.unityFontStyleAndWeight = FontStyle.Bold;
             name.style.flexGrow                = 1;
-            name.tooltip                       = block.IsRecognised ? block.OpCode.Summary : block.RawLine;
+            name.tooltip                       = block.IsLabel ? "A place a jump can go to. Emits nothing" : block.IsRecognised ? block.OpCode.Summary : block.RawLine;
 
             header.Add(name);
             header.Add(MakeSmallButton("▲", "Move up",   () => Move(owner, index, -1)));
@@ -281,7 +291,15 @@ namespace RPGFramework.Field.Editor
 
         private static Button MakeSmallButton(string text, string tooltip, Action onClick)
         {
-            Button button = new Button(onClick) { text = text, tooltip = tooltip };
+            Button button = MakeSmall(new Button(onClick), text, tooltip);
+
+            return button;
+        }
+
+        private static Button MakeSmall(Button button, string text, string tooltip)
+        {
+            button.text               = text;
+            button.tooltip            = tooltip;
             button.style.width        = 24;
             button.style.marginLeft   = 2;
             button.style.paddingLeft  = 0;
@@ -308,7 +326,7 @@ namespace RPGFramework.Field.Editor
 
             if (ArgumentTypes.TryGetVariableWidth(argument.Type, argument.Width, out _))
             {
-                row.Add(MakeSmallButton("▼", "Choose a variable", () => ShowVariablePicker(block, argumentIndex, argument)));
+                row.Add(MakeSmall(new MenuButton(menu => FillVariableMenu(menu, block, argumentIndex, argument)), "▼", "Choose a variable"));
             }
 
             if (HasLiteralControl(argument) && IsVariableToken(block, argumentIndex))
@@ -317,6 +335,148 @@ namespace RPGFramework.Field.Editor
             }
 
             return row;
+        }
+
+        /// <summary>
+        /// The label's name, changed on Enter or when the field loses focus rather than on every key, since a rename
+        /// rebuilds the blocks. Every jump that went to the old name goes to the new one, so renaming cannot break them.
+        /// </summary>
+        private VisualElement BuildLabelName(FieldScriptBlock block)
+        {
+            TextField name = new TextField("Name") { value = block.LabelName, isDelayed = true };
+            name.tooltip = "Starts with a letter; letters, digits and underscores";
+
+            name.RegisterValueChangedCallback(e =>
+                                              {
+                                                  if (!FieldScriptCompiler.IsLabelName(e.newValue))
+                                                  {
+                                                      name.SetValueWithoutNotify(e.previousValue);
+                                                      return;
+                                                  }
+
+                                                  RenameJumps(m_Blocks, block.LabelName, e.newValue);
+                                                  block.RenameLabel(e.newValue);
+
+                                                  RebuildBlockList();
+                                                  NotifyChanged();
+                                              });
+
+            return name;
+        }
+
+        private static void RenameJumps(List<FieldScriptBlock> blocks, string from, string to)
+        {
+            foreach (FieldScriptBlock block in blocks)
+            {
+                if (block.IsRecognised)
+                {
+                    for (int i = 0; i < block.OpCode.Arguments.Count && i < block.Arguments.Count; i++)
+                    {
+                        if (block.OpCode.Arguments[i].Type == ArgumentType.Label && block.Arguments[i] == from)
+                        {
+                            block.Arguments[i] = to;
+                        }
+                    }
+                }
+
+                if (block.Children != null)
+                {
+                    RenameJumps(block.Children, from, to);
+                }
+
+                if (block.ElseChildren != null)
+                {
+                    RenameJumps(block.ElseChildren, from, to);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The labels in this script, including those inside IF blocks: a jump can go anywhere in its own script.
+        /// </summary>
+        private List<string> LabelNames()
+        {
+            List<string> names = new List<string>();
+
+            CollectLabelNames(m_Blocks, names);
+
+            return names;
+        }
+
+        private static void CollectLabelNames(List<FieldScriptBlock> blocks, List<string> names)
+        {
+            foreach (FieldScriptBlock block in blocks)
+            {
+                if (block.IsLabel)
+                {
+                    names.Add(block.LabelName);
+                }
+
+                if (block.Children != null)
+                {
+                    CollectLabelNames(block.Children, names);
+                }
+
+                if (block.ElseChildren != null)
+                {
+                    CollectLabelNames(block.ElseChildren, names);
+                }
+            }
+        }
+
+        private string NextLabelName()
+        {
+            List<string> taken = LabelNames();
+
+            int    number = taken.Count + 1;
+            string next   = $"Label{number}";
+
+            while (taken.Contains(next))
+            {
+                number++;
+                next = $"Label{number}";
+            }
+
+            return next;
+        }
+
+        private FieldScriptBlock WithFirstLabel(FieldScriptBlock block)
+        {
+            List<string> labels = LabelNames();
+
+            for (int i = 0; labels.Count > 0 && i < block.OpCode.Arguments.Count; i++)
+            {
+                if (block.OpCode.Arguments[i].Type == ArgumentType.Label)
+                {
+                    block.Arguments[i] = labels[0];
+                }
+            }
+
+            return block;
+        }
+
+        /// <summary>
+        /// The labels in this script. With none there is nowhere to go yet, which is said rather than offering an
+        /// empty list.
+        /// </summary>
+        private VisualElement LabelChoice(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            List<string> labels = LabelNames();
+
+            if (labels.Count == 0)
+            {
+                HelpBox none = new HelpBox("No LABEL in this script yet. Add one where this should go, then choose it here.", HelpBoxMessageType.Info);
+
+                return none;
+            }
+
+            DropdownField field = new DropdownField(label, labels, 0);
+
+            // Whatever is written stays shown, even a label that no longer exists, rather than quietly becoming the first.
+            field.SetValueWithoutNotify(current);
+            field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue));
+
+            return field;
         }
 
         /// <summary>
@@ -558,6 +718,9 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.LocalisationKeyList:
                     return KeyList(block, argumentIndex, label, current);
 
+                case ArgumentType.Label:
+                    return LabelChoice(block, argumentIndex, label, current);
+
                 case ArgumentType.Priority:
                     return IndexDropdown(block, argumentIndex, label, current, Enum.GetValues(typeof(FieldScriptPriority)).Length, i => $"{i}: {(FieldScriptPriority)i}");
 
@@ -638,19 +801,16 @@ namespace RPGFramework.Field.Editor
         /// Offer the variables the map declares that this argument can take: a destination's exact width, or for
         /// a value, any width it can read.
         /// </summary>
-        private void ShowVariablePicker(FieldScriptBlock block, int argumentIndex, FieldArgumentInfo argument)
+        private void FillVariableMenu(DropdownMenu menu, FieldScriptBlock block, int argumentIndex, FieldArgumentInfo argument)
         {
             if (m_VariableMap == null)
             {
                 m_VariableMap = FindVariableMap();
             }
 
-            GenericMenu menu = new GenericMenu();
-
             if (m_VariableMap == null)
             {
-                menu.AddDisabledItem(new GUIContent("No VariableMapAsset in the project"));
-                menu.ShowAsContext();
+                menu.AppendAction("No VariableMapAsset in the project", null, DropdownMenuAction.Status.Disabled);
                 return;
             }
 
@@ -670,16 +830,14 @@ namespace RPGFramework.Field.Editor
                 string label = $"{variable.Bank}/{variable.Name}";
                 string token = "$" + variable.Name;
 
-                menu.AddItem(new GUIContent(label), false, () => Set(block, argumentIndex, token, true));
+                menu.AppendAction(label, _ => Set(block, argumentIndex, token, true));
                 offered++;
             }
 
             if (offered == 0)
             {
-                menu.AddDisabledItem(new GUIContent($"No {width} variables declared"));
+                menu.AppendAction($"No {width} variables declared", null, DropdownMenuAction.Status.Disabled);
             }
-
-            menu.ShowAsContext();
         }
 
         /// <summary>
@@ -855,6 +1013,30 @@ namespace RPGFramework.Field.Editor
             foreach (ChildAnimatorStateMachine child in stateMachine.stateMachines)
             {
                 CollectAnimationNames(child.stateMachine, animationNames);
+            }
+        }
+
+        /// <summary>
+        /// A button that opens a menu beneath itself, filled on each click so it lists what exists at that moment.
+        /// </summary>
+        private sealed class MenuButton : Button, IToolbarMenuElement
+        {
+            private readonly DropdownMenu         m_Menu = new DropdownMenu();
+            private readonly Action<DropdownMenu> m_Fill;
+
+            DropdownMenu IToolbarMenuElement.menu => m_Menu;
+
+            internal MenuButton(Action<DropdownMenu> fill)
+            {
+                m_Fill  =  fill;
+                clicked += Open;
+            }
+
+            private void Open()
+            {
+                m_Menu.ClearItems();
+                m_Fill(m_Menu);
+                this.ShowMenu();
             }
         }
 

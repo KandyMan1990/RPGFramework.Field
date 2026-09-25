@@ -64,11 +64,11 @@ namespace RPGFramework.Field
         Float,
         Bool,
 
-        /// <summary>A jump relative to the next instruction. Always literal, so the compiler can check where it lands.</summary>
-        JumpDistance,
-
-        /// <summary>A jump to an absolute position in the script. Always literal, for the same reason.</summary>
-        JumpTarget,
+        /// <summary>
+        /// Where a jump goes: the name of a <c>LABEL</c> in the same script, which the compiler turns into the byte
+        /// the jump needs. Never a number — a byte offset silently moves when a block is inserted or removed.
+        /// </summary>
+        Label,
 
         /// <summary>An entity in the current field.</summary>
         EntityId,

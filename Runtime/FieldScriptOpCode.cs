@@ -36,12 +36,12 @@ namespace RPGFramework.Field
         CallAnotherScript = 0x0008, // run another of this entity's scripts and come back when it returns
         ReturnFromCall    = 0x0009, // return from CallAnotherScript, which RETURN does not
 
-        [FieldOpCode("GOTO_JUMP", ArgumentLayout.Sequential, Summary = "Jump forwards or backwards, counted from the end of this instruction")]
-        [Argument(0, "offset", ArgumentType.JumpDistance, Description = "relative to the byte after this instruction")]
+        [FieldOpCode("GOTO_JUMP", ArgumentLayout.Sequential, Summary = "Carry on from a label in this script, stored as a distance from this instruction")]
+        [Argument(0, "label", ArgumentType.Label, Description = "a LABEL in this script")]
         GotoJump = 0x000A,
 
-        [FieldOpCode("GOTO_DIRECTLY", ArgumentLayout.Sequential, Summary = "Jump to an absolute position in this script")]
-        [Argument(0, "target", ArgumentType.JumpTarget, Description = "absolute byte offset")]
+        [FieldOpCode("GOTO_DIRECTLY", ArgumentLayout.Sequential, Summary = "Carry on from a label in this script, stored as a position in it")]
+        [Argument(0, "label", ArgumentType.Label, Description = "a LABEL in this script")]
         GotoDirectly = 0x000B,
 
         [FieldOpCode("IF_BOOL", ArgumentLayout.BankCompare, OpensBlock = true, Summary = "Run the instructions inside only when the comparison holds")]

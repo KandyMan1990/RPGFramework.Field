@@ -32,13 +32,10 @@ namespace RPGFramework.Field.Editor
 
             VariableMapAsset variableMap = null;
 
-            // Every jump has to land on the first byte of an instruction. Nothing checked that, so a
-            // hand-computed offset that was out by a byte would put the instruction pointer in the
-            // middle of an argument, and the VM would execute that argument as an opcode. The offsets of
-            // every instruction are collected as they are emitted, and every jump is resolved against
-            // them once the whole script is known.
-            List<int>      instructionStarts = new List<int>();
-            List<JumpSite> jumpSites         = new List<JumpSite>();
+            // A jump names a label, which may be further down, so its argument is left blank and filled in once
+            // the whole script is known. A label sits between instructions, so a jump can only ever land on one.
+            Dictionary<string, int> labels = new Dictionary<string, int>(StringComparer.Ordinal);
+            List<PendingJump>       jumps  = new List<PendingJump>();
 
             // Open IF blocks, innermost last. Each remembers where its jump distance was left blank so
             // END_IF can fill it in, once the size of the body is known.
@@ -54,13 +51,17 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = line.Split(' ');
 
-                int instructionStart = (int)ms.Position;
-                instructionStarts.Add(instructionStart);
-
-                RecordJumpSite(parts, lineIndex, instructionStart, jumpSites);
-
                 switch (parts[0])
                 {
+                    case "LABEL":
+                        DefineLabel(parts, lineIndex + 1, (int)ms.Position, labels);
+                        break;
+
+                    case "GOTO_JUMP":
+                    case "GOTO_DIRECTLY":
+                        WriteJump(bw, ms, parts, lineIndex + 1, jumps);
+                        break;
+
                     case "ELSE":
                         OpenElse(bw, ms, lineIndex + 1, openBlocks);
                         break;
@@ -113,50 +114,124 @@ namespace RPGFramework.Field.Editor
                 throw new Exception($"{nameof(FieldScriptCompiler)}::{nameof(Compile)} {openBlocks.Count} unclosed IF block(s); the one opened on line {unclosed.LineNumber} has no END_IF");
             }
 
-            ValidateJumpTargets(jumpSites, instructionStarts, (int)ms.Length);
+            ResolveJumps(bw, ms, jumps, labels);
 
             return ms.ToArray();
         }
 
         /// <summary>
-        /// Where a jump was written, and what it will resolve to. Recorded while emitting because the
-        /// destination may not have been emitted yet.
+        /// A jump whose label may not have been read yet. Its argument was written blank at
+        /// <see cref="ArgumentPosition" /> and is filled in by <see cref="ResolveJumps" />.
         /// </summary>
-        private readonly struct JumpSite
+        private readonly struct PendingJump
         {
+            internal readonly string Label;
             internal readonly string ScriptName;
             internal readonly int    LineNumber;
             internal readonly int    InstructionStart;
-            internal readonly int    Argument;
+            internal readonly int    ArgumentPosition;
             internal readonly bool   IsAbsolute;
 
-            internal JumpSite(string scriptName, int lineNumber, int instructionStart, int argument, bool isAbsolute)
+            internal PendingJump(string label, string scriptName, int lineNumber, int instructionStart, int argumentPosition, bool isAbsolute)
             {
+                Label            = label;
                 ScriptName       = scriptName;
                 LineNumber       = lineNumber;
                 InstructionStart = instructionStart;
-                Argument         = argument;
+                ArgumentPosition = argumentPosition;
                 IsAbsolute       = isAbsolute;
             }
+        }
 
-            /// <summary>
-            /// The byte the instruction pointer will hold after this jump runs.<br /><br />
-            /// <c>GOTO_DIRECTLY</c> assigns the argument outright. <c>GOTO_JUMP</c> adds it to the pointer,
-            /// which by then has already advanced past this instruction — two bytes of opcode and four of
-            /// argument.
-            /// </summary>
-            internal int ResolveTarget()
+        /// <summary>
+        /// Starts with a letter or an underscore and is made of letters, digits and underscores — so it can never be
+        /// mistaken for the byte offset a jump used to take.
+        /// </summary>
+        internal static bool IsLabelName(string name)
+        {
+            bool isLabelName = !string.IsNullOrEmpty(name) && (char.IsLetter(name[0]) || name[0] == '_');
+
+            for (int i = 1; isLabelName && i < name.Length; i++)
             {
-                if (IsAbsolute)
+                isLabelName = char.IsLetterOrDigit(name[i]) || name[i] == '_';
+            }
+
+            return isLabelName;
+        }
+
+        /// <summary>
+        /// A label emits nothing: it marks where the next instruction starts.
+        /// </summary>
+        private static void DefineLabel(string[] parts, int lineNumber, int position, Dictionary<string, int> labels)
+        {
+            if (parts.Length != 2 || !IsLabelName(parts[1]))
+            {
+                throw new Exception($"line {lineNumber}: LABEL needs one name, starting with a letter and made of letters, digits and underscores");
+            }
+
+            if (labels.ContainsKey(parts[1]))
+            {
+                throw new Exception($"line {lineNumber}: LABEL [{parts[1]}] is already in this script, so a jump to it could mean either");
+            }
+
+            labels.Add(parts[1], position);
+        }
+
+        private static void WriteJump(BinaryWriter bw, MemoryStream ms, string[] parts, int lineNumber, List<PendingJump> jumps)
+        {
+            if (parts.Length != 2 || !IsLabelName(parts[1]))
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} takes the name of a LABEL in this script, not a byte offset — put a LABEL where it should go and name that");
+            }
+
+            bool isAbsolute       = parts[0] == "GOTO_DIRECTLY";
+            int  instructionStart = (int)ms.Position;
+
+            bw.Write((ushort)(isAbsolute ? FieldScriptOpCode.GotoDirectly : FieldScriptOpCode.GotoJump));
+            bw.Flush();
+
+            jumps.Add(new PendingJump(parts[1], parts[0], lineNumber, instructionStart, (int)ms.Position, isAbsolute));
+
+            bw.Write(0);
+        }
+
+        /// <summary>
+        /// Fill in every jump now the whole script is known. <c>GOTO_DIRECTLY</c> stores where its label is;
+        /// <c>GOTO_JUMP</c> how far that is from the end of the jump, since the VM adds it to a pointer already past it.
+        /// </summary>
+        private static void ResolveJumps(BinaryWriter bw, MemoryStream ms, List<PendingJump> jumps, Dictionary<string, int> labels)
+        {
+            const int jumpInstructionSize = sizeof(ushort) + sizeof(int);
+
+            List<string> problems = new List<string>();
+            int          length   = (int)ms.Length;
+
+            foreach (PendingJump jump in jumps)
+            {
+                if (!labels.TryGetValue(jump.Label, out int target))
                 {
-                    return Argument;
+                    problems.Add($"line {jump.LineNumber}: {jump.ScriptName} goes to [{jump.Label}], which no LABEL in this script names");
+                    continue;
                 }
 
-                const int jumpInstructionSize = sizeof(ushort) + sizeof(int);
+                if (target >= length)
+                {
+                    problems.Add($"line {jump.LineNumber}: {jump.ScriptName} goes to [{jump.Label}], which ends the script with nothing after it to run");
+                    continue;
+                }
 
-                int target = InstructionStart + jumpInstructionSize + Argument;
+                int argument = jump.IsAbsolute ? target : target - (jump.InstructionStart + jumpInstructionSize);
 
-                return target;
+                ms.Position = jump.ArgumentPosition;
+                bw.Write(argument);
+            }
+
+            bw.Flush();
+            ms.Position = length;
+
+            if (problems.Count > 0)
+            {
+                throw new Exception($"{nameof(FieldScriptCompiler)}::{nameof(ResolveJumps)} {problems.Count} bad jump(s):\n  {string.Join("\n  ", problems)}");
             }
         }
 
@@ -361,11 +436,6 @@ namespace RPGFramework.Field.Editor
         {
             switch (type)
             {
-                case ArgumentType.JumpDistance:
-                case ArgumentType.JumpTarget:
-                    bw.Write(int.Parse(parts[part], CultureInfo.InvariantCulture));
-                    break;
-
                 case ArgumentType.FieldName:
                     bw.Write(HashFieldName(parts[part], lineNumber));
                     break;
@@ -560,63 +630,6 @@ namespace RPGFramework.Field.Editor
             bw.Flush();
 
             ms.Position = resume;
-        }
-
-        private static void RecordJumpSite(string[] parts, int lineIndex, int instructionStart, List<JumpSite> jumpSites)
-        {
-            bool isAbsolute;
-
-            switch (parts[0])
-            {
-                case "GOTO_JUMP":
-                    isAbsolute = false;
-                    break;
-                case "GOTO_DIRECTLY":
-                    isAbsolute = true;
-                    break;
-                default:
-                    return;
-            }
-
-            if (parts.Length < 2 || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int argument))
-            {
-                // The switch below emits this line and will raise its own error on a bad argument.
-                return;
-            }
-
-            jumpSites.Add(new JumpSite(parts[0], lineIndex + 1, instructionStart, argument, isAbsolute));
-        }
-
-        private static void ValidateJumpTargets(List<JumpSite> jumpSites, List<int> instructionStarts, int bytecodeLength)
-        {
-            if (jumpSites.Count == 0)
-            {
-                return;
-            }
-
-            HashSet<int> validTargets = new HashSet<int>(instructionStarts);
-            List<string> problems     = new List<string>();
-
-            foreach (JumpSite jumpSite in jumpSites)
-            {
-                int target = jumpSite.ResolveTarget();
-
-                if (target < 0 || target >= bytecodeLength)
-                {
-                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.ScriptName} resolves to byte {target}, outside the script (0..{bytecodeLength - 1})");
-                    continue;
-                }
-
-                if (!validTargets.Contains(target))
-                {
-                    problems.Add($"line {jumpSite.LineNumber}: {jumpSite.ScriptName} resolves to byte {target}, which is inside an instruction rather than at the start of one");
-                }
-            }
-
-            if (problems.Count > 0)
-            {
-                throw new Exception($"{nameof(FieldScriptCompiler)}::{nameof(ValidateJumpTargets)} {problems.Count} bad jump target(s):\n  {string.Join("\n  ", problems)}");
-            }
         }
 
         /// <summary>
