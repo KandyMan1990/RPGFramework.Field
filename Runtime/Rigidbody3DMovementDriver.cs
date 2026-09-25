@@ -14,7 +14,8 @@ namespace RPGFramework.Field
         private const int   MAX_OVERLAPS   = 16;
         private const float MIN_MOVE_INPUT_SQR = 0.0001f;
 
-        private readonly Collider[] m_Overlaps = new Collider[MAX_OVERLAPS];
+        private readonly Collider[]        m_Overlaps = new Collider[MAX_OVERLAPS];
+        private readonly List<FieldEntity> m_Pushed   = new List<FieldEntity>();
 
         private Collider[] m_SolidColliders;
 
@@ -49,9 +50,13 @@ namespace RPGFramework.Field
 
         void IMovementDriver.PhysicsTick(float fixedDeltaTime)
         {
+            m_Pushed.Clear();
+
             HandleMovement(fixedDeltaTime);
             HandleRotation(fixedDeltaTime);
         }
+
+        IReadOnlyList<FieldEntity> IMovementDriver.Pushed => m_Pushed;
 
         void IMovementDriver.SetPosition(Vector3 position)
         {
@@ -182,6 +187,8 @@ namespace RPGFramework.Field
                     break;
                 }
 
+                FieldEntity.AddOwnerOf(hit.collider, m_Pushed);
+
                 float travelled = Mathf.Max(hit.distance - SKIN_WIDTH, 0f);
 
                 position += heading * travelled;
@@ -240,7 +247,7 @@ namespace RPGFramework.Field
                 {
                     Collider other = m_Overlaps[i];
 
-                    if (other.attachedRigidbody == m_Rigidbody || !FieldEntity.Blocks(other))
+                    if (other.attachedRigidbody == m_Rigidbody)
                     {
                         continue;
                     }
@@ -248,6 +255,13 @@ namespace RPGFramework.Field
                     Transform otherTransform = other.transform;
 
                     if (!Physics.ComputePenetration(own, position + offset, own.transform.rotation, other, otherTransform.position, otherTransform.rotation, out Vector3 outward, out float depth))
+                    {
+                        continue;
+                    }
+
+                    FieldEntity.AddOwnerOf(other, m_Pushed);
+
+                    if (!FieldEntity.Blocks(other))
                     {
                         continue;
                     }

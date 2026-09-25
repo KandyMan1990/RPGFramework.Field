@@ -21,6 +21,7 @@ namespace RPGFramework.Field
         internal event Action<FieldEntityRuntime>                 RequestSetPlayerEntity;
         internal event Action<int, bool>                          RequestSetEntityVisible;
         internal event Action<int, bool>                          RequestSetEntitySolid;
+        internal event Action<int, bool>                          RequestSetPushScriptActive;
         internal event Action<bool>                               RequestSetGatewayTriggersActive;
         internal event Action<int, bool>                          RequestSetInteractionTriggerActive;
         internal event Action<int, bool>                          RequestSetCollisionTriggerActive;
@@ -318,7 +319,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
                        // { FieldScriptOpCode.SetEntityActive, SetEntityActiveOpcodeHandler },
                        { FieldScriptOpCode.EntitySolidity, EntitySolidityOpcodeHandler },
-                       // { FieldScriptOpCode.PushScriptActivation, PushScriptActivationOpcodeHandler },
+                       { FieldScriptOpCode.PushScriptActivation, PushScriptActivationOpcodeHandler },
                        // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
                        { FieldScriptOpCode.InteractionTriggerActivation, InteractabilityOpcodeHandler },
                        { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
@@ -1841,6 +1842,16 @@ namespace RPGFramework.Field
             SequentialSources sources = default;
             bool              isSolid = ReadArgumentBool(ctx, ref sources);
             RequestSetEntitySolid?.Invoke(ctx.EntityId, isSolid);
+        }
+
+        /// <summary>
+        /// Let walking into this entity run its push script, or stop it.
+        /// </summary>
+        private void PushScriptActivationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            RequestSetPushScriptActive?.Invoke(ctx.EntityId, enabled);
         }
 
         /// <summary>

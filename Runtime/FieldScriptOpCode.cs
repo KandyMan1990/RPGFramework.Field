@@ -938,7 +938,10 @@ namespace RPGFramework.Field
         [Argument(0, "isSolid", ArgumentType.Bool)]
         EntitySolidity = 0x0509,
 
-        PushScriptActivation      = 0x050A,
+        [FieldOpCode("PUSH_SCRIPT_ACTIVATION", ArgumentLayout.Sequential, Summary = "Let walking into this entity run its push script, or stop it", NeedsBody = true)]
+        [Argument(0, "enabled", ArgumentType.Bool)]
+        PushScriptActivation = 0x050A,
+
         SetCollisionRadius        = 0x050B,
 
         [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off", NeedsBody = true)]

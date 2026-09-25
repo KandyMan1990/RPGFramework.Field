@@ -215,6 +215,8 @@ namespace RPGFramework.Field
             {
                 entity.MovementDriver?.PhysicsTick(fixedDeltaTime);
             }
+
+            RaisePushes();
         }
 
         private void SubscribeVm()
@@ -226,6 +228,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetPlayerEntity             += OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSetEntityVisible            += OnRequestSetEntityVisible;
             m_FieldContext.VM.RequestSetEntitySolid              += OnRequestSetEntitySolid;
+            m_FieldContext.VM.RequestSetPushScriptActive         += OnRequestSetPushScriptActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    += OnRequestSetGatewayTriggersActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive += OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetCollisionTriggerActive   += OnRequestSetCollisionTriggerActive;
@@ -294,6 +297,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetCollisionTriggerActive   -= OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= OnRequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetPushScriptActive         -= OnRequestSetPushScriptActive;
             m_FieldContext.VM.RequestSetEntitySolid              -= OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetEntityVisible            -= OnRequestSetEntityVisible;
             m_FieldContext.VM.RequestSetPlayerEntity             -= OnRequestSetPlayerEntity;
@@ -611,6 +615,11 @@ namespace RPGFramework.Field
                 m_Entities[entityId].Entity.SetSolid(solid);
             }
 
+            foreach ((int entityId, bool active) in m_FieldContext.PushScriptsActive)
+            {
+                m_Entities[entityId].Entity.SetPushActive(active);
+            }
+
             foreach ((int entityId, float range) in m_FieldContext.InteractionRanges)
             {
                 m_Entities[entityId].InteractionTrigger.SetInteractionRange(range);
@@ -800,11 +809,33 @@ namespace RPGFramework.Field
             m_FieldContext.SetSolid(entityId, solid);
         }
 
+        private void OnRequestSetPushScriptActive(int entityId, bool active)
+        {
+            m_Entities[entityId].Entity.SetPushActive(active);
+            m_FieldContext.SetPushScriptActive(entityId, active);
+        }
+
+        private void RaisePushes()
+        {
+            if (m_PlayerMovementDriver == null || m_FieldContext.IsInputLockedByScript)
+            {
+                return;
+            }
+
+            foreach (FieldEntity pushed in m_PlayerMovementDriver.Pushed)
+            {
+                if (pushed.RaisesPush && pushed.TryGetScriptIndex(FieldScriptType.OnPush, out int eventId))
+                {
+                    m_FieldContext.VM.RequestScript(pushed.EntityId, eventId);
+                }
+            }
+        }
+
         private void ShowOrHideEntity(int entityId, bool visible)
         {
             FieldEntityComponents entity = m_Entities[entityId];
 
-            entity.Entity.SetVisible(visible);
+            entity.Entity.SetShown(visible);
 
             if (entity.InteractionTrigger != null)
             {

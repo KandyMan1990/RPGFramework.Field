@@ -1,4 +1,5 @@
-﻿using RPGFramework.Field.FieldVmArgs;
+﻿using System.Collections.Generic;
+using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.Utils;
 using Unity.Mathematics;
 using UnityEngine;
@@ -107,6 +108,8 @@ namespace RPGFramework.Field
         }
 
         bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
+
+        IReadOnlyList<FieldEntity> IMovementDriver.Pushed => System.Array.Empty<FieldEntity>();
 
         private void HandleMovement(float deltaTime)
         {

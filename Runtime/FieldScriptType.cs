@@ -45,6 +45,13 @@
         /// <c>REQUEST_SCRIPT</c> and its waiting forms. An entity may hold as many as it likes — a shop, a step
         /// of a cutscene, anything shared between its other scripts.
         /// </summary>
-        Requested = 6
+        Requested = 6,
+
+        /// <summary>
+        /// Run when the player walks into the entity's body — an NPC reacting to being bumped, a door that opens when
+        /// walked into — and again each time it returns while the player keeps pushing. Unlike
+        /// <see cref="OnEnter" />, which is a trigger volume, this is the body itself.
+        /// </summary>
+        OnPush = 7
     }
 }

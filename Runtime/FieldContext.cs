@@ -20,6 +20,7 @@ namespace RPGFramework.Field
         internal IReadOnlyDictionary<int, RotationState>     EntityRotationStates    => m_EntityRotationStates;
         internal IReadOnlyDictionary<int, bool>              InteractionsActive      => m_InteractionsActive;
         internal IReadOnlyDictionary<int, bool>              Solidity                => m_Solidity;
+        internal IReadOnlyDictionary<int, bool>              PushScriptsActive       => m_PushScriptsActive;
         internal IReadOnlyDictionary<int, bool>              CollisionTriggersActive => m_CollisionTriggersActive;
         internal IReadOnlyDictionary<int, float>             InteractionRanges       => m_InteractionRanges;
         internal IReadOnlyDictionary<int, float>             MovementSpeeds          => m_MovementSpeeds;
@@ -39,6 +40,7 @@ namespace RPGFramework.Field
         private readonly Dictionary<int, RotationState>     m_EntityRotationStates;
         private readonly Dictionary<int, bool>              m_InteractionsActive;
         private readonly Dictionary<int, bool>              m_Solidity;
+        private readonly Dictionary<int, bool>              m_PushScriptsActive;
         private readonly Dictionary<int, bool>              m_CollisionTriggersActive;
         private readonly Dictionary<int, float>             m_InteractionRanges;
         private readonly Dictionary<int, float>             m_MovementSpeeds;
@@ -62,6 +64,7 @@ namespace RPGFramework.Field
             m_EntityRotationStates    = new Dictionary<int, RotationState>();
             m_InteractionsActive      = new Dictionary<int, bool>();
             m_Solidity                = new Dictionary<int, bool>();
+            m_PushScriptsActive       = new Dictionary<int, bool>();
             m_CollisionTriggersActive = new Dictionary<int, bool>();
             m_InteractionRanges       = new Dictionary<int, float>();
             m_MovementSpeeds          = new Dictionary<int, float>();
@@ -106,6 +109,8 @@ namespace RPGFramework.Field
         internal void SetInteractionActive(int entityId, bool active) => m_InteractionsActive[entityId] = active;
 
         internal void SetSolid(int entityId, bool solid) => m_Solidity[entityId] = solid;
+
+        internal void SetPushScriptActive(int entityId, bool active) => m_PushScriptsActive[entityId] = active;
 
         internal void SetCollisionTriggerActive(int entityId, bool active) => m_CollisionTriggersActive[entityId] = active;
 

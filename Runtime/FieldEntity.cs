@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace RPGFramework.Field
 {
@@ -21,7 +22,13 @@ namespace RPGFramework.Field
 
         internal int  EntityId         => m_Record != null ? m_Record.EntityId : NO_ENTITY;
         internal bool HasVisibleObject => m_VisibleObject != null;
-        internal bool IsSolid          { get; private set; } = true;
+
+        private bool IsSolid { get; set; } = true;
+        private bool IsShown { get; set; } = true;
+
+        private bool m_PushActive = true;
+
+        internal bool RaisesPush => m_PushActive && IsShown;
 
         private void Awake()
         {
@@ -57,6 +64,21 @@ namespace RPGFramework.Field
             IsSolid = solid;
         }
 
+        internal void SetPushActive(bool active)
+        {
+            m_PushActive = active;
+        }
+
+        /// <summary>
+        /// A hidden entity can be walked through and raises no push, as the reference's <c>HIDE</c> makes it.
+        /// </summary>
+        internal void SetShown(bool shown)
+        {
+            IsShown = shown;
+
+            SetVisible(shown);
+        }
+
         /// <summary>
         /// Whether a collider stops a moving entity: anything that is not an entity does, and an entity does unless a
         /// script has let others walk through it.
@@ -65,9 +87,22 @@ namespace RPGFramework.Field
         {
             FieldEntity entity = collider.GetComponentInParent<FieldEntity>();
 
-            bool blocks = entity == null || entity.IsSolid;
+            bool blocks = entity == null || entity.IsSolid && entity.IsShown;
 
             return blocks;
+        }
+
+        /// <summary>
+        /// Note the entity a collider belongs to, once — how a driver reports what the player walked into.
+        /// </summary>
+        internal static void AddOwnerOf(Component collider, List<FieldEntity> entities)
+        {
+            FieldEntity entity = collider.GetComponentInParent<FieldEntity>();
+
+            if (entity != null && !entities.Contains(entity))
+            {
+                entities.Add(entity);
+            }
         }
 
         internal void SetVisible(bool visible)

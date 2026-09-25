@@ -357,6 +357,7 @@ namespace RPGFramework.Field.Editor
             }
 
             ValidateGateway(prefab, record, entityName, problems);
+            ValidatePushScript(record, entityName, problems);
         }
 
         /// <summary>
@@ -883,6 +884,42 @@ namespace RPGFramework.Field.Editor
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// A push script runs when the player walks into the entity's body, so on an entity with no body, or with nothing
+        /// but triggers on it, nothing can walk into it and nothing runs it.
+        /// </summary>
+        private static void ValidatePushScript(FieldEntityRecord record, string entityName, List<string> problems)
+        {
+            if (!HasScript(record, FieldScriptType.OnPush) || HasSolidCollider(record.Body))
+            {
+                return;
+            }
+
+            string missing = record.Body == null ? "no body" : "nothing but triggers on its body";
+
+            problems.Add($"{entityName} has an {nameof(FieldScriptType.OnPush)} script but {missing}, so nothing can walk into it and nothing runs it");
+        }
+
+        private static bool HasSolidCollider(FieldEntity body)
+        {
+            bool hasSolidCollider = false;
+
+            if (body != null)
+            {
+                foreach (Collider collider in body.GetComponentsInChildren<Collider>(true))
+                {
+                    hasSolidCollider |= !collider.isTrigger;
+                }
+
+                foreach (Collider2D collider in body.GetComponentsInChildren<Collider2D>(true))
+                {
+                    hasSolidCollider |= !collider.isTrigger;
+                }
+            }
+
+            return hasSolidCollider;
         }
 
         /// <summary>

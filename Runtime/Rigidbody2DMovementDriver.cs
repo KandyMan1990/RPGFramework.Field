@@ -17,6 +17,7 @@ namespace RPGFramework.Field
 
         private readonly List<RaycastHit2D> m_Hits     = new List<RaycastHit2D>(8);
         private readonly List<Collider2D>   m_Overlaps = new List<Collider2D>(16);
+        private readonly List<FieldEntity>  m_Pushed   = new List<FieldEntity>();
 
         private Collider2D[] m_SolidColliders;
 
@@ -51,9 +52,13 @@ namespace RPGFramework.Field
 
         void IMovementDriver.PhysicsTick(float fixedDeltaTime)
         {
+            m_Pushed.Clear();
+
             HandleMovement(fixedDeltaTime);
             HandleRotation(fixedDeltaTime);
         }
+
+        IReadOnlyList<FieldEntity> IMovementDriver.Pushed => m_Pushed;
 
         void IMovementDriver.SetPosition(Vector3 position)
         {
@@ -180,6 +185,8 @@ namespace RPGFramework.Field
                     break;
                 }
 
+                FieldEntity.AddOwnerOf(nearest.collider, m_Pushed);
+
                 float travelled = Mathf.Max(nearest.distance - SKIN_WIDTH, 0f);
 
                 position += heading * travelled;
@@ -204,7 +211,7 @@ namespace RPGFramework.Field
                 {
                     Collider2D other = m_Overlaps[i];
 
-                    if (other.attachedRigidbody == m_Rigidbody || !FieldEntity.Blocks(other))
+                    if (other.attachedRigidbody == m_Rigidbody)
                     {
                         continue;
                     }
@@ -212,6 +219,13 @@ namespace RPGFramework.Field
                     ColliderDistance2D separation = own.Distance(other);
 
                     if (!separation.isOverlapped)
+                    {
+                        continue;
+                    }
+
+                    FieldEntity.AddOwnerOf(other, m_Pushed);
+
+                    if (!FieldEntity.Blocks(other))
                     {
                         continue;
                     }

@@ -1,4 +1,5 @@
-﻿using RPGFramework.Field.FieldVmArgs;
+﻿using System.Collections.Generic;
+using RPGFramework.Field.FieldVmArgs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -135,6 +136,8 @@ namespace RPGFramework.Field
         }
 
         bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
+
+        IReadOnlyList<FieldEntity> IMovementDriver.Pushed => System.Array.Empty<FieldEntity>();
 
         private static Vector3Int Quantize(Vector3 move)
         {

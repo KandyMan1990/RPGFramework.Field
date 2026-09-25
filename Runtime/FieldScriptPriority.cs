@@ -42,7 +42,7 @@ namespace RPGFramework.Field
         Across = 5,
 
         /// <summary>
-        /// Kept for a script run when the player walks into the entity's body.
+        /// <see cref="FieldScriptType.OnPush" />: the player walked into the entity's body.
         /// </summary>
         Push = 6,
 
@@ -81,6 +81,10 @@ namespace RPGFramework.Field
 
                 case FieldScriptType.OnInteraction:
                     slot = FieldScriptPriority.Interaction;
+                    break;
+
+                case FieldScriptType.OnPush:
+                    slot = FieldScriptPriority.Push;
                     break;
 
                 case FieldScriptType.Requested:
