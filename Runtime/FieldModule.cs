@@ -310,7 +310,8 @@ namespace RPGFramework.Field
         private void OnSetFieldModuleArgs(FieldArgs args)
         {
             m_FieldArgsStore.Set(args);
-            m_FieldTransitionRequested = true;
+            m_FieldTransitionRequested  = true;
+            m_BattleTransitionRequested = false;
         }
 
         private async Task TriggerFieldTransitionAsync()
@@ -336,6 +337,8 @@ namespace RPGFramework.Field
         private Task TriggerBattleTransitionAsync()
         {
             m_BattleTransitionRequested = false;
+
+            m_ScreenFadeService.SetFadeToBattleStart();
 
             StoreToTempMemory();
 
@@ -1470,9 +1473,17 @@ namespace RPGFramework.Field
             m_BattleArgsProvider.Set(args);
         }
 
+        /// <summary>
+        /// A field change outranks a battle whichever was asked for first, so a battle is refused while one is pending
+        /// and dropped when one is asked for.
+        /// </summary>
         private void OnRequestStartBattle()
         {
-            m_ScreenFadeService.SetFadeToBattleStart();
+            if (m_FieldTransitionRequested)
+            {
+                return;
+            }
+
             m_BattleTransitionRequested = true;
         }
     }

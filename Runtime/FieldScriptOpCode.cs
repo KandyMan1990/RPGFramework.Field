@@ -141,7 +141,7 @@ namespace RPGFramework.Field
         [Argument(3, "enemyLevel", ArgumentType.Byte)]
         SetBattleModeOptions = 0x0105,
 
-        [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin the battle set up by SET_BATTLE_MODE_OPTIONS")]
+        [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin the battle set up by SET_BATTLE_MODE_OPTIONS. The script carries on after it. Ignored if the field is already changing", StopsInit = true)]
         StartBattle = 0x0106,
 
         LoadResultOfLastBattle = 0x0107,

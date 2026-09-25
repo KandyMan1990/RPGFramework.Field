@@ -1443,11 +1443,14 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Ask for the battle set up by SET_BATTLE_MODE_OPTIONS to begin.
+        /// Ask for the battle set up by SET_BATTLE_MODE_OPTIONS to begin, and end the frame, so the rest of the script
+        /// runs after the battle rather than before it.
         /// </summary>
         private void StartBattleOpcodeHandler(ScriptExecutionContext ctx)
         {
             RequestStartBattle?.Invoke();
+
+            ctx.YieldRequested = true;
         }
 
         /// <summary>
