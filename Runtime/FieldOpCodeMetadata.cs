@@ -218,6 +218,13 @@ namespace RPGFramework.Field
         /// </summary>
         public string Description { get; set; }
 
+        /// <summary>
+        /// An enum whose values this number means. The editor offers the names — a <see cref="FlagsAttribute" /> enum as
+        /// a mask — and still writes the number, so the argument can be a variable as before and its encoding does not
+        /// change. The one place the editor learns what to offer, as an argument type is for everything else.
+        /// </summary>
+        public Type EnumType { get; set; }
+
         public ArgumentAttribute(int index, string name, ArgumentType type)
         {
             Index = index;

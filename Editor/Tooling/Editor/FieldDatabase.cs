@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using RPGFramework.Core.Memory;
 using RPGFramework.Hashing;
+using RPGFramework.Localisation.Editor;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -113,6 +114,12 @@ namespace RPGFramework.Field.Editor
         {
             List<string> problems = new List<string>();
 
+            // Everything the block editor and compiler know about an opcode comes from these attributes.
+            foreach (string problem in FieldOpCodeCatalogue.Validate())
+            {
+                problems.Add($"Opcode table: {problem}");
+            }
+
             for (int i = 0; i < m_Fields.Count; i++)
             {
                 GameObject prefab = m_Fields[i].Prefab;
@@ -127,7 +134,7 @@ namespace RPGFramework.Field.Editor
 
                 if (fieldEntities == null)
                 {
-                    problems.Add($"{prefab.name} has no {nameof(FieldEntities)} on its root, so it has no entities. Run RPG Framework / Field / Migrate Entities To Records");
+                    problems.Add($"{prefab.name} has no {nameof(FieldEntities)} on its root, so it has no entities. Add one to the prefab's root");
                     continue;
                 }
 
@@ -151,6 +158,8 @@ namespace RPGFramework.Field.Editor
                 {
                     ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, dialogueChannels, problems);
                 }
+
+                ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
 
                 // A body no record claims is never bound, so its triggers never fire and nothing can move or show it.
                 foreach (FieldEntity body in prefab.GetComponentsInChildren<FieldEntity>(true))
@@ -884,6 +893,82 @@ namespace RPGFramework.Field.Editor
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// A key the field does not load. It is hashed into the bytecode, so a typo, a key from another field's sheet
+        /// or one missing its <c>Sheet/</c> prefix only shows as a missing string in play. The field's sheets record
+        /// their keys when generated, so one generated before that has none to check against until it is generated
+        /// again — said so, rather than every key being reported as unknown.
+        /// </summary>
+        private static void ValidateDialogueKeys(GameObject prefab, LocalisationSheetAsset[] sheets, FieldEntities fieldEntities, List<string> problems)
+        {
+            HashSet<string> known       = new HashSet<string>(StringComparer.Ordinal);
+            List<string>    withoutKeys = new List<string>();
+
+            foreach (LocalisationSheetAsset sheet in sheets ?? Array.Empty<LocalisationSheetAsset>())
+            {
+                if (sheet == null)
+                {
+                    continue;
+                }
+
+                if (sheet.Keys.Count == 0)
+                {
+                    withoutKeys.Add(sheet.SheetName);
+                }
+
+                known.UnionWith(sheet.Keys);
+            }
+
+            foreach (FieldEntityRecord record in fieldEntities.Entities)
+            {
+                for (int i = 0; i < record.Scripts.Count; i++)
+                {
+                    foreach (string key in DialogueKeysIn(record.Scripts[i].Text))
+                    {
+                        if (known.Contains(key))
+                        {
+                            continue;
+                        }
+
+                        string recorded = withoutKeys.Count == 0 ? string.Empty : $". Sheet(s) {string.Join(", ", withoutKeys)} have no keys recorded — generate the localisation again so they are";
+
+                        problems.Add($"{prefab.name} / '{record.Name}' script [{i}] ({record.Scripts[i].Type}) shows [{key}], which none of this field's sheets has{recorded}");
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<string> DialogueKeysIn(string scriptText)
+        {
+            foreach (string line in scriptText.Split('\n'))
+            {
+                string[] parts = line.Trim().Split(' ');
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                for (int argument = 0; argument < opCode.Arguments.Count && argument + 1 < parts.Length; argument++)
+                {
+                    ArgumentType type = opCode.Arguments[argument].Type;
+
+                    if (type == ArgumentType.LocalisationKey)
+                    {
+                        yield return parts[argument + 1];
+                    }
+                    else if (type == ArgumentType.LocalisationKeyList)
+                    {
+                        // The list runs to the end of the line.
+                        for (int part = argument + 1; part < parts.Length; part++)
+                        {
+                            yield return parts[part];
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>

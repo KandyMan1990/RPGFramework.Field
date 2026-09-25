@@ -4,8 +4,10 @@ using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
 using RPGFramework.Audio.Music;
 using RPGFramework.Audio.Sfx;
+using RPGFramework.Localisation.Editor;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -21,34 +23,29 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class FieldScriptBlockEditor : VisualElement
     {
-        private readonly List<FieldScriptBlock> m_Blocks;
-        private readonly VisualElement          m_BlockList;
-        private readonly Action<string>         m_OnChanged;
-        private readonly FieldEntities          m_Field;
-        private readonly FieldEntityRecord      m_Entity;
+        private readonly List<FieldScriptBlock>                m_Blocks;
+        private readonly VisualElement                         m_BlockList;
+        private readonly Action<string>                        m_OnChanged;
+        private readonly FieldEntities                         m_Field;
+        private readonly FieldEntityRecord                     m_Entity;
+        private readonly IReadOnlyList<LocalisationSheetAsset> m_Sheets;
+        private readonly Dictionary<string, List<SpawnChoice>> m_SpawnChoices      = new Dictionary<string, List<SpawnChoice>>();
+        private readonly Dictionary<string, List<string>>      m_StateNamesByTrack = new Dictionary<string, List<string>>();
 
-        private List<string> m_AnimationNames;
-
+        private List<string>     m_DialogueKeys;
+        private List<string>     m_AnimationNames;
         private VariableMapAsset m_VariableMap;
+        private List<string>     m_FieldNames;
+        private List<string>     m_MusicNames;
+        private List<string>     m_SoundNames;
+        private List<string>     m_MusicStateNames;
 
-        // Gathered once per editor rather than per control: a script with twenty blocks would otherwise
-        // sweep the AssetDatabase twenty times.
-        private List<string> m_FieldNames;
-
-        // Keyed by field name: which spawn points exist depends on which field is being jumped to.
-        private readonly Dictionary<string, List<SpawnChoice>> m_SpawnChoices = new Dictionary<string, List<SpawnChoice>>();
-        private          List<string>                          m_MusicNames;
-        private          List<string>                          m_SoundNames;
-        private          List<string>                          m_MusicStateNames;
-
-        // Keyed by track name: which stem states exist depends on which track is being layered.
-        private readonly Dictionary<string, List<string>> m_StateNamesByTrack = new Dictionary<string, List<string>>();
-
-        public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, Action<string> onChanged)
+        public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, IReadOnlyList<LocalisationSheetAsset> sheets, Action<string> onChanged)
         {
             m_OnChanged = onChanged;
             m_Field     = field;
             m_Entity    = entity;
+            m_Sheets    = sheets;
             m_Blocks    = FieldScriptBlocks.Parse(scriptText);
 
             Add(BuildToolbar());
@@ -323,6 +320,23 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
+        /// A number an enum names, offered by those names and written as the number. A <see cref="FlagsAttribute" />
+        /// enum is offered as a mask.
+        /// </summary>
+        private VisualElement EnumChoice(FieldScriptBlock block, int argumentIndex, Type enumType, string label, string current)
+        {
+            long.TryParse(current, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out long number);
+
+            Enum value = (Enum)Enum.ToObject(enumType, number);
+
+            BaseField<Enum> field = enumType.IsDefined(typeof(FlagsAttribute), false) ? new EnumFlagsField(label, value) : new EnumField(label, value);
+
+            field.RegisterValueChangedCallback(e => Set(block, argumentIndex, Convert.ToInt64(e.newValue).ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+            return field;
+        }
+
+        /// <summary>
         /// The field's entities by name, writing the id. Choosing one rebuilds the block, since which scripts it offers
         /// for an event beside it depends on which entity is named.
         /// </summary>
@@ -347,10 +361,10 @@ namespace RPGFramework.Field.Editor
             field.SetValueWithoutNotify(shown);
 
             field.RegisterValueChangedCallback(e =>
-            {
-                FieldEntityRecord chosen = m_Field.Entities[labels.IndexOf(e.newValue)];
-                Set(block, argumentIndex, chosen.EntityId.ToString(System.Globalization.CultureInfo.InvariantCulture), true);
-            });
+                                               {
+                                                   FieldEntityRecord chosen = m_Field.Entities[labels.IndexOf(e.newValue)];
+                                                   Set(block, argumentIndex, chosen.EntityId.ToString(System.Globalization.CultureInfo.InvariantCulture), true);
+                                               });
 
             return field;
         }
@@ -372,7 +386,7 @@ namespace RPGFramework.Field.Editor
                 }
 
                 string named = i < block.Arguments.Count ? block.Arguments[i] : string.Empty;
-                owner        = m_Field.Entities.Find(entity => entity.EntityId.ToString(System.Globalization.CultureInfo.InvariantCulture) == named);
+                owner = m_Field.Entities.Find(entity => entity.EntityId.ToString(System.Globalization.CultureInfo.InvariantCulture) == named);
                 break;
             }
 
@@ -421,6 +435,11 @@ namespace RPGFramework.Field.Editor
                 variable.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue));
 
                 return variable;
+            }
+
+            if (argument.EnumType != null)
+            {
+                return EnumChoice(block, argumentIndex, argument.EnumType, label, current);
             }
 
             switch (argument.Type)
@@ -501,6 +520,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicNameHint:
                 case ArgumentType.MusicStateName:
                 case ArgumentType.AnimationName:
+                case ArgumentType.LocalisationKey:
                 {
                     // Offered as a list so a name cannot be mistyped. A field name is checked when the
                     // script compiles, but a music or sound name is not — it is hashed as written, and a
@@ -534,6 +554,9 @@ namespace RPGFramework.Field.Editor
 
                     return field;
                 }
+
+                case ArgumentType.LocalisationKeyList:
+                    return KeyList(block, argumentIndex, label, current);
 
                 case ArgumentType.Priority:
                     return IndexDropdown(block, argumentIndex, label, current, Enum.GetValues(typeof(FieldScriptPriority)).Length, i => $"{i}: {(FieldScriptPriority)i}");
@@ -686,9 +709,98 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.AnimationName:
                     return m_AnimationNames ??= GatherAnimationNames();
 
+                case ArgumentType.LocalisationKey:
+                    return m_DialogueKeys ??= GatherDialogueKeys();
+
                 default:
                     return new List<string>();
             }
+        }
+
+        /// <summary>
+        /// The keys of the sheets this field loads, which are the only ones its scripts can show. Read from the sheet
+        /// assets, where generation records them; a sheet generated before that was recorded offers nothing until it
+        /// is generated again.
+        /// </summary>
+        private List<string> GatherDialogueKeys()
+        {
+            List<string> keys = new List<string>();
+
+            foreach (LocalisationSheetAsset sheet in m_Sheets)
+            {
+                if (sheet != null)
+                {
+                    keys.AddRange(sheet.Keys);
+                }
+            }
+
+            return keys;
+        }
+
+        /// <summary>
+        /// A key per row, for a list that runs to the end of the line — the answers to a choice. The script text keeps
+        /// them space separated in one argument, which is how the compiler reads them.
+        /// </summary>
+        private VisualElement KeyList(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            List<string> keys    = new List<string>(current.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+            List<string> choices = m_DialogueKeys ??= GatherDialogueKeys();
+
+            VisualElement list = new VisualElement();
+            list.Add(new Label(label));
+
+            void Write() => Set(block, argumentIndex, string.Join(" ", keys), true);
+
+            for (int i = 0; i < keys.Count; i++)
+            {
+                int index = i;
+
+                VisualElement row = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center } };
+
+                VisualElement key;
+
+                if (choices.Count == 0)
+                {
+                    TextField typed = new TextField { value = keys[index] };
+                    typed.RegisterValueChangedCallback(e =>
+                                                       {
+                                                           keys[index] = e.newValue;
+                                                           Set(block, argumentIndex, string.Join(" ", keys));
+                                                       });
+                    key = typed;
+                }
+                else
+                {
+                    DropdownField chosen = new DropdownField(choices, 0);
+                    chosen.SetValueWithoutNotify(keys[index]);
+                    chosen.RegisterValueChangedCallback(e =>
+                                                        {
+                                                            keys[index] = e.newValue;
+                                                            Set(block, argumentIndex, string.Join(" ", keys));
+                                                        });
+                    key = chosen;
+                }
+
+                key.style.flexGrow = 1;
+                row.Add(key);
+                row.Add(MakeSmallButton("−", "Remove this answer", () =>
+                                                                   {
+                                                                       keys.RemoveAt(index);
+                                                                       Write();
+                                                                   }));
+                list.Add(row);
+            }
+
+            list.Add(new Button(() =>
+                                {
+                                    keys.Add(choices.Count > 0 ? choices[0] : "Sheet/Key");
+                                    Write();
+                                })
+                     {
+                         text = "Add answer"
+                     });
+
+            return list;
         }
 
         /// <summary>

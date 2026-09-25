@@ -51,7 +51,7 @@ namespace RPGFramework.Field.Editor
         private FieldEntities m_OpenFieldEntities;
         private bool          m_HasUnsavedChanges;
 
-        [MenuItem("RPG Framework/Field Designer Window")]
+        [MenuItem("RPG Framework/Field Designer Window", priority = 0)]
         public static void ShowWindow()
         {
             GetWindow<FieldDesignerWindow>();
@@ -487,7 +487,7 @@ namespace RPGFramework.Field.Editor
 
             m_ScriptBlockContainer.Add(BuildEntityHeader());
             m_ScriptBlockContainer.Add(BuildScriptHeader(index, m_SelectedScript));
-            m_ScriptBlockContainer.Add(new FieldScriptBlockEditor(m_SelectedScript.Text, m_OpenFieldEntities, m_SelectedEntity, OnScriptTextChanged));
+            m_ScriptBlockContainer.Add(new FieldScriptBlockEditor(m_SelectedScript.Text, m_OpenFieldEntities, m_SelectedEntity, m_LocalisationSheetAssets, OnScriptTextChanged));
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using RPGFramework.Core.Memory;
 
@@ -13,6 +14,7 @@ namespace RPGFramework.Field.Editor
         public ArgumentType  Type        { get; }
         public VariableWidth Width       { get; }
         public string        Description { get; }
+        public Type          EnumType    { get; }
 
         internal FieldArgumentInfo(ArgumentAttribute attribute)
         {
@@ -20,6 +22,7 @@ namespace RPGFramework.Field.Editor
             Type        = attribute.Type;
             Width       = attribute.Width;
             Description = attribute.Description;
+            EnumType    = attribute.EnumType;
         }
     }
 
@@ -29,19 +32,14 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class FieldOpCodeInfo
     {
-        public FieldScriptOpCode OpCode     { get; }
-        public string            ScriptName { get; }
-        public ArgumentLayout    Layout     { get; }
-        public string            Summary    { get; }
-
-        /// <summary>
-        /// True when instructions nest inside this one, such as an <c>IF</c>.
-        /// </summary>
-        public bool OpensBlock { get; }
-
-        public bool StopsInit     { get; }
-        public bool NeedsBody     { get; }
-        public bool NeedsAnimator { get; }
+        public FieldScriptOpCode OpCode        { get; }
+        public string            ScriptName    { get; }
+        public ArgumentLayout    Layout        { get; }
+        public string            Summary       { get; }
+        public bool              OpensBlock    { get; }
+        public bool              StopsInit     { get; }
+        public bool              NeedsBody     { get; }
+        public bool              NeedsAnimator { get; }
 
         public IReadOnlyList<FieldArgumentInfo> Arguments { get; }
 
@@ -102,9 +100,10 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Problems that would make the catalogue unusable: a duplicate scriptName, or argument indices
-        /// that are not 0..n-1. Argument order decides how a block's inputs become bytecode, so a gap or
-        /// a repeat there is not something to discover at runtime.
+        /// Problems that would make the catalogue unusable: a duplicate script name, argument indices that are not
+        /// 0..n-1, a width where none belongs, or an enum argument whose number the encoding cannot carry. Argument
+        /// order decides how a block's inputs become bytecode, so a gap or a repeat there is not something to discover
+        /// at runtime
         /// </summary>
         public static string[] Validate()
         {
@@ -143,6 +142,13 @@ namespace RPGFramework.Field.Editor
 
                 foreach (ArgumentAttribute argument in arguments)
                 {
+                    // The editor offers an enum's names but writes the number, so the number has to be one the
+                    // argument's encoding can carry.
+                    if (argument.EnumType != null && (!argument.EnumType.IsEnum || argument.Type != ArgumentType.Byte && argument.Type != ArgumentType.UShort))
+                    {
+                        problems.Add($"'{field.Name}' argument '{argument.Name}' names {argument.EnumType.Name}, which must be an enum on a {nameof(ArgumentType.Byte)} or {nameof(ArgumentType.UShort)} argument");
+                    }
+
                     if (argument.Index < 0 || argument.Index >= arguments.Length)
                     {
                         problems.Add($"'{field.Name}' argument '{argument.Name}' has index {argument.Index}, outside 0..{arguments.Length - 1}");

@@ -1,4 +1,6 @@
-﻿using RPGFramework.Core.Memory;
+﻿using RPGFramework.Battle.SharedTypes;
+using RPGFramework.Core.Memory;
+using RPGFramework.Field.FieldVmArgs;
 
 namespace RPGFramework.Field
 {
@@ -135,7 +137,7 @@ namespace RPGFramework.Field
         [FieldOpCode("SET_BATTLE_MODE_OPTIONS", ArgumentLayout.Sequential, Summary = "Choose the arena, enemies and rules for the next battle")]
         [Argument(0, "arena",      ArgumentType.UShort)]
         [Argument(1, "enemyGroup", ArgumentType.UShort)]
-        [Argument(2, "flags",      ArgumentType.UShort)]
+        [Argument(2, "flags",      ArgumentType.UShort, EnumType = typeof(BattleFlags))]
         [Argument(3, "enemyLevel", ArgumentType.Byte)]
         SetBattleModeOptions = 0x0105,
 
@@ -1033,9 +1035,9 @@ namespace RPGFramework.Field
         [Argument(0, "x",            ArgumentType.Float)]
         [Argument(1, "y",            ArgumentType.Float)]
         [Argument(2, "z",            ArgumentType.Float)]
-        [Argument(3, "direction",    ArgumentType.Byte, Description = "0 clockwise, 1 counterclockwise, 2 closest")]
+        [Argument(3, "direction",    ArgumentType.Byte, EnumType = typeof(RotationDirection),     Description = "which way round it turns")]
         [Argument(4, "duration",     ArgumentType.Float)]
-        [Argument(5, "rotationType", ArgumentType.Byte, Description = "0 linear, 1 smooth")]
+        [Argument(5, "rotationType", ArgumentType.Byte, EnumType = typeof(RotationInterpolation), Description = "whether it eases in and out")]
         SetEntityRotationOverTime = 0x0522,
 
         [FieldOpCode("SET_DIRECTION_TO_FACE_ENTITY", ArgumentLayout.Sequential, Summary = "Face this entity towards another", NeedsBody = true)]
