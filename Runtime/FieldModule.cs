@@ -7,11 +7,15 @@ using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Battle.SharedTypes.Constants;
 using RPGFramework.Battle.SharedTypes.Providers;
 using RPGFramework.Core;
+using RPGFramework.Core.Data;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Dialogue.Flows;
 using RPGFramework.Core.Input;
+using RPGFramework.Core.Memory;
 using RPGFramework.Core.PlayerLoop;
 using RPGFramework.Core.Rendering;
+using RPGFramework.Core.SaveData;
+using RPGFramework.Core.Settings;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Core.Store;
 using RPGFramework.DI;
@@ -52,6 +56,8 @@ namespace RPGFramework.Field
         private readonly IResumeModuleStore     m_ResumeModuleStore;
         private readonly ICurrentModuleStore    m_CurrentModuleStore;
         private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
+        private readonly SavedPlayerPose        m_SavedPlayerPose;
+        private readonly ISettingsService       m_SettingsService;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_ExplorationInputContext;
@@ -96,7 +102,9 @@ namespace RPGFramework.Field
                            IChangeModuleStore    changeModuleStore,
                            IResumeModuleStore    resumeModuleStore,
                            ICurrentModuleStore   currentModuleStore,
-                           IFieldResumeDataStore fieldResumeDataStore)
+                           IFieldResumeDataStore fieldResumeDataStore,
+                           IVariableMap          variableMap,
+                           ISettingsService      settingsService)
         {
             m_CoreModule           = coreModule;
             m_DIResolver           = diResolver;
@@ -116,6 +124,8 @@ namespace RPGFramework.Field
             m_ResumeModuleStore    = resumeModuleStore;
             m_CurrentModuleStore   = currentModuleStore;
             m_FieldResumeDataStore = fieldResumeDataStore;
+            m_SavedPlayerPose      = new SavedPlayerPose(memoryService, variableMap);
+            m_SettingsService      = settingsService;
             m_DialogueChannels     = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
             m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
 
@@ -328,6 +338,12 @@ namespace RPGFramework.Field
 
             StoreToTempMemory();
 
+            // The menu is where a save is made, so this is the pose a save holds.
+            if (m_PlayerEntityId != FieldEntity.NO_ENTITY)
+            {
+                m_SavedPlayerPose.Write(m_Entities[m_PlayerEntityId].Entity.transform, m_FieldModuleMonoBehaviour.Up);
+            }
+
             m_ResumeModuleStore.SetModuleId(FieldConstants.MODULE_ID);
             m_ChangeModuleStore.SetModuleId(MenuConstants.MODULE_ID);
 
@@ -534,6 +550,8 @@ namespace RPGFramework.Field
 
         private void InitialisePlayer()
         {
+            bool loaded = m_SavedPlayerPose.TryTakeAfterLoad(m_FieldModuleMonoBehaviour.Up, out Vector3 savedPosition, out Quaternion savedRotation);
+
             FieldEntityRuntime playerEntity = m_FieldContext.PlayerEntity;
 
             if (playerEntity == null)
@@ -547,7 +565,11 @@ namespace RPGFramework.Field
 
             FieldEntity playerFieldEntity = m_Entities[m_PlayerEntityId].Entity;
 
-            if (m_InitialPlayerSpawn == null)
+            if (loaded)
+            {
+                playerFieldEntity.transform.SetPositionAndRotation(savedPosition, savedRotation);
+            }
+            else if (m_InitialPlayerSpawn == null)
             {
                 FieldArgs fieldArgs = m_FieldArgsStore.Get;
                 Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No spawn point with id [{fieldArgs.SpawnId}] in this field, so the player keeps whatever position its init script gave it");
@@ -1389,11 +1411,21 @@ namespace RPGFramework.Field
             window.SetRect(dialogueChannel.Rect);
             window.SetStyle(dialogueChannel.Style);
             window.SetMessageVariables(m_MessageVariables);
+            window.SetMessageSpeed(GetFieldMessageSpeed());
 
             dialogueChannel.Window = window;
             dialogueChannel.Close  = new CancellationTokenSource();
 
             return true;
+        }
+
+        private float GetFieldMessageSpeed()
+        {
+            m_SettingsService.TryGetSection(FrameworkSettingsSectionDatabase.CONFIG_DATA, out SaveSection<ConfigData_V1> configData);
+
+            float messageSpeed = configData.Data.FieldMessageSpeed;
+
+            return messageSpeed;
         }
 
         /// <summary>

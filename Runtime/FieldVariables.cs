@@ -21,10 +21,29 @@ namespace RPGFramework.Field
         /// </summary>
         public const string CURRENT_SPAWN = "CurrentSpawn";
 
+        /// <summary>
+        /// Where the player stood when the field last handed over to the menu, so a save made there holds it.
+        /// </summary>
+        public const string PLAYER_POSITION_X = "PlayerPositionX";
+
+        public const string PLAYER_POSITION_Y = "PlayerPositionY";
+
+        public const string PLAYER_POSITION_Z = "PlayerPositionZ";
+
+        /// <summary>
+        /// Which way the player faced when the field last handed over to the menu, in degrees around the field's up
+        /// axis.
+        /// </summary>
+        public const string PLAYER_FACING = "PlayerFacing";
+
         private static readonly RequiredVariable[] s_Variables =
         {
-            new RequiredVariable(CURRENT_FIELD, MemoryBank.Persistent, VariableWidth.ULong, "The field the player is in. Its default is the field a new game begins in"),
-            new RequiredVariable(CURRENT_SPAWN, MemoryBank.Persistent, VariableWidth.Int,   "The spawn point the player entered the current field by. Its default is where a new game begins")
+            new RequiredVariable(CURRENT_FIELD,     MemoryBank.Persistent, VariableWidth.ULong, "The field the player is in. Its default is the field a new game begins in"),
+            new RequiredVariable(CURRENT_SPAWN,     MemoryBank.Persistent, VariableWidth.Int,   "The spawn point the player entered the current field by. Its default is where a new game begins"),
+            new RequiredVariable(PLAYER_POSITION_X, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
+            new RequiredVariable(PLAYER_POSITION_Y, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
+            new RequiredVariable(PLAYER_POSITION_Z, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
+            new RequiredVariable(PLAYER_FACING,     MemoryBank.Persistent, VariableWidth.Float, "Which way the player faced when the game was saved, in degrees around the field's up axis. Its default is not used")
         };
 
         public IReadOnlyList<RequiredVariable> Variables => s_Variables;
