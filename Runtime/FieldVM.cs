@@ -44,6 +44,8 @@ namespace RPGFramework.Field
         internal event Action<int, float>                         RequestSetAnimationSpeed;
         internal event Action<int>                                RequestStopAnimation;
         internal event Action<bool>                               RequestSetMainMenuAccessibility;
+        internal event Action<bool>                               RequestSetSaveEnabled;
+        internal event Action                                     RequestOpenSaveMenu;
         internal event Action<DialogueWindowArgs>                 RequestCreateDialogueWindow;
         internal event Action<byte, ulong, bool>                  RequestShowDialogueWindow;
         internal event Action<byte, ulong>                        RequestShowDialogueWindowNoWait;
@@ -123,7 +125,7 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.LoadResultOfLastBattle, LoadResultOfLastBattleOpcodeHandler },
                        // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
                        // { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
-                       // { FieldScriptOpCode.SetSaveEnabled, SetSaveEnabledOpcodeHandler },
+                       { FieldScriptOpCode.SaveAccessibility, SaveAccessibilityOpcodeHandler },
 
                        // Assignment and mathematics
                        { FieldScriptOpCode.SetBool, ctx => SetOpcodeHandler(ctx,   VariableWidth.Bool) },
@@ -283,7 +285,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
                        { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
                        // { FieldScriptOpCode.OpenMainMenu, OpenMainMenuOpcodeHandler },
-                       // { FieldScriptOpCode.OpenSaveMenu, OpenSaveMenuOpcodeHandler },
+                       { FieldScriptOpCode.OpenSaveMenu, OpenSaveMenuOpcodeHandler },
                        // { FieldScriptOpCode.OpenShop, OpenShopOpcodeHandler },
                        // { FieldScriptOpCode.OpenNameEntry, OpenNameEntryOpcodeHandler },
                        // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
@@ -1454,6 +1456,16 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Allow or block saving from the party menu.
+        /// </summary>
+        private void SaveAccessibilityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            RequestSetSaveEnabled?.Invoke(enabled);
+        }
+
+        /// <summary>
         /// Set a variable to a value.
         /// </summary>
         private void SetOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
@@ -1807,6 +1819,16 @@ namespace RPGFramework.Field
             SequentialSources sources = default;
             bool              enabled = ReadArgumentBool(ctx, ref sources);
             RequestSetMainMenuAccessibility?.Invoke(enabled);
+        }
+
+        /// <summary>
+        /// Open the save menu, and end the frame, so the rest of the script runs once it has closed.
+        /// </summary>
+        private void OpenSaveMenuOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestOpenSaveMenu?.Invoke();
+
+            ctx.YieldRequested = true;
         }
 
         /// <summary>

@@ -58,6 +58,8 @@ namespace RPGFramework.Field
         private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
         private readonly SavedPlayerPose        m_SavedPlayerPose;
         private readonly ISettingsService       m_SettingsService;
+        private readonly ISaveEnabledStore      m_SaveEnabledStore;
+        private readonly ILocationNameStore     m_LocationNameStore;
 
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_ExplorationInputContext;
@@ -104,7 +106,9 @@ namespace RPGFramework.Field
                            ICurrentModuleStore   currentModuleStore,
                            IFieldResumeDataStore fieldResumeDataStore,
                            IVariableMap          variableMap,
-                           ISettingsService      settingsService)
+                           ISettingsService      settingsService,
+                           ISaveEnabledStore     saveEnabledStore,
+                           ILocationNameStore    locationNameStore)
         {
             m_CoreModule           = coreModule;
             m_DIResolver           = diResolver;
@@ -126,6 +130,8 @@ namespace RPGFramework.Field
             m_FieldResumeDataStore = fieldResumeDataStore;
             m_SavedPlayerPose      = new SavedPlayerPose(memoryService, variableMap);
             m_SettingsService      = settingsService;
+            m_SaveEnabledStore     = saveEnabledStore;
+            m_LocationNameStore    = locationNameStore;
             m_DialogueChannels     = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
             m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
 
@@ -261,6 +267,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetAnimationSpeed           += OnRequestSetAnimationSpeed;
             m_FieldContext.VM.RequestStopAnimation               += OnRequestStopAnimation;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    += OnRequestSetMainMenuAccessibility;
+            m_FieldContext.VM.RequestSetSaveEnabled              += OnRequestSetSaveEnabled;
+            m_FieldContext.VM.RequestOpenSaveMenu                += OnRequestOpenSaveMenu;
             m_FieldContext.VM.RequestCreateDialogueWindow        += OnRequestCreateDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindow          += OnRequestShowDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindowNoWait    += OnRequestShowDialogueWindowNoWait;
@@ -285,6 +293,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetDialogueWindowStyle      -= OnRequestSetDialogueWindowStyle;
             m_FieldContext.VM.RequestSetMessageVariable          -= OnRequestSetMessageVariable;
             m_FieldContext.VM.RequestCreateDialogueWindow        -= OnRequestCreateDialogueWindow;
+            m_FieldContext.VM.RequestOpenSaveMenu                -= OnRequestOpenSaveMenu;
+            m_FieldContext.VM.RequestSetSaveEnabled              -= OnRequestSetSaveEnabled;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    -= OnRequestSetMainMenuAccessibility;
             m_FieldContext.VM.RequestStopAnimation               -= OnRequestStopAnimation;
             m_FieldContext.VM.RequestSetAnimationSpeed           -= OnRequestSetAnimationSpeed;
@@ -446,6 +456,9 @@ namespace RPGFramework.Field
             FieldEntities fieldEntities = await PreLoadFieldAsync();
 
             m_CurrentModuleStore.SetModuleId(FieldConstants.MODULE_ID);
+
+            m_SaveEnabledStore.ResetSaveEnabled();
+            m_LocationNameStore.SetLocationName(m_FieldDatabaseAsset.LocationName);
 
             FieldVM                  vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(fieldEntities.Compiled.Count);
@@ -688,7 +701,7 @@ namespace RPGFramework.Field
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
 
-            m_ExplorationInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenConfigMenu, OnMove);
+            m_ExplorationInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenPartyMenu, OnMove);
             m_InputRouter.Push(m_ExplorationInputContext);
 
             if (m_FieldContext.IsInputLockedByScript)
@@ -1016,15 +1029,14 @@ namespace RPGFramework.Field
             return inRange;
         }
 
-        // TODO: when we have the main menu/party menu, it should load that instead
-        private void OpenConfigMenu()
+        private void OpenPartyMenu()
         {
             if (!m_FieldContext.MainMenuAccessible)
             {
                 return;
             }
 
-            byte type = (byte)MenuType.Config;
+            byte type = (byte)MenuType.Party;
 
             RequestMenuModule(type);
         }
@@ -1316,6 +1328,16 @@ namespace RPGFramework.Field
         private void OnRequestSetMainMenuAccessibility(bool enabled)
         {
             m_FieldContext.SetMainMenuAccessible(enabled);
+        }
+
+        private void OnRequestSetSaveEnabled(bool enabled)
+        {
+            m_SaveEnabledStore.SetSaveEnabled(enabled);
+        }
+
+        private void OnRequestOpenSaveMenu()
+        {
+            RequestMenuModule((byte)MenuType.Save);
         }
 
         private void OnRequestCreateDialogueWindow(DialogueWindowArgs args)

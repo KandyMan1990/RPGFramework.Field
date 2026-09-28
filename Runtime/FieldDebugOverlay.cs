@@ -12,8 +12,8 @@ namespace RPGFramework.Field
     /// </summary>
     internal sealed class FieldDebugOverlay : VisualElement
     {
-        private const float LINE_WIDTH  = 2f;
-        private const float ARC_STEP    = 10f;
+        private const float LINE_WIDTH = 2f;
+        private const float ARC_STEP   = 10f;
 
         private readonly List<(Vector3 From, Vector3 To, Color Colour)> m_Lines = new List<(Vector3, Vector3, Color)>();
 
@@ -56,6 +56,61 @@ namespace RPGFramework.Field
 
                 previous = next;
             }
+        }
+
+        /// <summary>
+        /// The edges of a box, placed by <paramref name="localToWorld" /> — a collider's object's, so it turns and scales
+        /// with it, or the identity for a box already in world space.
+        /// </summary>
+        internal void Box(Matrix4x4 localToWorld, Vector3 centre, Vector3 size, Color colour)
+        {
+            Vector3   half    = size / 2f;
+            Vector3[] corners = new Vector3[8];
+
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 sign = new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f);
+
+                corners[i] = localToWorld.MultiplyPoint3x4(centre + Vector3.Scale(half, sign));
+            }
+
+            // Each corner joins the three that differ from it by one axis.
+            for (int i = 0; i < 8; i++)
+            {
+                for (int axis = 1; axis < 8; axis <<= 1)
+                {
+                    if ((i & axis) == 0)
+                    {
+                        Line(corners[i], corners[i | axis], colour);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// The edges of a 2D box collider, in the plane its object lies in.
+        /// </summary>
+        internal void Rectangle(Transform transform, Vector2 offset, Vector2 size, Color colour)
+        {
+            Vector2 half = size / 2f;
+
+            Vector3 a = transform.TransformPoint(offset + new Vector2(-half.x, -half.y));
+            Vector3 b = transform.TransformPoint(offset + new Vector2(half.x,  -half.y));
+            Vector3 c = transform.TransformPoint(offset + new Vector2(half.x,  half.y));
+            Vector3 d = transform.TransformPoint(offset + new Vector2(-half.x, half.y));
+
+            Line(a, b, colour);
+            Line(b, c, colour);
+            Line(c, d, colour);
+            Line(d, a, colour);
+        }
+
+        /// <summary>
+        /// A world-aligned box around any other collider's bounds, which is looser than its shape but always drawable.
+        /// </summary>
+        internal void Bounds(Bounds bounds, Color colour)
+        {
+            Box(Matrix4x4.identity, bounds.center, bounds.size, colour);
         }
 
         internal void End()

@@ -147,7 +147,10 @@ namespace RPGFramework.Field
         LoadResultOfLastBattle = 0x0107,
         RandomEncounters       = 0x0108,
         GameOver               = 0x0109,
-        SetSaveEnabled         = 0x010A, // bool enabled
+
+        [FieldOpCode("SAVE_ACCESSIBILITY", ArgumentLayout.Sequential, Summary = "Allow or block saving from the party menu. Every field starts at the game's default, from the variable map")]
+        [Argument(0, "enabled", ArgumentType.Bool)]
+        SaveAccessibility = 0x010A,
 
         // Assignment and mathematics (0x0200)
 
@@ -890,7 +893,10 @@ namespace RPGFramework.Field
         MainMenuAccessibility = 0x0309,
 
         OpenMainMenu     = 0x030A,
-        OpenSaveMenu     = 0x030B,
+
+        [FieldOpCode("OPEN_SAVE_MENU", ArgumentLayout.Sequential, Summary = "Open the save menu, whether or not saving is allowed. The script carries on once it closes", StopsInit = true)]
+        OpenSaveMenu = 0x030B,
+
         OpenShop         = 0x030C, // ushort shopId
         OpenNameEntry    = 0x030D, // byte characterId
         SetMapNameInMenu = 0x030E,

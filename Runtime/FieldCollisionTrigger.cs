@@ -14,6 +14,8 @@ namespace RPGFramework.Field
         private bool        m_IsEntityShown;
         private int         m_PlayerEntityId;
 
+        internal bool IsListening => m_IsActive && m_IsEntityShown;
+
         private void Awake()
         {
             m_Entity         = GetComponentInParent<FieldEntity>();

@@ -10,7 +10,8 @@ namespace RPGFramework.Field
         /// <summary>
         /// White: the player's facing cone. Circles: each interactable entity's range, green if active and grey if
         /// not, with its facing arc. Lines to entities in range: green for the one an interaction would pick,
-        /// yellow when the player is not facing it, red when it is not facing the player.
+        /// yellow when the player is not facing it, red when it is not facing the player. Boxes: each area's trigger in
+        /// cyan and each gateway's in magenta, grey while it is switched off or its entity hidden.
         /// </summary>
         private void DrawInteractionDebug()
         {
@@ -79,7 +80,47 @@ namespace RPGFramework.Field
                 m_DebugOverlay.Line(playerPos, entityPos, outcome);
             }
 
+            DrawCollisionTriggers();
+
             m_DebugOverlay.End();
+        }
+
+        private void DrawCollisionTriggers()
+        {
+            foreach (FieldEntityComponents entity in m_Entities.Values)
+            {
+                FieldCollisionTrigger trigger = entity.CollisionTrigger;
+
+                if (trigger == null)
+                {
+                    continue;
+                }
+
+                bool  gateway = entity.Entity.TryGetScriptIndex(FieldScriptType.Gateway, out int _);
+                Color colour  = !trigger.IsListening ? Color.gray : gateway ? Color.magenta : Color.cyan;
+
+                foreach (Collider collider in trigger.GetComponents<Collider>())
+                {
+                    if (collider is BoxCollider box)
+                    {
+                        m_DebugOverlay.Box(box.transform.localToWorldMatrix, box.center, box.size, colour);
+                        continue;
+                    }
+
+                    m_DebugOverlay.Bounds(collider.bounds, colour);
+                }
+
+                foreach (Collider2D collider in trigger.GetComponents<Collider2D>())
+                {
+                    if (collider is BoxCollider2D box)
+                    {
+                        m_DebugOverlay.Rectangle(box.transform, box.offset, box.size, colour);
+                        continue;
+                    }
+
+                    m_DebugOverlay.Bounds(collider.bounds, colour);
+                }
+            }
         }
     }
 }

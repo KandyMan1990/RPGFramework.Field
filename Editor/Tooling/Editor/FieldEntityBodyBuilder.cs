@@ -5,29 +5,18 @@ namespace RPGFramework.Field.Editor
 {
     /// <summary>
     /// What an entity is in the field, as a role rather than a list of components: what the engine does with it
-    /// decides what it carries.
+    /// decides what it carries. Each is described in <see cref="FieldEntityBodyBuilder.Describe" />, which the Field
+    /// Designer shows beside the choice.
     /// </summary>
     internal enum FieldBodyPreset
     {
-        /// <summary>Walked into, and its <see cref="FieldScriptType.Gateway" /> script takes the player out of the field.</summary>
         Gateway,
-
-        /// <summary>Seen, moved, and talked to.</summary>
         Character,
-
-        /// <summary>The one the player drives: seen and moved, but nothing talks to it.</summary>
         PlayerCharacter,
-
-        /// <summary>Seen, talked to, and walked into rather than through: a chest, a sign, something dropped.</summary>
         InteractableObject,
-
-        /// <summary>Talked to and nothing else: a poster, a window, a place worth examining that is part of the scenery.</summary>
         ExaminePoint,
-
-        /// <summary>An area the player walks into and out of, for enter and leave scripts that are not a way out.</summary>
         Area,
-
-        /// <summary>Somewhere to be, and nothing else. For a body that is wired by hand.</summary>
+        SavePoint,
         Plain
     }
 
@@ -38,6 +27,9 @@ namespace RPGFramework.Field.Editor
     internal static class FieldEntityBodyBuilder
     {
         private const string TRIGGER_OBJECT = "Trigger";
+
+        private const string SAVE_POINT_2D_VISUALS = "Packages/com.rpgframework.field/Runtime/Prefabs/SavePoint2D.prefab";
+        private const string SAVE_POINT_3D_VISUALS = "Packages/com.rpgframework.field/Runtime/Prefabs/SavePoint3D.prefab";
 
         internal static FieldEntity Build(GameObject fieldRoot, FieldDimension dimension, FieldBodyPreset preset, string name, GameObject visuals)
         {
@@ -76,11 +68,46 @@ namespace RPGFramework.Field.Editor
 
                 case FieldBodyPreset.Gateway:
                 case FieldBodyPreset.Area:
+                case FieldBodyPreset.SavePoint:
                     AddTrigger(bodyObject, dimension);
                     break;
             }
 
             return entity;
+        }
+
+        /// <summary>
+        /// The visuals a body of this kind starts with, which the author can replace: a placeholder save point, since a
+        /// save point is something the player has to be able to see. None for anything else.
+        /// </summary>
+        internal static GameObject DefaultVisuals(FieldBodyPreset preset, FieldDimension dimension)
+        {
+            if (preset != FieldBodyPreset.SavePoint)
+            {
+                return null;
+            }
+
+            GameObject visuals = AssetDatabase.LoadAssetAtPath<GameObject>(dimension == FieldDimension.TwoD ? SAVE_POINT_2D_VISUALS : SAVE_POINT_3D_VISUALS);
+
+            return visuals;
+        }
+
+        internal static string Describe(FieldBodyPreset preset)
+        {
+            string description = preset switch
+                                 {
+                                     FieldBodyPreset.Gateway            => "Walked into, and its Gateway script takes the player out of the field.",
+                                     FieldBodyPreset.Character          => "Seen, moved, and talked to.",
+                                     FieldBodyPreset.PlayerCharacter    => "The one the player drives: seen and moved, but nothing talks to it.",
+                                     FieldBodyPreset.InteractableObject => "Seen, talked to, and walked into rather than through: a chest, a sign, something dropped.",
+                                     FieldBodyPreset.ExaminePoint       => "Talked to and nothing else: a poster, a window, a place worth examining that is part of the scenery.",
+                                     FieldBodyPreset.Area               => "An area the player walks into and out of, for enter and leave scripts that are not a way out.",
+                                     FieldBodyPreset.SavePoint          => "An area where the player can save: entering it allows saving and leaving it stops it. For a game that saves only at save points.",
+                                     FieldBodyPreset.Plain              => "Somewhere to be, and nothing else. For a body that is wired by hand.",
+                                     _                                  => string.Empty
+                                 };
+
+            return description;
         }
 
         /// <summary>

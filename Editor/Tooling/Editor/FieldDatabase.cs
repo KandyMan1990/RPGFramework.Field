@@ -74,7 +74,10 @@ namespace RPGFramework.Field.Editor
                     sb.AppendLine($"\t\t\t\t\t\t\"{m_Fields[i].LocalisationSheets[j].SheetName}\",");
                 }
 
-                sb.AppendLine("\t\t\t\t\t}");
+                string locationName = string.IsNullOrEmpty(m_Fields[i].LocationName) ? "0UL" : $"Fnv1a64.Hash(\"{m_Fields[i].LocationName}\")";
+
+                sb.AppendLine("\t\t\t\t\t},");
+                sb.AppendLine($"\t\t\t\t\t{locationName}");
                 sb.AppendLine($"\t\t\t\t),");
             }
 
@@ -120,6 +123,8 @@ namespace RPGFramework.Field.Editor
                 problems.Add($"Opcode table: {problem}");
             }
 
+            HashSet<string> localisationKeys = new HashSet<string>(AllLocalisationKeys(), StringComparer.Ordinal);
+
             for (int i = 0; i < m_Fields.Count; i++)
             {
                 GameObject prefab = m_Fields[i].Prefab;
@@ -128,6 +133,13 @@ namespace RPGFramework.Field.Editor
                 {
                     problems.Add($"Field [{i}] has no prefab assigned");
                     continue;
+                }
+
+                string locationName = m_Fields[i].LocationName;
+
+                if (!string.IsNullOrEmpty(locationName) && !localisationKeys.Contains(locationName))
+                {
+                    problems.Add($"{prefab.name} is named [{locationName}] in the menu, which no localisation sheet has. Pick its location name again in the Field Designer's Text tab, or generate the localisation again if the key is new");
                 }
 
                 FieldEntities fieldEntities = prefab.GetComponent<FieldEntities>();
@@ -901,6 +913,29 @@ namespace RPGFramework.Field.Editor
         /// their keys when generated, so one generated before that has none to check against until it is generated
         /// again — said so, rather than every key being reported as unknown.
         /// </summary>
+        /// <summary>
+        /// Every key of every localisation sheet in the project, as <c>Sheet/Key</c>, in order. Read from the sheet assets,
+        /// where generation records them.
+        /// </summary>
+        internal static List<string> AllLocalisationKeys()
+        {
+            List<string> keys = new List<string>();
+
+            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(LocalisationSheetAsset)}"))
+            {
+                LocalisationSheetAsset sheet = AssetDatabase.LoadAssetAtPath<LocalisationSheetAsset>(AssetDatabase.GUIDToAssetPath(guid));
+
+                if (sheet != null)
+                {
+                    keys.AddRange(sheet.Keys);
+                }
+            }
+
+            keys.Sort(StringComparer.Ordinal);
+
+            return keys;
+        }
+
         private static void ValidateDialogueKeys(GameObject prefab, LocalisationSheetAsset[] sheets, FieldEntities fieldEntities, List<string> problems)
         {
             HashSet<string> known       = new HashSet<string>(StringComparer.Ordinal);

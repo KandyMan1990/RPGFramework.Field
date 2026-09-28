@@ -9,5 +9,6 @@ namespace RPGFramework.Field.Editor
     {
         public GameObject               Prefab;
         public LocalisationSheetAsset[] LocalisationSheets;
+        public string                   LocationName;
     }
 }

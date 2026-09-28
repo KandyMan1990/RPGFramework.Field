@@ -4,7 +4,7 @@ namespace RPGFramework.Field.Editor
 {
     internal static class FieldDebugMenu
     {
-        private const string INTERACTION_MENU = "RPG Framework/Field/Draw Interaction Debug";
+        private const string INTERACTION_MENU = "RPG Framework/Field/Draw Interaction and Trigger Debug";
 
         [MenuItem(INTERACTION_MENU)]
         private static void ToggleInteraction()

@@ -18,6 +18,8 @@ namespace RPGFramework.Field.Editor
 
         private const string NO_BODY = "(none)";
 
+        private const string NO_LOCATION_NAME = "(none)";
+
         [SerializeField]
         private VisualTreeAsset m_Uxml;
 
@@ -34,6 +36,7 @@ namespace RPGFramework.Field.Editor
         private ObjectField   m_PrefabObjectField;
         private Label         m_CurrentFieldLabel;
         private ListView      m_TextViewerListView;
+        private DropdownField m_LocationNameField;
         private ListView      m_EntityListView;
         private ListView      m_EntityScriptListView;
         private Button        m_AddEntityButton;
@@ -49,7 +52,6 @@ namespace RPGFramework.Field.Editor
         private GameObject    m_CurrentlyOpenPrefab;
         private string        m_CurrentlyOpenPrefabPath;
         private FieldEntities m_OpenFieldEntities;
-        private bool          m_HasUnsavedChanges;
 
         [MenuItem("RPG Framework/Field Designer Window", priority = 0)]
         public static void ShowWindow()
@@ -78,7 +80,7 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            if (m_HasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved script changes", $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts?", "Save", "Discard"))
+            if (hasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved script changes", $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts?", "Save", "Discard"))
             {
                 SaveOpenPrefab();
             }
@@ -87,7 +89,16 @@ namespace RPGFramework.Field.Editor
 
             m_CurrentlyOpenPrefab = null;
             m_OpenFieldEntities   = null;
-            m_HasUnsavedChanges   = false;
+            hasUnsavedChanges     = false;
+        }
+
+        /// <summary>
+        /// Unity asks before the window closes with <see cref="EditorWindow.hasUnsavedChanges" /> set, and calls this for
+        /// Save. A save the prefab view refuses leaves the flag set, so the window stays open.
+        /// </summary>
+        public override void SaveChanges()
+        {
+            SaveOpenPrefab();
         }
 
         private void SaveOpenPrefab()
@@ -103,7 +114,7 @@ namespace RPGFramework.Field.Editor
 
             PrefabUtility.SaveAsPrefabAsset(m_CurrentlyOpenPrefab, m_CurrentlyOpenPrefabPath);
 
-            m_HasUnsavedChanges = false;
+            hasUnsavedChanges = false;
         }
 
         public void CreateGUI()
@@ -210,6 +221,8 @@ namespace RPGFramework.Field.Editor
             m_TextViewerListView.itemsSource = m_LocalisationSheetAssets;
             m_TextViewerListView.Rebuild();
 
+            RefreshLocationNameField();
+
             SetElementVisible(m_PrefabViewer,     false);
             SetElementVisible(m_TextViewer,       true);
             SetElementVisible(m_ScriptsViewer,    false);
@@ -228,6 +241,7 @@ namespace RPGFramework.Field.Editor
             m_CurrentlyOpenPrefabPath = AssetDatabase.GetAssetPath(m_CurrentFieldAsset.Prefab);
             m_CurrentlyOpenPrefab     = PrefabUtility.LoadPrefabContents(m_CurrentlyOpenPrefabPath);
             m_OpenFieldEntities       = m_CurrentlyOpenPrefab.GetComponent<FieldEntities>();
+            saveChangesMessage        = $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts?";
 
             m_EntityListView.ClearSelection();
             m_EntityScriptListView.ClearSelection();
@@ -282,7 +296,7 @@ namespace RPGFramework.Field.Editor
             m_Window           =  null;
 
             // Export reads the saved prefabs, so unsaved edits here would not be in it.
-            if (m_HasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved script changes", $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts before exporting?", "Save", "Export without them"))
+            if (hasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved script changes", $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts before exporting?", "Save", "Export without them"))
             {
                 SaveOpenPrefab();
             }
@@ -366,6 +380,14 @@ namespace RPGFramework.Field.Editor
         {
             m_TextViewer = rootVisualElement.Q<VisualElement>("TextViewer");
             SetElementVisible(m_TextViewer, false);
+
+            m_LocationNameField = new DropdownField("Location name")
+                                  {
+                                      tooltip = "What the menu and save slots call this place. Any sheet's key; the menus must load the sheet it is in"
+                                  };
+            m_LocationNameField.RegisterValueChangedCallback(OnLocationNameChanged);
+
+            m_TextViewer.Insert(0, m_LocationNameField);
 
             m_TextViewerListView = rootVisualElement.Q<ListView>("TextViewerListView");
             m_TextViewerListView.makeItem = () =>
@@ -506,7 +528,7 @@ namespace RPGFramework.Field.Editor
             entityName.RegisterValueChangedCallback(e =>
                                                     {
                                                         m_SelectedEntity.SetName(e.newValue);
-                                                        m_HasUnsavedChanges = true;
+                                                        hasUnsavedChanges = true;
                                                         m_EntityListView.RefreshItems();
                                                     });
 
@@ -530,12 +552,30 @@ namespace RPGFramework.Field.Editor
         {
             Foldout foldout = new Foldout { text = "Add a body", value = false };
 
-            EnumField   preset  = new EnumField("Is a", FieldBodyPreset.Character);
-            TextField   name    = new TextField("Object name") { value = m_SelectedEntity.Name };
-            ObjectField visuals = new ObjectField("Visuals prefab") { objectType = typeof(GameObject), allowSceneObjects = false };
+            EnumField   preset      = new EnumField("Is a", FieldBodyPreset.Character);
+            HelpBox     description = new HelpBox(FieldEntityBodyBuilder.Describe(FieldBodyPreset.Character), HelpBoxMessageType.None);
+            TextField   name        = new TextField("Object name") { value           = m_SelectedEntity.Name };
+            ObjectField visuals     = new ObjectField("Visuals prefab") { objectType = typeof(GameObject), allowSceneObjects = false };
             visuals.tooltip = "Instantiated as the body's visible object, which VISIBILITY shows and hides. Leave empty for something unseen, such as a gateway";
 
+            preset.RegisterValueChangedCallback(e =>
+                                                {
+                                                    FieldBodyPreset chosen    = (FieldBodyPreset)e.newValue;
+                                                    FieldDimension  dimension = m_OpenFieldEntities.Dimension;
+
+                                                    description.text = FieldEntityBodyBuilder.Describe(chosen);
+
+                                                    // Offer the kind's own visuals in place of an empty field or the previous kind's, never over the author's choice.
+                                                    GameObject previousDefault = FieldEntityBodyBuilder.DefaultVisuals((FieldBodyPreset)e.previousValue, dimension);
+
+                                                    if (visuals.value == null || visuals.value == previousDefault)
+                                                    {
+                                                        visuals.value = FieldEntityBodyBuilder.DefaultVisuals(chosen, dimension);
+                                                    }
+                                                });
+
             foldout.Add(preset);
+            foldout.Add(description);
             foldout.Add(name);
             foldout.Add(visuals);
             foldout.Add(new Button(() => AddBody((FieldBodyPreset)preset.value, name.value, (GameObject)visuals.value)) { text = "Build body" });
@@ -556,14 +596,29 @@ namespace RPGFramework.Field.Editor
             m_SelectedEntity.SetBody(body);
 
             // A gateway's script is what takes the player out of the field, so it starts with one to write the jump in.
-            if (preset == FieldBodyPreset.Gateway && !m_SelectedEntity.Scripts.Exists(script => script.Type == FieldScriptType.Gateway))
+            if (preset == FieldBodyPreset.Gateway)
             {
-                m_SelectedEntity.Scripts.Add(new FieldScriptRecord(FieldScriptType.Gateway, string.Empty, NEW_SCRIPT_TEXT));
+                AddScriptIfMissing(FieldScriptType.Gateway, NEW_SCRIPT_TEXT);
+            }
+
+            // A save point is only these two scripts; everything else about it is an area's.
+            if (preset == FieldBodyPreset.SavePoint)
+            {
+                AddScriptIfMissing(FieldScriptType.OnEnter, "SAVE_ACCESSIBILITY true\n"  + NEW_SCRIPT_TEXT);
+                AddScriptIfMissing(FieldScriptType.OnLeave, "SAVE_ACCESSIBILITY false\n" + NEW_SCRIPT_TEXT);
             }
 
             WriteInitScript(preset, visuals != null);
 
             OnBodyChanged();
+        }
+
+        private void AddScriptIfMissing(FieldScriptType type, string text)
+        {
+            if (!m_SelectedEntity.Scripts.Exists(script => script.Type == type))
+            {
+                m_SelectedEntity.Scripts.Add(new FieldScriptRecord(type, string.Empty, text));
+            }
         }
 
         /// <summary>
@@ -624,7 +679,7 @@ namespace RPGFramework.Field.Editor
 
         private void OnBodyChanged()
         {
-            m_HasUnsavedChanges = true;
+            hasUnsavedChanges = true;
 
             m_EntityListView.RefreshItems();
             m_EntityScriptListView.Rebuild();
@@ -656,7 +711,7 @@ namespace RPGFramework.Field.Editor
                                                    int index = choices.IndexOf(e.newValue);
 
                                                    m_SelectedEntity.SetBody(index <= 0 ? null : bodies[index - 1]);
-                                                   m_HasUnsavedChanges = true;
+                                                   hasUnsavedChanges = true;
                                                    m_EntityListView.RefreshItems();
                                                });
 
@@ -678,7 +733,7 @@ namespace RPGFramework.Field.Editor
                                                     {
                                                         script.SetType((FieldScriptType)e.newValue);
                                                         slot.style.display = script.Type == FieldScriptType.Requested ? DisplayStyle.Flex : DisplayStyle.None;
-                                                        m_HasUnsavedChanges = true;
+                                                        hasUnsavedChanges  = true;
                                                         m_EntityScriptListView.RefreshItems();
                                                     });
 
@@ -687,13 +742,13 @@ namespace RPGFramework.Field.Editor
             scriptName.RegisterValueChangedCallback(e =>
                                                     {
                                                         script.SetName(e.newValue);
-                                                        m_HasUnsavedChanges = true;
+                                                        hasUnsavedChanges = true;
                                                         m_EntityScriptListView.RefreshItems();
                                                     });
 
-            VisualElement buttons = new VisualElement { style = { flexDirection = FlexDirection.Row } };
+            VisualElement buttons = new VisualElement { style  = { flexDirection = FlexDirection.Row } };
             buttons.Add(new Button(CheckSelectedScript) { text = "Check script" });
-            buttons.Add(new Button(SaveOpenPrefab) { text = "Save field" });
+            buttons.Add(new Button(SaveOpenPrefab) { text      = "Save field" });
 
             m_ScriptStatus               = new HelpBox(string.Empty, HelpBoxMessageType.Info);
             m_ScriptStatus.style.display = DisplayStyle.None;
@@ -732,7 +787,7 @@ namespace RPGFramework.Field.Editor
             field.RegisterValueChangedCallback(e =>
                                                {
                                                    script.SetSlot((FieldScriptPriority)(labels.IndexOf(e.newValue) + (int)FieldScriptPriority.Unassigned));
-                                                   m_HasUnsavedChanges = true;
+                                                   hasUnsavedChanges = true;
                                                });
 
             return field;
@@ -763,7 +818,7 @@ namespace RPGFramework.Field.Editor
             entity.Scripts.Add(new FieldScriptRecord(FieldScriptType.Init, string.Empty, NEW_SCRIPT_TEXT));
 
             m_OpenFieldEntities.Entities.Add(entity);
-            m_HasUnsavedChanges = true;
+            hasUnsavedChanges = true;
 
             m_EntityListView.Rebuild();
             m_EntityListView.SetSelection(m_OpenFieldEntities.Entities.Count - 1);
@@ -851,7 +906,7 @@ namespace RPGFramework.Field.Editor
 
         private void ClearSelectionAfterDelete()
         {
-            m_HasUnsavedChanges = true;
+            hasUnsavedChanges = true;
 
             m_EntityListView.ClearSelection();
             m_EntityScriptListView.ClearSelection();
@@ -877,7 +932,7 @@ namespace RPGFramework.Field.Editor
             FieldScriptType scriptType = m_SelectedEntity.Scripts.Count == 0 ? FieldScriptType.Init : FieldScriptType.Requested;
 
             m_SelectedEntity.Scripts.Add(new FieldScriptRecord(scriptType, string.Empty, NEW_SCRIPT_TEXT));
-            m_HasUnsavedChanges = true;
+            hasUnsavedChanges = true;
 
             m_EntityScriptListView.Rebuild();
             m_EntityScriptListView.SetSelection(m_SelectedEntity.Scripts.Count - 1);
@@ -892,7 +947,7 @@ namespace RPGFramework.Field.Editor
 
             m_SelectedScript.SetText(scriptText);
 
-            m_HasUnsavedChanges = true;
+            hasUnsavedChanges = true;
         }
 
         /// <summary>
@@ -927,6 +982,20 @@ namespace RPGFramework.Field.Editor
             m_CurrentFieldAsset.Prefab = prefab;
 
             m_FieldsContainerListView.RefreshItems();
+        }
+
+        private void RefreshLocationNameField()
+        {
+            List<string> choices = new List<string> { NO_LOCATION_NAME };
+            choices.AddRange(FieldDatabase.AllLocalisationKeys());
+
+            m_LocationNameField.choices = choices;
+            m_LocationNameField.SetValueWithoutNotify(string.IsNullOrEmpty(m_CurrentFieldAsset.LocationName) ? NO_LOCATION_NAME : m_CurrentFieldAsset.LocationName);
+        }
+
+        private void OnLocationNameChanged(ChangeEvent<string> evt)
+        {
+            m_CurrentFieldAsset.LocationName = evt.newValue == NO_LOCATION_NAME ? string.Empty : evt.newValue;
         }
 
         private void OnTextViewerObjectFieldChanged(ChangeEvent<Object> evt)
