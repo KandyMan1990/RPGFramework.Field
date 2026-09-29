@@ -818,28 +818,62 @@ namespace RPGFramework.Field.Editor
 
             int offered = 0;
 
+            // An array is offered at its first element, and a record by its fields; an index is then edited in the text.
             foreach (VariableDefinition variable in m_VariableMap.Variables)
             {
-                bool fits = argument.Type == ArgumentType.Value ? ArgumentTypes.CanRead(width, variable.Width) : variable.Width == width;
+                string label = $"{variable.Bank}/{variable.Name}{DescribeCount(variable.Count)}";
+                string token = $"${variable.Name}{FirstElement(variable.Count)}";
 
-                if (!fits)
+                if (!variable.IsRecord)
                 {
+                    if (Fits(argument, width, variable.Width))
+                    {
+                        menu.AppendAction(label, _ => Set(block, argumentIndex, token, true));
+                        offered++;
+                    }
+
                     continue;
                 }
 
-                // An array is offered at its first element; the index is then edited in the text.
-                bool   isArray = variable.Count > 1;
-                string label   = isArray ? $"{variable.Bank}/{variable.Name}[{variable.Count}]" : $"{variable.Bank}/{variable.Name}";
-                string token   = isArray ? $"${variable.Name}[0]" : "$" + variable.Name;
+                foreach (VariableRecordField field in variable.Fields)
+                {
+                    if (!Fits(argument, width, field.Width))
+                    {
+                        continue;
+                    }
 
-                menu.AppendAction(label, _ => Set(block, argumentIndex, token, true));
-                offered++;
+                    string fieldToken = $"{token}.{field.Name}{FirstElement(field.Count)}";
+
+                    menu.AppendAction($"{label}/{field.Name}{DescribeCount(field.Count)}", _ => Set(block, argumentIndex, fieldToken, true));
+                    offered++;
+                }
             }
 
             if (offered == 0)
             {
                 menu.AppendAction($"No {width} variables declared", null, DropdownMenuAction.Status.Disabled);
             }
+        }
+
+        private static bool Fits(FieldArgumentInfo argument, VariableWidth width, VariableWidth variableWidth)
+        {
+            bool fits = argument.Type == ArgumentType.Value ? ArgumentTypes.CanRead(width, variableWidth) : variableWidth == width;
+
+            return fits;
+        }
+
+        private static string DescribeCount(int count)
+        {
+            string description = count > 1 ? $"[{count}]" : string.Empty;
+
+            return description;
+        }
+
+        private static string FirstElement(int count)
+        {
+            string element = count > 1 ? "[0]" : string.Empty;
+
+            return element;
         }
 
         /// <summary>

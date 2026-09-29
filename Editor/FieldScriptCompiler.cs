@@ -15,7 +15,7 @@ namespace RPGFramework.Field.Editor
         /// Prefix marking a token as a variable name to resolve against the <see cref="VariableMapAsset" />
         /// rather than a literal. <c>ADD_BYTE $money 100</c> adds the literal 100 to the variable named money;
         /// <c>ADD_BYTE $money $payslip</c> adds one variable to another; <c>ADD_BYTE $item_counts[3] 1</c> adds to one
-        /// element of an array.
+        /// element of an array, and <c>ADD_USHORT $characters[2].hp 10</c> to one field of one record.
         /// </summary>
         private const char VARIABLE_PREFIX = '$';
 
@@ -822,9 +822,9 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Turn a <c>$name</c> or <c>$name[element]</c> token into the value the map declares there, checking its width is
-        /// exactly <paramref name="width" />, as a destination's must be. This is the whole point of the variable
-        /// map: a script names what it means and the offset is resolved at build time.
+        /// Turn a <c>$name</c>, <c>$name[element]</c> or <c>$name[element].field[element]</c> token into the value the map
+        /// declares there, checking its width is exactly <paramref name="width" />, as a destination's must be. This is
+        /// the whole point of the variable map: a script names what it means and the offset is resolved at build time.
         /// </summary>
         private static ScriptVariable ResolveVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
         {
@@ -863,46 +863,107 @@ namespace RPGFramework.Field.Editor
 
             variableMap ??= LoadVariableMap();
 
-            string name  = token.Substring(1);
-            int    open  = name.IndexOf('[');
-            int    index = 0;
-
-            if (open >= 0)
-            {
-                bool parsed = name.EndsWith("]", StringComparison.Ordinal) &&
-                              int.TryParse(name.AsSpan(open + 1, name.Length - open - 2), NumberStyles.None, CultureInfo.InvariantCulture, out index);
-
-                if (!parsed)
-                {
-                    throw new Exception($"[{scriptName}] '{token}' is not a variable name followed by an element such as [0]");
-                }
-
-                name = name.Substring(0, open);
-            }
+            string path   = token.Substring(1);
+            int    dot    = path.IndexOf('.');
+            string record = dot < 0 ? path : path.Substring(0, dot);
+            string field  = dot < 0 ? null : path.Substring(dot + 1);
+            string name   = ParseElement(record, token, scriptName, out int index, out bool hasIndex);
 
             if (!variableMap.TryGetVariable(name, out VariableDefinition definition))
             {
                 throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(ResolveVariable)} No variable named '{name}' in the variable map, required by [{scriptName}]");
             }
 
-            if (definition.Count > 1 && open < 0)
+            CheckElement(name, definition.Count, hasIndex, index, scriptName);
+
+            int           address = definition.GetElementOffset(index);
+            VariableWidth width   = definition.Width;
+
+            if (definition.IsRecord)
             {
-                throw new Exception($"[{scriptName}] '{name}' is an array of {definition.Count}, so it needs an element, such as '{VARIABLE_PREFIX}{name}[0]'");
+                if (field == null)
+                {
+                    string example = $"{VARIABLE_PREFIX}{name}{(definition.Count > 1 ? "[0]" : string.Empty)}.{definition.Fields[0].Name}";
+
+                    throw new Exception($"[{scriptName}] '{name}' is a record, so name one of its fields, such as '{example}'");
+                }
+
+                string fieldName = ParseElement(field, token, scriptName, out int fieldIndex, out bool hasFieldIndex);
+
+                if (!definition.TryGetField(fieldName, out VariableRecordField recordField, out int fieldOffset))
+                {
+                    List<string> fieldNames = new List<string>();
+
+                    foreach (VariableRecordField each in definition.Fields)
+                    {
+                        fieldNames.Add(each.Name);
+                    }
+
+                    throw new Exception($"[{scriptName}] '{name}' has no field called '{fieldName}'. Its fields are {string.Join(", ", fieldNames)}");
+                }
+
+                CheckElement($"{record}.{fieldName}", recordField.Count, hasFieldIndex, fieldIndex, scriptName);
+
+                address += fieldOffset + fieldIndex * recordField.Width.GetByteCount();
+                width   =  recordField.Width;
+            }
+            else if (field != null)
+            {
+                throw new Exception($"[{scriptName}] '{name}' is not a record, so it has no field '{field}'");
             }
 
-            if (definition.Count == 1 && open >= 0)
-            {
-                throw new Exception($"[{scriptName}] '{name}' is a single value, not an array, so it takes no element");
-            }
-
-            if (index >= definition.Count)
-            {
-                throw new Exception($"[{scriptName}] '{name}' has elements 0 to {definition.Count - 1}, so [{index}] is outside it");
-            }
-
-            ScriptVariable variable = new ScriptVariable(token.Substring(1), definition.Bank, definition.Width, (ushort)definition.GetElementOffset(index));
+            ScriptVariable variable = new ScriptVariable(path, definition.Bank, width, (ushort)address);
 
             return variable;
+        }
+
+        /// <summary>
+        /// Split <c>name[3]</c> into the name and the element, or return a bare name with no element.
+        /// </summary>
+        private static string ParseElement(string part, string token, string scriptName, out int index, out bool hasIndex)
+        {
+            int open = part.IndexOf('[');
+
+            index    = 0;
+            hasIndex = open >= 0;
+
+            if (!hasIndex)
+            {
+                return part;
+            }
+
+            bool parsed = part.EndsWith("]", StringComparison.Ordinal) &&
+                          int.TryParse(part.AsSpan(open + 1, part.Length - open - 2), NumberStyles.None, CultureInfo.InvariantCulture, out index);
+
+            if (!parsed)
+            {
+                throw new Exception($"[{scriptName}] '{token}' is not a variable name, each part followed by an element such as [0] if it is an array");
+            }
+
+            string name = part.Substring(0, open);
+
+            return name;
+        }
+
+        /// <summary>
+        /// An array must be given an element within it, and anything else must not be given one.
+        /// </summary>
+        private static void CheckElement(string name, int count, bool hasIndex, int index, string scriptName)
+        {
+            if (count > 1 && !hasIndex)
+            {
+                throw new Exception($"[{scriptName}] '{name}' is an array of {count}, so it needs an element, such as '{VARIABLE_PREFIX}{name}[0]'");
+            }
+
+            if (count == 1 && hasIndex)
+            {
+                throw new Exception($"[{scriptName}] '{name}' is not an array, so it takes no element");
+            }
+
+            if (index >= count)
+            {
+                throw new Exception($"[{scriptName}] '{name}' has elements 0 to {count - 1}, so [{index}] is outside it");
+            }
         }
 
         /// <summary>
