@@ -14,7 +14,8 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// Prefix marking a token as a variable name to resolve against the <see cref="VariableMapAsset" />
         /// rather than a literal. <c>ADD_BYTE $money 100</c> adds the literal 100 to the variable named money;
-        /// <c>ADD_BYTE $money $payslip</c> adds one variable to another.
+        /// <c>ADD_BYTE $money $payslip</c> adds one variable to another; <c>ADD_BYTE $item_counts[3] 1</c> adds to one
+        /// element of an array.
         /// </summary>
         private const char VARIABLE_PREFIX = '$';
 
@@ -76,11 +77,11 @@ namespace RPGFramework.Field.Editor
                             throw new Exception($"line {lineIndex + 1}: ASK_PLAYER_TO_MAKE_A_CHOICE needs a destination, a channel, a question key and at least one answer key");
                         }
 
-                        VariableDefinition choice = ResolveVariable(parts[1], parts[0], ref variableMap, VariableWidth.Byte);
+                        ScriptVariable choice = ResolveVariable(parts[1], parts[0], ref variableMap, VariableWidth.Byte);
 
                         bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
                         bw.Write((byte)choice.Bank);
-                        bw.Write((ushort)choice.Offset);
+                        bw.Write(choice.Address);
                         bw.Write(ParseIndex(parts, 2, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, "dialogue channel", lineIndex + 1));
                         bw.Write(HashDialogueKey(parts, 3, lineIndex + 1));
 
@@ -140,6 +141,26 @@ namespace RPGFramework.Field.Editor
                 InstructionStart = instructionStart;
                 ArgumentPosition = argumentPosition;
                 IsAbsolute       = isAbsolute;
+            }
+        }
+
+        /// <summary>
+        /// A variable a script names, as the one value it reads or writes: the variable itself, or one element of an
+        /// array.
+        /// </summary>
+        private sealed class ScriptVariable
+        {
+            internal readonly string        Name;
+            internal readonly MemoryBank    Bank;
+            internal readonly VariableWidth Width;
+            internal readonly ushort        Address;
+
+            internal ScriptVariable(string name, MemoryBank bank, VariableWidth width, ushort address)
+            {
+                Name    = name;
+                Bank    = bank;
+                Width   = width;
+                Address = address;
             }
         }
 
@@ -360,10 +381,10 @@ namespace RPGFramework.Field.Editor
             {
                 ArgumentTypes.TryGetVariableWidth(type, default, out VariableWidth width);
 
-                VariableDefinition variable = ResolveVariable(token, scriptName, ref variableMap, width);
+                ScriptVariable variable = ResolveVariable(token, scriptName, ref variableMap, width);
 
                 source  = ToArgumentSource(variable.Bank);
-                address = (ushort)variable.Offset;
+                address = variable.Address;
             }
 
             if (sourcesPosition < 0)
@@ -556,8 +577,8 @@ namespace RPGFramework.Field.Editor
                 throw new Exception($"line {lineNumber}: {parts[0]} cannot test bits, so '{parts[2]}' is not allowed");
             }
 
-            VariableDefinition a = IsVariableToken(parts[1]) ? ResolveReadableVariable(parts[1], parts[0], ref variableMap, width) : null;
-            VariableDefinition b = IsVariableToken(parts[3]) ? ResolveReadableVariable(parts[3], parts[0], ref variableMap, width) : null;
+            ScriptVariable a = IsVariableToken(parts[1]) ? ResolveReadableVariable(parts[1], parts[0], ref variableMap, width) : null;
+            ScriptVariable b = IsVariableToken(parts[3]) ? ResolveReadableVariable(parts[3], parts[0], ref variableMap, width) : null;
 
             bw.Write((ushort)opCode.OpCode);
             bw.Write((byte)((SourceOf(a) << 4) | SourceOf(b)));
@@ -647,12 +668,12 @@ namespace RPGFramework.Field.Editor
 
             VariableWidth valueWidth = opCode.Arguments[1].Width;
 
-            VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, opCode.Arguments[0].Width);
-            VariableDefinition value       = IsVariableToken(parts[2]) ? ResolveReadableVariable(parts[2], parts[0], ref variableMap, valueWidth) : null;
+            ScriptVariable destination = ResolveVariable(parts[1], parts[0], ref variableMap, opCode.Arguments[0].Width);
+            ScriptVariable value       = IsVariableToken(parts[2]) ? ResolveReadableVariable(parts[2], parts[0], ref variableMap, valueWidth) : null;
 
             bw.Write((ushort)opCode.OpCode);
             bw.Write((byte)((ToArgumentSource(destination.Bank) << 4) | SourceOf(value)));
-            bw.Write((ushort)destination.Offset);
+            bw.Write(destination.Address);
 
             WriteOperand(bw, parts[2], value, valueWidth, lineNumber, parts[0]);
         }
@@ -667,11 +688,11 @@ namespace RPGFramework.Field.Editor
                 throw new Exception($"{parts[0]} needs a destination variable, for example '{parts[0]} $myVariable'");
             }
 
-            VariableDefinition destination = ResolveVariable(parts[1], parts[0], ref variableMap, opCode.Arguments[0].Width);
+            ScriptVariable destination = ResolveVariable(parts[1], parts[0], ref variableMap, opCode.Arguments[0].Width);
 
             bw.Write((ushort)opCode.OpCode);
             bw.Write((byte)(ToArgumentSource(destination.Bank) << 4));
-            bw.Write((ushort)destination.Offset);
+            bw.Write(destination.Address);
         }
 
         /// <summary>
@@ -685,7 +706,7 @@ namespace RPGFramework.Field.Editor
             }
 
             VariableWidth      width = opCode.Arguments[0].Width;
-            VariableDefinition value = IsVariableToken(parts[1]) ? ResolveReadableVariable(parts[1], parts[0], ref variableMap, width) : null;
+            ScriptVariable value = IsVariableToken(parts[1]) ? ResolveReadableVariable(parts[1], parts[0], ref variableMap, width) : null;
 
             bw.Write((ushort)opCode.OpCode);
             bw.Write(SourceOf(value));
@@ -693,7 +714,7 @@ namespace RPGFramework.Field.Editor
             WriteOperand(bw, parts[1], value, width, lineNumber, parts[0]);
         }
 
-        private static byte SourceOf(VariableDefinition variable)
+        private static byte SourceOf(ScriptVariable variable)
         {
             byte source = variable == null ? ARGUMENT_IMMEDIATE : ToArgumentSource(variable.Bank);
 
@@ -704,12 +725,12 @@ namespace RPGFramework.Field.Editor
         /// A bank-layout value: the variable's width and address when it reads one, otherwise an immediate at the
         /// value's width.
         /// </summary>
-        private static void WriteOperand(BinaryWriter bw, string token, VariableDefinition variable, VariableWidth width, int lineNumber, string scriptName)
+        private static void WriteOperand(BinaryWriter bw, string token, ScriptVariable variable, VariableWidth width, int lineNumber, string scriptName)
         {
             if (variable != null)
             {
                 bw.Write((byte)variable.Width);
-                bw.Write((ushort)variable.Offset);
+                bw.Write(variable.Address);
                 return;
             }
 
@@ -801,39 +822,39 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Turn a <c>$name</c> token into the variable the map declares under that name, checking its width is
+        /// Turn a <c>$name</c> or <c>$name[element]</c> token into the value the map declares there, checking its width is
         /// exactly <paramref name="width" />, as a destination's must be. This is the whole point of the variable
         /// map: a script names what it means and the offset is resolved at build time.
         /// </summary>
-        private static VariableDefinition ResolveVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
+        private static ScriptVariable ResolveVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
         {
-            VariableDefinition definition = LookUpVariable(token, scriptName, ref variableMap);
+            ScriptVariable variable = LookUpVariable(token, scriptName, ref variableMap);
 
-            if (definition.Width != width)
+            if (variable.Width != width)
             {
-                throw new Exception($"[{scriptName}] needs a {width} variable but '{definition.Name}' is declared as {definition.Width}");
+                throw new Exception($"[{scriptName}] needs a {width} variable but '{variable.Name}' is declared as {variable.Width}");
             }
 
-            return definition;
+            return variable;
         }
 
         /// <summary>
         /// As <see cref="ResolveVariable" />, for a variable read as a value of <paramref name="width" />, which may be
         /// narrower — see <see cref="ArgumentTypes.CanRead" />.
         /// </summary>
-        private static VariableDefinition ResolveReadableVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
+        private static ScriptVariable ResolveReadableVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
         {
-            VariableDefinition definition = LookUpVariable(token, scriptName, ref variableMap);
+            ScriptVariable variable = LookUpVariable(token, scriptName, ref variableMap);
 
-            if (!ArgumentTypes.CanRead(width, definition.Width))
+            if (!ArgumentTypes.CanRead(width, variable.Width))
             {
-                throw new Exception($"[{scriptName}] reads a {width} value, and '{definition.Name}' is a {definition.Width} variable, which does not fit");
+                throw new Exception($"[{scriptName}] reads a {width} value, and '{variable.Name}' is a {variable.Width} variable, which does not fit");
             }
 
-            return definition;
+            return variable;
         }
 
-        private static VariableDefinition LookUpVariable(string token, string scriptName, ref VariableMapAsset variableMap)
+        private static ScriptVariable LookUpVariable(string token, string scriptName, ref VariableMapAsset variableMap)
         {
             if (!IsVariableToken(token))
             {
@@ -842,14 +863,46 @@ namespace RPGFramework.Field.Editor
 
             variableMap ??= LoadVariableMap();
 
-            string name = token.Substring(1);
+            string name  = token.Substring(1);
+            int    open  = name.IndexOf('[');
+            int    index = 0;
+
+            if (open >= 0)
+            {
+                bool parsed = name.EndsWith("]", StringComparison.Ordinal) &&
+                              int.TryParse(name.AsSpan(open + 1, name.Length - open - 2), NumberStyles.None, CultureInfo.InvariantCulture, out index);
+
+                if (!parsed)
+                {
+                    throw new Exception($"[{scriptName}] '{token}' is not a variable name followed by an element such as [0]");
+                }
+
+                name = name.Substring(0, open);
+            }
 
             if (!variableMap.TryGetVariable(name, out VariableDefinition definition))
             {
                 throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(ResolveVariable)} No variable named '{name}' in the variable map, required by [{scriptName}]");
             }
 
-            return definition;
+            if (definition.Count > 1 && open < 0)
+            {
+                throw new Exception($"[{scriptName}] '{name}' is an array of {definition.Count}, so it needs an element, such as '{VARIABLE_PREFIX}{name}[0]'");
+            }
+
+            if (definition.Count == 1 && open >= 0)
+            {
+                throw new Exception($"[{scriptName}] '{name}' is a single value, not an array, so it takes no element");
+            }
+
+            if (index >= definition.Count)
+            {
+                throw new Exception($"[{scriptName}] '{name}' has elements 0 to {definition.Count - 1}, so [{index}] is outside it");
+            }
+
+            ScriptVariable variable = new ScriptVariable(token.Substring(1), definition.Bank, definition.Width, (ushort)definition.GetElementOffset(index));
+
+            return variable;
         }
 
         /// <summary>

@@ -827,8 +827,10 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                string label = $"{variable.Bank}/{variable.Name}";
-                string token = "$" + variable.Name;
+                // An array is offered at its first element; the index is then edited in the text.
+                bool   isArray = variable.Count > 1;
+                string label   = isArray ? $"{variable.Bank}/{variable.Name}[{variable.Count}]" : $"{variable.Bank}/{variable.Name}";
+                string token   = isArray ? $"${variable.Name}[0]" : "$" + variable.Name;
 
                 menu.AppendAction(label, _ => Set(block, argumentIndex, token, true));
                 offered++;
