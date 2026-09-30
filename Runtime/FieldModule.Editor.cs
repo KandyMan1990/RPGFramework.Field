@@ -11,7 +11,8 @@ namespace RPGFramework.Field
         /// White: the player's facing cone. Circles: each interactable entity's range, green if active and grey if
         /// not, with its facing arc. Lines to entities in range: green for the one an interaction would pick,
         /// yellow when the player is not facing it, red when it is not facing the player. Boxes: each area's trigger in
-        /// cyan and each gateway's in magenta, grey while it is switched off or its entity hidden.
+        /// cyan and each gateway's in magenta, grey while it is switched off or its entity hidden, and each blocker's
+        /// colliders in red while it blocks and grey while it is open.
         /// </summary>
         private void DrawInteractionDebug()
         {
@@ -81,6 +82,7 @@ namespace RPGFramework.Field
             }
 
             DrawCollisionTriggers();
+            DrawBlockers();
 
             m_DebugOverlay.End();
         }
@@ -99,25 +101,49 @@ namespace RPGFramework.Field
                 bool  gateway = entity.Entity.TryGetScriptIndex(FieldScriptType.Gateway, out int _);
                 Color colour  = !trigger.IsListening ? Color.gray : gateway ? Color.magenta : Color.cyan;
 
-                foreach (Collider collider in trigger.GetComponents<Collider>())
-                {
-                    if (collider is BoxCollider box)
-                    {
-                        m_DebugOverlay.Box(box.transform.localToWorldMatrix, box.center, box.size, colour);
-                        continue;
-                    }
+                DrawColliders(trigger.GetComponents<Collider>(), trigger.GetComponents<Collider2D>(), colour, true);
+            }
+        }
 
-                    m_DebugOverlay.Bounds(collider.bounds, colour);
+        /// <summary>
+        /// An open blocker's GameObject is inactive, and an inactive collider has no bounds, so only its boxes are drawn.
+        /// </summary>
+        private void DrawBlockers()
+        {
+            foreach (FieldBlocker blocker in m_Blockers)
+            {
+                bool blocking = blocker.IsBlocking;
+
+                DrawColliders(blocker.GetComponentsInChildren<Collider>(true), blocker.GetComponentsInChildren<Collider2D>(true), blocking ? Color.red : Color.gray, blocking);
+            }
+        }
+
+        private void DrawColliders(Collider[] colliders, Collider2D[] colliders2D, Color colour, bool hasBounds)
+        {
+            foreach (Collider collider in colliders)
+            {
+                if (collider is BoxCollider box)
+                {
+                    m_DebugOverlay.Box(box.transform.localToWorldMatrix, box.center, box.size, colour);
+                    continue;
                 }
 
-                foreach (Collider2D collider in trigger.GetComponents<Collider2D>())
+                if (hasBounds)
                 {
-                    if (collider is BoxCollider2D box)
-                    {
-                        m_DebugOverlay.Rectangle(box.transform, box.offset, box.size, colour);
-                        continue;
-                    }
+                    m_DebugOverlay.Bounds(collider.bounds, colour);
+                }
+            }
 
+            foreach (Collider2D collider in colliders2D)
+            {
+                if (collider is BoxCollider2D box)
+                {
+                    m_DebugOverlay.Rectangle(box.transform, box.offset, box.size, colour);
+                    continue;
+                }
+
+                if (hasBounds)
+                {
                     m_DebugOverlay.Bounds(collider.bounds, colour);
                 }
             }

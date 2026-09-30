@@ -530,6 +530,49 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
+        /// The field's blockers by name, writing the id. With none in the field yet the id is typed, and an id no
+        /// blocker has is shown as written rather than quietly changed.
+        /// </summary>
+        private VisualElement BlockerDropdown(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            FieldBlocker[] blockers = m_Field.GetComponentsInChildren<FieldBlocker>(true);
+
+            if (blockers.Length == 0)
+            {
+                IntegerField typed = new IntegerField(label) { value = ParseInt(current) };
+                typed.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+                return typed;
+            }
+
+            List<string> labels = new List<string>(blockers.Length);
+            string       shown  = current;
+
+            foreach (FieldBlocker blocker in blockers)
+            {
+                string blockerLabel = $"{blocker.name} ({blocker.Id})";
+
+                labels.Add(blockerLabel);
+
+                if (blocker.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) == current)
+                {
+                    shown = blockerLabel;
+                }
+            }
+
+            DropdownField field = new DropdownField(label, labels, 0);
+            field.SetValueWithoutNotify(shown);
+
+            field.RegisterValueChangedCallback(e =>
+                                               {
+                                                   FieldBlocker chosen = blockers[labels.IndexOf(e.newValue)];
+                                                   Set(block, argumentIndex, chosen.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                                               });
+
+            return field;
+        }
+
+        /// <summary>
         /// Whose scripts an event id counts: the entity the block names, or with none named this entity's own, as
         /// <c>RETURN_TO_SCRIPT</c>'s. A named entity written as a variable, or one the field no longer has, cannot be
         /// known here.
@@ -621,6 +664,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.EntityId:
                     return EntityDropdown(block, argumentIndex, label, current);
+
+                case ArgumentType.BlockerId:
+                    return BlockerDropdown(block, argumentIndex, label, current);
 
                 case ArgumentType.EventId when TryGetEventOwner(block, out FieldEntityRecord owner):
                     return IndexDropdown(block, argumentIndex, label, current, owner.Scripts.Count, i => DescribeScript(owner.Scripts[i], i));

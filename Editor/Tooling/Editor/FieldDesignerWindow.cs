@@ -14,7 +14,7 @@ namespace RPGFramework.Field.Editor
     internal class FieldDesignerWindow : EditorWindow
     {
         /// <summary>A new script returns at once, so it compiles before anything has been written in it.</summary>
-        private const string NEW_SCRIPT_TEXT = "RETURN";
+        private const string NEW_SCRIPT_TEXT = FieldEntityBodyBuilder.NEW_SCRIPT_TEXT;
 
         private const string NO_BODY = "(none)";
 
@@ -43,6 +43,7 @@ namespace RPGFramework.Field.Editor
         private Button        m_AddScriptButton;
         private Button        m_DeleteEntityButton;
         private Button        m_DeleteScriptButton;
+        private Button        m_AddBlockerButton;
         private VisualElement m_ScriptBlockContainer;
 
         private FieldEntityRecord m_SelectedEntity;
@@ -420,11 +421,13 @@ namespace RPGFramework.Field.Editor
             m_AddScriptButton      = rootVisualElement.Q<Button>("AddScriptButton");
             m_DeleteEntityButton   = rootVisualElement.Q<Button>("DeleteEntityButton");
             m_DeleteScriptButton   = rootVisualElement.Q<Button>("DeleteScriptButton");
+            m_AddBlockerButton     = rootVisualElement.Q<Button>("AddBlockerButton");
 
             m_AddEntityButton.RegisterCallback<ClickEvent>(OnAddEntityPressed);
             m_AddScriptButton.RegisterCallback<ClickEvent>(OnAddScriptPressed);
             m_DeleteEntityButton.RegisterCallback<ClickEvent>(OnDeleteEntityPressed);
             m_DeleteScriptButton.RegisterCallback<ClickEvent>(OnDeleteScriptPressed);
+            m_AddBlockerButton.RegisterCallback<ClickEvent>(OnAddBlockerPressed);
 
             SetEditingEnabled(false, false, false);
 
@@ -595,66 +598,9 @@ namespace RPGFramework.Field.Editor
 
             m_SelectedEntity.SetBody(body);
 
-            // A gateway's script is what takes the player out of the field, so it starts with one to write the jump in.
-            if (preset == FieldBodyPreset.Gateway)
-            {
-                AddScriptIfMissing(FieldScriptType.Gateway, NEW_SCRIPT_TEXT);
-            }
-
-            // A save point is only these two scripts; everything else about it is an area's.
-            if (preset == FieldBodyPreset.SavePoint)
-            {
-                AddScriptIfMissing(FieldScriptType.OnEnter, "SAVE_ACCESSIBILITY true\n"  + NEW_SCRIPT_TEXT);
-                AddScriptIfMissing(FieldScriptType.OnLeave, "SAVE_ACCESSIBILITY false\n" + NEW_SCRIPT_TEXT);
-            }
-
-            WriteInitScript(preset, visuals != null);
+            FieldEntityBodyBuilder.WritePresetScripts(m_SelectedEntity, preset, visuals != null);
 
             OnBodyChanged();
-        }
-
-        private void AddScriptIfMissing(FieldScriptType type, string text)
-        {
-            if (!m_SelectedEntity.Scripts.Exists(script => script.Type == type))
-            {
-                m_SelectedEntity.Scripts.Add(new FieldScriptRecord(type, string.Empty, text));
-            }
-        }
-
-        /// <summary>
-        /// What a body of this kind cannot do without: the player's entity is the one that claims the player, and an
-        /// entity starts hidden, so anything with visuals has to show itself. Only written into an init script still
-        /// left as the one <c>Add Entity</c> made, so nothing an author wrote is touched.
-        /// </summary>
-        private void WriteInitScript(FieldBodyPreset preset, bool hasVisuals)
-        {
-            FieldScriptRecord init = m_SelectedEntity.Scripts.Find(script => script.Type == FieldScriptType.Init);
-
-            if (init == null || init.Text != NEW_SCRIPT_TEXT)
-            {
-                return;
-            }
-
-            List<string> lines = new List<string>();
-
-            if (preset == FieldBodyPreset.PlayerCharacter)
-            {
-                lines.Add("SET_PLAYER_ENTITY");
-            }
-
-            if (hasVisuals)
-            {
-                lines.Add("VISIBILITY true");
-            }
-
-            if (lines.Count == 0)
-            {
-                return;
-            }
-
-            lines.Add(NEW_SCRIPT_TEXT);
-
-            init.SetText(string.Join("\n", lines));
         }
 
         private void UseBodyPrefab(GameObject bodyPrefab)
@@ -804,29 +750,34 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            int entityId = 0;
-
-            foreach (FieldEntityRecord record in m_OpenFieldEntities.Entities)
-            {
-                if (record.EntityId >= entityId)
-                {
-                    entityId = record.EntityId + 1;
-                }
-            }
-
-            FieldEntityRecord entity = new FieldEntityRecord(entityId, $"Entity{entityId}", null);
-            entity.Scripts.Add(new FieldScriptRecord(FieldScriptType.Init, string.Empty, NEW_SCRIPT_TEXT));
-
-            m_OpenFieldEntities.Entities.Add(entity);
+            FieldEntityBodyBuilder.CreateEntityRecord(m_OpenFieldEntities, "Entity");
             hasUnsavedChanges = true;
 
             m_EntityListView.Rebuild();
             m_EntityListView.SetSelection(m_OpenFieldEntities.Entities.Count - 1);
         }
 
+        /// <summary>
+        /// Built here so a designer opens the prefab only to place it. A blocker is not an entity: nothing on it runs a
+        /// script, and other entities' scripts switch it by id.
+        /// </summary>
+        private void OnAddBlockerPressed(ClickEvent e)
+        {
+            if (m_OpenFieldEntities == null)
+            {
+                return;
+            }
+
+            FieldBlocker blocker = FieldEntityBodyBuilder.BuildBlocker(m_CurrentlyOpenPrefab, m_OpenFieldEntities.Dimension);
+            hasUnsavedChanges = true;
+
+            Debug.Log($"{nameof(FieldDesignerWindow)} added blocker '{blocker.name}' ({blocker.Id}) to {m_CurrentlyOpenPrefab.name} at its origin, closed, with a box to block with. Save the field, then place and size it in the prefab. In a tilemap field, replace the box with a {nameof(UnityEngine.Tilemaps.Tilemap)} of the cells it closes");
+        }
+
         private void SetEditingEnabled(bool hasField, bool hasEntity, bool hasScript)
         {
             m_AddEntityButton.SetEnabled(hasField);
+            m_AddBlockerButton.SetEnabled(hasField);
             m_DeleteEntityButton.SetEnabled(hasEntity);
             m_AddScriptButton.SetEnabled(hasEntity);
             m_DeleteScriptButton.SetEnabled(hasScript);

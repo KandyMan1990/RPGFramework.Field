@@ -114,6 +114,11 @@ namespace RPGFramework.Field
         /// </summary>
         SpawnId,
 
+        /// <summary>
+        /// A blocker in this field, encoded as the id on its <c>FieldBlocker</c> component.
+        /// </summary>
+        BlockerId,
+
         /// <summary>A localisation key, authored as text and encoded as its 64-bit hash.</summary>
         LocalisationKey,
 
@@ -270,6 +275,7 @@ namespace RPGFramework.Field
                 case ArgumentType.Byte:
                 case ArgumentType.EntityId:
                 case ArgumentType.Priority:
+                case ArgumentType.BlockerId:
                     width = VariableWidth.Byte;
                     return true;
 

@@ -9,6 +9,7 @@ using RPGFramework.Localisation.Editor;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 namespace RPGFramework.Field.Editor
 {
@@ -154,7 +155,13 @@ namespace RPGFramework.Field.Editor
                 HashSet<int>         withBodies       = new HashSet<int>();
                 HashSet<int>         entityIds        = new HashSet<int>();
                 HashSet<FieldEntity> bodies           = new HashSet<FieldEntity>();
+                HashSet<int>         blockerIds       = new HashSet<int>();
                 DialogueChannelUse   dialogueChannels = new DialogueChannelUse();
+
+                foreach (FieldBlocker blocker in prefab.GetComponentsInChildren<FieldBlocker>(true))
+                {
+                    ValidateBlocker(fieldEntities.Dimension, blocker, prefab.name, blockerIds, problems);
+                }
 
                 foreach (FieldEntityRecord record in fieldEntities.Entities)
                 {
@@ -168,7 +175,7 @@ namespace RPGFramework.Field.Editor
 
                 foreach (FieldEntityRecord record in fieldEntities.Entities)
                 {
-                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, dialogueChannels, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, blockerIds, dialogueChannels, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -288,7 +295,7 @@ namespace RPGFramework.Field.Editor
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
         /// </summary>
-        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, HashSet<int> withBodies, DialogueChannelUse dialogueChannels, List<string> problems)
+        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, HashSet<int> withBodies, HashSet<int> blockerIds, DialogueChannelUse dialogueChannels, List<string> problems)
         {
             string      entityName = $"{prefab.name} / '{record.Name}'";
             FieldEntity body       = record.Body;
@@ -359,6 +366,7 @@ namespace RPGFramework.Field.Editor
                 ValidateInitScript(script.Type, scriptDescription, lines, problems);
                 ValidateBodyOpcodes(body, scriptDescription, lines, problems);
                 ValidateEntityTargets(scriptCounts, withBodies, scriptDescription, lines, problems);
+                ValidateBlockerTargets(blockerIds, scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
                 ValidateScriptRequests(record, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
@@ -508,6 +516,72 @@ namespace RPGFramework.Field.Editor
         /// An opcode acting on the entity's presence that names another entity — to face it, to walk up to it — acts
         /// toward that entity's body, so the one it names needs a body too.
         /// </summary>
+        /// <summary>
+        /// Scripts name a blocker by id, so two sharing one would be switched together — and the field module keys
+        /// them by id at load. One that has nothing to stop an entity closes nothing: the physics drivers meet solid
+        /// colliders of the field's dimension, and the tilemap driver the cells of a tilemap.
+        /// </summary>
+        private static void ValidateBlocker(FieldDimension dimension, FieldBlocker blocker, string fieldName, HashSet<int> blockerIds, List<string> problems)
+        {
+            string blockerName = $"{fieldName} / blocker '{blocker.name}' ({blocker.Id})";
+
+            if (!blockerIds.Add(blocker.Id))
+            {
+                problems.Add($"{blockerName} reuses id [{blocker.Id}], which another blocker in this field already has");
+            }
+
+            bool solid3D  = Array.Exists(blocker.GetComponentsInChildren<Collider>(true),   collider => !collider.isTrigger);
+            bool solid2D  = Array.Exists(blocker.GetComponentsInChildren<Collider2D>(true), collider => !collider.isTrigger);
+            bool hasCells = blocker.GetComponentInChildren<Tilemap>(true) != null;
+
+            if (dimension == FieldDimension.ThreeD && solid2D)
+            {
+                problems.Add($"{blockerName} has a 2D collider in a 3D field, which nothing moving there meets. Use a 3D collider");
+            }
+
+            if (dimension == FieldDimension.TwoD && solid3D)
+            {
+                problems.Add($"{blockerName} has a 3D collider in a 2D field, which nothing moving there meets. Use a 2D collider");
+            }
+
+            bool blocks = hasCells || (dimension == FieldDimension.ThreeD ? solid3D : solid2D);
+
+            if (!blocks)
+            {
+                problems.Add($"{blockerName} has nothing to block with. Give it a solid collider, or in a tilemap field a {nameof(Tilemap)} of the cells it closes");
+            }
+        }
+
+        private static void ValidateBlockerTargets(HashSet<int> blockerIds, string scriptDescription, string[] lines, List<string> problems)
+        {
+            foreach (string line in lines)
+            {
+                string[] parts = line.Trim().Split(' ');
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                for (int argument = 0; argument < opCode.Arguments.Count && argument + 1 < parts.Length; argument++)
+                {
+                    string token = parts[argument + 1];
+
+                    // One worked out while playing is only known then.
+                    if (opCode.Arguments[argument].Type != ArgumentType.BlockerId || token.StartsWith("$") ||
+                        !int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out int blockerId))
+                    {
+                        continue;
+                    }
+
+                    if (!blockerIds.Contains(blockerId))
+                    {
+                        problems.Add($"{scriptDescription} uses {parts[0]} on blocker [{blockerId}], which this field has no {nameof(FieldBlocker)} for");
+                    }
+                }
+            }
+        }
+
         private static void ValidateEntityTargets(Dictionary<int, int> scriptCounts, HashSet<int> withBodies, string scriptDescription, string[] lines, List<string> problems)
         {
             foreach (string line in lines)

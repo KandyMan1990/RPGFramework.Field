@@ -28,6 +28,7 @@
                     <ui:ListView name="EntityListView" reorderable="false" show-add-remove-footer="false" style="flex-grow: 1;"/>
                     <ui:Button name="AddEntityButton" text="Add Entity"/>
                     <ui:Button name="DeleteEntityButton" text="Delete Entity"/>
+                    <ui:Button name="AddBlockerButton" text="Add Blocker" tooltip="A part of the field scripts can close and open with BLOCKER_ACTIVATION. It is added at the field's origin with a box to block with — save the field, then place and size it in the prefab"/>
                 </ui:VisualElement>
                 <ui:VisualElement style="width: 20%; height: 100%;">
                     <ui:ListView name="EntityScriptListView" reorderable="false" show-add-remove-footer="false" style="flex-grow: 1;"/>

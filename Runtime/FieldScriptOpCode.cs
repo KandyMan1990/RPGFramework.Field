@@ -1153,6 +1153,11 @@ namespace RPGFramework.Field
         WaitForScreenColour   = 0x0602, // wait for a screen colour fade to finish
         ParticleActivation    = 0x0603, // ushort effectId, bool active - a named effect placed in the field
 
+        [FieldOpCode("BLOCKER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Close part of this field with one of its blockers, or open it again")]
+        [Argument(0, "blocker",    ArgumentType.BlockerId, Description = "the id on a FieldBlocker in this field")]
+        [Argument(1, "isBlocking", ArgumentType.Bool)]
+        BlockerActivation = 0x0604,
+
         // Camera and screen movement (0x0700)
         FadeScreen             = 0x0700,
         FadeScreenWait         = 0x0701,

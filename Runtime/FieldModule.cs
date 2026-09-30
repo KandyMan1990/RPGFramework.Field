@@ -76,6 +76,8 @@ namespace RPGFramework.Field
         private SpawnPoint                             m_InitialPlayerSpawn;
         private Dictionary<int, FieldEntityComponents> m_Entities;
         private Dictionary<ulong, string>              m_AnimationNames;
+        private FieldBlocker[]                         m_Blockers;
+        private Dictionary<byte, FieldBlocker>         m_BlockersById;
         private int                                    m_PlayerEntityId;
 
         private bool               m_FieldTransitionRequested;
@@ -248,6 +250,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetGatewayTriggersActive    += OnRequestSetGatewayTriggersActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive += OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetCollisionTriggerActive   += OnRequestSetCollisionTriggerActive;
+            m_FieldContext.VM.RequestSetBlockerActive            += OnRequestSetBlockerActive;
             m_FieldContext.VM.RequestSetInteractionRange         += OnRequestSetInteractionRange;
             m_FieldContext.VM.RequestInputLock                   += OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetEntityPosition           += OnRequestSetEntityPosition;
@@ -314,6 +317,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityPosition           -= OnRequestSetEntityPosition;
             m_FieldContext.VM.RequestInputLock                   -= OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= OnRequestSetInteractionRange;
+            m_FieldContext.VM.RequestSetBlockerActive            -= OnRequestSetBlockerActive;
             m_FieldContext.VM.RequestSetCollisionTriggerActive   -= OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= OnRequestSetGatewayTriggersActive;
@@ -384,6 +388,15 @@ namespace RPGFramework.Field
             GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(m_FieldDatabaseAsset);
             SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
             m_InitialPlayerSpawn = Array.Find(spawnPoints, sp => sp.Id == fieldArgs.SpawnId);
+
+            m_Blockers     = fieldGameObject.GetComponentsInChildren<FieldBlocker>(true);
+            m_BlockersById = new Dictionary<byte, FieldBlocker>(m_Blockers.Length);
+
+            foreach (FieldBlocker blocker in m_Blockers)
+            {
+                blocker.Bind();
+                m_BlockersById.Add(blocker.Id, blocker);
+            }
 
             FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
             m_Entities       = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
@@ -691,6 +704,11 @@ namespace RPGFramework.Field
             foreach ((int entityId, bool active) in m_FieldContext.CollisionTriggersActive)
             {
                 m_Entities[entityId].CollisionTrigger.SetActive(active);
+            }
+
+            foreach ((byte blockerId, bool active) in m_FieldContext.BlockersActive)
+            {
+                m_BlockersById[blockerId].SetBlocking(active);
             }
 
             await PostFieldLoadAsync();
@@ -1092,6 +1110,12 @@ namespace RPGFramework.Field
             m_FieldContext.SetGatewaysActive(active);
         }
 
+        private void OnRequestSetBlockerActive(byte blockerId, bool active)
+        {
+            m_BlockersById[blockerId].SetBlocking(active);
+            m_FieldContext.SetBlockerActive(blockerId, active);
+        }
+
         private void OnGatewayEntered(int entityId, int eventId)
         {
             if (!m_FieldContext.GatewaysActive)
@@ -1318,7 +1342,7 @@ namespace RPGFramework.Field
 
             if (entity.MovementDriver == null)
             {
-                movementDriver = MovementDriverFactory.Create(entity.Entity.gameObject, 3f);
+                movementDriver = MovementDriverFactory.Create(entity.Entity.gameObject, 3f, m_Blockers);
                 entity.SetMovementDriver(movementDriver);
             }
 

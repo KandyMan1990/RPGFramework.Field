@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace RPGFramework.Field.Editor
@@ -21,12 +23,18 @@ namespace RPGFramework.Field.Editor
     }
 
     /// <summary>
-    /// Builds an entity's body: the object, the components the engine looks for, and the visuals as a prefab kept as
-    /// a prefab. Assembling one by hand is how a piece gets missed, which the export checks then have to catch.
+    /// Builds what a field is made of — an entity's body with the components the engine looks for and its visuals as
+    /// a prefab kept as a prefab, the scripts its role needs, a blocker, a spawn point — for the Field Designer and for
+    /// the GameObject menu alike. Assembling one by hand is how a piece gets missed, which the export checks then have
+    /// to catch.
     /// </summary>
     internal static class FieldEntityBodyBuilder
     {
+        internal const string NEW_SCRIPT_TEXT = "RETURN";
+
         private const string TRIGGER_OBJECT = "Trigger";
+        private const string MENU           = "GameObject/RPG Framework/Field/";
+        private const int    MENU_PRIORITY  = 10;
 
         private const string SAVE_POINT_2D_VISUALS = "Packages/com.rpgframework.field/Runtime/Prefabs/SavePoint2D.prefab";
         private const string SAVE_POINT_3D_VISUALS = "Packages/com.rpgframework.field/Runtime/Prefabs/SavePoint3D.prefab";
@@ -74,6 +82,26 @@ namespace RPGFramework.Field.Editor
             }
 
             return entity;
+        }
+
+        /// <summary>
+        /// A blocker at the field's origin, closed, with the next free id and a solid box of the field's dimension to
+        /// block with, to be placed and sized in the prefab. A tilemap field swaps the box for a tilemap of the cells it
+        /// closes.
+        /// </summary>
+        internal static FieldBlocker BuildBlocker(GameObject fieldRoot, FieldDimension dimension)
+        {
+            byte id = FieldBlocker.NextId(fieldRoot.transform, null);
+
+            GameObject blockerObject = new GameObject($"Blocker{id}");
+            blockerObject.transform.SetParent(fieldRoot.transform, false);
+
+            FieldBlocker blocker = blockerObject.AddComponent<FieldBlocker>();
+            blocker.SetId(id);
+
+            AddSolid(blockerObject, dimension);
+
+            return blocker;
         }
 
         /// <summary>
@@ -176,29 +204,207 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// The menu cannot ask what the body is for, so it makes a plain one to be wired by hand. The Field Designer
-        /// is where a preset is chosen, and where the body is joined to an entity.
+        /// A new entity with the next free id and an init script that returns, named for what it is.
         /// </summary>
-        [MenuItem("GameObject/RPG Framework/Field Entity Body", false, 10)]
-        private static void CreateBody(MenuCommand command)
+        internal static FieldEntityRecord CreateEntityRecord(FieldEntities field, string namePrefix)
         {
-            GameObject     parent        = command.context as GameObject;
-            FieldEntities  fieldEntities = parent        != null ? parent.GetComponentInParent<FieldEntities>() : null;
-            FieldDimension dimension     = fieldEntities != null ? fieldEntities.Dimension : FieldDimension.ThreeD;
+            int entityId = 0;
 
-            GameObject bodyObject = new GameObject("Field Entity");
-
-            if (parent != null)
+            foreach (FieldEntityRecord record in field.Entities)
             {
-                bodyObject.transform.SetParent(parent.transform, false);
+                if (record.EntityId >= entityId)
+                {
+                    entityId = record.EntityId + 1;
+                }
             }
 
-            bodyObject.AddComponent<FieldEntity>();
+            FieldEntityRecord entity = new FieldEntityRecord(entityId, $"{namePrefix}{entityId}", null);
+            entity.Scripts.Add(new FieldScriptRecord(FieldScriptType.Init, string.Empty, NEW_SCRIPT_TEXT));
 
-            Undo.RegisterCreatedObjectUndo(bodyObject, "Create Field Entity Body");
-            Selection.activeGameObject = bodyObject;
+            field.Entities.Add(entity);
 
-            Debug.Log($"{nameof(FieldEntityBodyBuilder)} made a plain body in a {(dimension == FieldDimension.TwoD ? "2D" : "3D")} field. Give it to an entity in the Field Designer, which can also build one with its triggers and body already on it");
+            return entity;
+        }
+
+        /// <summary>
+        /// The scripts a body of this kind cannot do without: a gateway's script is what takes the player out of the
+        /// field, and a save point is only its enter and leave scripts. Written only where the entity has none of that
+        /// type, so nothing an author wrote is touched.
+        /// </summary>
+        internal static void WritePresetScripts(FieldEntityRecord entity, FieldBodyPreset preset, bool hasVisuals)
+        {
+            if (preset == FieldBodyPreset.Gateway)
+            {
+                AddScriptIfMissing(entity, FieldScriptType.Gateway, NEW_SCRIPT_TEXT);
+            }
+
+            if (preset == FieldBodyPreset.SavePoint)
+            {
+                AddScriptIfMissing(entity, FieldScriptType.OnEnter, "SAVE_ACCESSIBILITY true\n"  + NEW_SCRIPT_TEXT);
+                AddScriptIfMissing(entity, FieldScriptType.OnLeave, "SAVE_ACCESSIBILITY false\n" + NEW_SCRIPT_TEXT);
+            }
+
+            WriteInitScript(entity, preset, hasVisuals);
+        }
+
+        private static void AddScriptIfMissing(FieldEntityRecord entity, FieldScriptType type, string text)
+        {
+            if (!entity.Scripts.Exists(script => script.Type == type))
+            {
+                entity.Scripts.Add(new FieldScriptRecord(type, string.Empty, text));
+            }
+        }
+
+        /// <summary>
+        /// What a body of this kind cannot do without: the player's entity is the one that claims the player, and an
+        /// entity starts hidden, so anything with visuals has to show itself. Only written into an init script still
+        /// left as a new entity's, so nothing an author wrote is touched.
+        /// </summary>
+        private static void WriteInitScript(FieldEntityRecord entity, FieldBodyPreset preset, bool hasVisuals)
+        {
+            FieldScriptRecord init = entity.Scripts.Find(script => script.Type == FieldScriptType.Init);
+
+            if (init == null || init.Text != NEW_SCRIPT_TEXT)
+            {
+                return;
+            }
+
+            List<string> lines = new List<string>();
+
+            if (preset == FieldBodyPreset.PlayerCharacter)
+            {
+                lines.Add("SET_PLAYER_ENTITY");
+            }
+
+            if (hasVisuals)
+            {
+                lines.Add("VISIBILITY true");
+            }
+
+            if (lines.Count == 0)
+            {
+                return;
+            }
+
+            lines.Add(NEW_SCRIPT_TEXT);
+
+            init.SetText(string.Join("\n", lines));
+        }
+
+        // The GameObject menu, for a designer already in the prefab: each item makes the whole thing — an entity is its
+        // record, body and scripts at once — under the object right-clicked, or the field's root, ready to be placed.
+
+        [MenuItem(MENU + "Entity/Gateway", false, MENU_PRIORITY)]
+        private static void CreateGateway(MenuCommand command) => CreateEntity(command, FieldBodyPreset.Gateway);
+
+        [MenuItem(MENU + "Entity/Character", false, MENU_PRIORITY)]
+        private static void CreateCharacter(MenuCommand command) => CreateEntity(command, FieldBodyPreset.Character);
+
+        [MenuItem(MENU + "Entity/Player Character", false, MENU_PRIORITY)]
+        private static void CreatePlayerCharacter(MenuCommand command) => CreateEntity(command, FieldBodyPreset.PlayerCharacter);
+
+        [MenuItem(MENU + "Entity/Interactable Object", false, MENU_PRIORITY)]
+        private static void CreateInteractableObject(MenuCommand command) => CreateEntity(command, FieldBodyPreset.InteractableObject);
+
+        [MenuItem(MENU + "Entity/Examine Point", false, MENU_PRIORITY)]
+        private static void CreateExaminePoint(MenuCommand command) => CreateEntity(command, FieldBodyPreset.ExaminePoint);
+
+        [MenuItem(MENU + "Entity/Area", false, MENU_PRIORITY)]
+        private static void CreateArea(MenuCommand command) => CreateEntity(command, FieldBodyPreset.Area);
+
+        [MenuItem(MENU + "Entity/Save Point", false, MENU_PRIORITY)]
+        private static void CreateSavePoint(MenuCommand command) => CreateEntity(command, FieldBodyPreset.SavePoint);
+
+        [MenuItem(MENU + "Entity/Plain", false, MENU_PRIORITY)]
+        private static void CreatePlain(MenuCommand command) => CreateEntity(command, FieldBodyPreset.Plain);
+
+        [MenuItem(MENU + "Blocker", false, MENU_PRIORITY)]
+        private static void CreateBlocker(MenuCommand command)
+        {
+            GameObject    context = command.context as GameObject;
+            FieldEntities field   = FindField(context);
+            FieldBlocker  blocker = BuildBlocker(field.gameObject, field.Dimension);
+
+            Place(blocker.gameObject, context, field, "Create Blocker");
+        }
+
+        [MenuItem(MENU + "Spawn Point", false, MENU_PRIORITY)]
+        private static void CreateSpawnPoint(MenuCommand command)
+        {
+            GameObject    context = command.context as GameObject;
+            FieldEntities field   = FindField(context);
+            int           id      = SpawnPoint.NextId(field.transform, null);
+
+            GameObject spawnObject = new GameObject($"SpawnPoint{id}");
+            spawnObject.AddComponent<SpawnPoint>().SetId(id);
+
+            Place(spawnObject, context, field, "Create Spawn Point");
+        }
+
+        /// <summary>
+        /// Everything here belongs to a field, so the items are offered only inside one: under a
+        /// <see cref="FieldEntities" /> root, or in the prefab view of one.
+        /// </summary>
+        [MenuItem(MENU + "Entity/Gateway",            true)]
+        [MenuItem(MENU + "Entity/Character",          true)]
+        [MenuItem(MENU + "Entity/Player Character",   true)]
+        [MenuItem(MENU + "Entity/Interactable Object", true)]
+        [MenuItem(MENU + "Entity/Examine Point",      true)]
+        [MenuItem(MENU + "Entity/Area",               true)]
+        [MenuItem(MENU + "Entity/Save Point",         true)]
+        [MenuItem(MENU + "Entity/Plain",              true)]
+        [MenuItem(MENU + "Blocker",                   true)]
+        [MenuItem(MENU + "Spawn Point",               true)]
+        private static bool IsInField()
+        {
+            bool isInField = FindField(Selection.activeGameObject) != null;
+
+            return isInField;
+        }
+
+        private static void CreateEntity(MenuCommand command, FieldBodyPreset preset)
+        {
+            GameObject    context = command.context as GameObject;
+            FieldEntities field   = FindField(context);
+            GameObject    visuals = DefaultVisuals(preset, field.Dimension);
+
+            Undo.RecordObject(field, $"Create {preset}");
+
+            FieldEntityRecord entity = CreateEntityRecord(field, preset.ToString());
+            FieldEntity       body   = Build(field.gameObject, field.Dimension, preset, entity.Name, visuals);
+
+            entity.SetBody(body);
+            WritePresetScripts(entity, preset, visuals != null);
+
+            EditorUtility.SetDirty(field);
+
+            Place(body.gameObject, context, field, $"Create {preset}");
+        }
+
+        private static FieldEntities FindField(GameObject context)
+        {
+            FieldEntities field = context != null ? context.GetComponentInParent<FieldEntities>(true) : null;
+
+            if (field == null)
+            {
+                PrefabStage stage = PrefabStageUtility.GetCurrentPrefabStage();
+                field = stage != null ? stage.prefabContentsRoot.GetComponent<FieldEntities>() : null;
+            }
+
+            return field;
+        }
+
+        /// <summary>
+        /// Under the object right-clicked if it is in this field, otherwise the field's root, at its parent's origin.
+        /// </summary>
+        private static void Place(GameObject created, GameObject context, FieldEntities field, string undoName)
+        {
+            GameObject parent = context != null && context.GetComponentInParent<FieldEntities>(true) == field ? context : field.gameObject;
+
+            GameObjectUtility.SetParentAndAlign(created, parent);
+
+            Undo.RegisterCreatedObjectUndo(created, undoName);
+            Selection.activeGameObject = created;
         }
     }
 }

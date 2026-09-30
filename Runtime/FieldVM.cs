@@ -25,6 +25,7 @@ namespace RPGFramework.Field
         internal event Action<bool>                               RequestSetGatewayTriggersActive;
         internal event Action<int, bool>                          RequestSetInteractionTriggerActive;
         internal event Action<int, bool>                          RequestSetCollisionTriggerActive;
+        internal event Action<byte, bool>                         RequestSetBlockerActive;
         internal event Action<int, float>                         RequestSetInteractionRange;
         internal event Action<bool>                               RequestInputLock;
         internal event Action<int, Vector3>                       RequestSetEntityPosition;
@@ -391,6 +392,7 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.AdditiveScreenFade, AdditiveScreenFadeOpcodeHandler },
                        // { FieldScriptOpCode.WaitForScreenColour, WaitForScreenColourOpcodeHandler },
                        // { FieldScriptOpCode.ParticleActivation, ParticleActivationOpcodeHandler },
+                       { FieldScriptOpCode.BlockerActivation, BlockerActivationOpcodeHandler },
 
                        // Camera and screen movement
                        // { FieldScriptOpCode.FadeScreen, FadeScreenOpcodeHandler },
@@ -2235,6 +2237,17 @@ namespace RPGFramework.Field
             SequentialSources sources = default;
             bool              enabled = ReadArgumentBool(ctx, ref sources);
             RequestSetCollisionTriggerActive?.Invoke(ctx.EntityId, enabled);
+        }
+
+        /// <summary>
+        /// Close part of the field with one of its blockers, or open it again.
+        /// </summary>
+        private void BlockerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources    = default;
+            byte              blocker    = ReadArgumentByte(ctx, ref sources);
+            bool              isBlocking = ReadArgumentBool(ctx, ref sources);
+            RequestSetBlockerActive?.Invoke(blocker, isBlocking);
         }
 
         /// <summary>

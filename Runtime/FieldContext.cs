@@ -28,6 +28,7 @@ namespace RPGFramework.Field
         internal IReadOnlyDictionary<int, float>             AnimationSpeeds         => m_AnimationSpeeds;
         internal IReadOnlyDictionary<int, PlayAnimationArgs> PlayedAnimations        => m_PlayedAnimations;
         internal IReadOnlyDictionary<int, MoveEntityArgs>    MovesInProgress         => m_MovesInProgress;
+        internal IReadOnlyDictionary<byte, bool>             BlockersActive          => m_BlockersActive;
         internal bool                                        GatewaysActive          => m_GatewaysActive;
         internal bool                                        MainMenuAccessible      => m_MainMenuAccessible;
         internal bool                                        IsInputLockedByScript   => m_IsInputLockedByScript;
@@ -48,6 +49,7 @@ namespace RPGFramework.Field
         private readonly Dictionary<int, float>             m_AnimationSpeeds;
         private readonly Dictionary<int, PlayAnimationArgs> m_PlayedAnimations;
         private readonly Dictionary<int, MoveEntityArgs>    m_MovesInProgress;
+        private readonly Dictionary<byte, bool>             m_BlockersActive;
         private          FieldEntityRuntime                 m_PlayerEntity;
         private          bool                               m_GatewaysActive;
         private          bool                               m_MainMenuAccessible;
@@ -72,6 +74,7 @@ namespace RPGFramework.Field
             m_AnimationSpeeds         = new Dictionary<int, float>();
             m_PlayedAnimations        = new Dictionary<int, PlayAnimationArgs>();
             m_MovesInProgress         = new Dictionary<int, MoveEntityArgs>();
+            m_BlockersActive          = new Dictionary<byte, bool>();
             m_GatewaysActive          = true;
             m_MainMenuAccessible      = true;
         }
@@ -145,6 +148,8 @@ namespace RPGFramework.Field
         internal void ClearMovesInProgress() => m_MovesInProgress.Clear();
 
         internal void SetGatewaysActive(bool active) => m_GatewaysActive = active;
+
+        internal void SetBlockerActive(byte blockerId, bool active) => m_BlockersActive[blockerId] = active;
 
         internal void SetMainMenuAccessible(bool accessible) => m_MainMenuAccessible = accessible;
 

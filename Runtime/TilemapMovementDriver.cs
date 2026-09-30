@@ -10,18 +10,20 @@ namespace RPGFramework.Field
     {
         private const float MIN_FACING_SQR = 0.0001f;
 
-        private Transform       m_Transform;
-        private Tilemap         m_Tilemap;
-        private float           m_Speed;
-        private Vector3         m_Target;
-        private bool            m_Moving;
-        private RotationState   m_RotationState;
-        private ScriptedMove    m_ScriptedMove;
+        private Transform                   m_Transform;
+        private Tilemap                     m_Tilemap;
+        private IReadOnlyList<FieldBlocker> m_Blockers;
+        private float                       m_Speed;
+        private Vector3                     m_Target;
+        private bool                        m_Moving;
+        private RotationState               m_RotationState;
+        private ScriptedMove                m_ScriptedMove;
 
-        public void Init(Transform entityTransform, Tilemap tilemap, float speed)
+        public void Init(Transform entityTransform, Tilemap tilemap, IReadOnlyList<FieldBlocker> blockers, float speed)
         {
             m_Transform     = entityTransform;
             m_Tilemap       = tilemap;
+            m_Blockers      = blockers;
             m_Speed         = speed;
             m_RotationState = default;
         }
@@ -49,7 +51,14 @@ namespace RPGFramework.Field
                 return;
             }
 
-            m_Target = m_Tilemap.GetCellCenterWorld(next);
+            Vector3 target = m_Tilemap.GetCellCenterWorld(next);
+
+            if (IsBlocked(target))
+            {
+                return;
+            }
+
+            m_Target = target;
             m_Moving = true;
         }
 
@@ -138,6 +147,18 @@ namespace RPGFramework.Field
         bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
 
         IReadOnlyList<FieldEntity> IMovementDriver.Pushed => System.Array.Empty<FieldEntity>();
+
+        private bool IsBlocked(Vector3 cellCentre)
+        {
+            bool blocked = false;
+
+            for (int i = 0; i < m_Blockers.Count && !blocked; i++)
+            {
+                blocked = m_Blockers[i].BlocksCell(cellCentre);
+            }
+
+            return blocked;
+        }
 
         private static Vector3Int Quantize(Vector3 move)
         {
