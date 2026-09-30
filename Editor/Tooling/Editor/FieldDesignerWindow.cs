@@ -258,7 +258,7 @@ namespace RPGFramework.Field.Editor
 
             string hint = m_OpenFieldEntities != null
                               ? "Select an entity, then one of its scripts."
-                              : $"This field has no {nameof(FieldEntities)} on its root. Run RPG Framework / Field / Migrate Entities To Records.";
+                              : $"This field has no {nameof(FieldEntities)} on its root. Add one to the prefab's root, then press Scripts again.";
 
             m_ScriptBlockContainer.Add(new HelpBox(hint, m_OpenFieldEntities != null ? HelpBoxMessageType.None : HelpBoxMessageType.Warning));
 
