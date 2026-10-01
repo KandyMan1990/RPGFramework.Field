@@ -977,7 +977,7 @@ namespace RPGFramework.Field.Editor
             return source;
         }
 
-        private static VariableMapAsset LoadVariableMap()
+        internal static VariableMapAsset LoadVariableMap()
         {
             string[] assetGuids = UnityEditor.AssetDatabase.FindAssets("t:" + nameof(VariableMapAsset));
 

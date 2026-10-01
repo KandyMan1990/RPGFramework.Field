@@ -42,7 +42,7 @@ namespace RPGFramework.Field.Editor
             return data;
         }
 
-        private static FieldDesignerData FindData()
+        internal static FieldDesignerData FindData()
         {
             string[] guids = AssetDatabase.FindAssets(SEARCH_PARAMETERS);
 

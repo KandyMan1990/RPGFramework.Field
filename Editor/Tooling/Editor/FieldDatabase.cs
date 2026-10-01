@@ -21,7 +21,15 @@ namespace RPGFramework.Field.Editor
         [SerializeField]
         private List<FieldDatabaseAssetAuthoring> m_Fields = new List<FieldDatabaseAssetAuthoring>();
 
+        [SerializeField]
+        private ulong m_ExportedLayoutHash;
+
         public List<FieldDatabaseAssetAuthoring> Fields => m_Fields;
+
+        /// <summary>
+        /// <see cref="FieldExport.LayoutHash" /> of the variable map the fields were last exported against.
+        /// </summary>
+        internal ulong ExportedLayoutHash => m_ExportedLayoutHash;
 
         public void BuildScriptFile(string path, string filename, string namespaceForScript)
         {
@@ -1223,6 +1231,8 @@ namespace RPGFramework.Field.Editor
                 const BuildAssetBundleOptions options = BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode;
 
                 BuildPipeline.BuildAssetBundles(m_AssetBundlesPath, fieldsToBuild, options, EditorUserBuildSettings.activeBuildTarget);
+
+                m_ExportedLayoutHash = FieldExport.LayoutHash(FieldScriptCompiler.LoadVariableMap());
             }
             finally
             {

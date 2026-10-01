@@ -315,6 +315,7 @@ namespace RPGFramework.Field.Editor
 
             m_FieldDesignerData.FieldDatabase.BuildScriptFile(path, filename, namespaceForScript);
             m_FieldDesignerData.FieldDatabase.BuildAssetBundles();
+            m_FieldDesignerData.Save();
         }
 
         private void OnFieldSelected(IEnumerable<int> obj)
