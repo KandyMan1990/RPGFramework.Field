@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RPGFramework.Audio;
+using RPGFramework.Audio.Music;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Battle.SharedTypes.Constants;
 using RPGFramework.Battle.SharedTypes.Providers;
@@ -242,6 +243,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestFieldTransition             += OnSetFieldModuleArgs;
             m_FieldContext.VM.RequestMusic                       += OnRequestMusic;
             m_FieldContext.VM.RequestMusicStemState              += OnRequestMusicStemState;
+            m_FieldContext.VM.RequestReverbPreset                += OnRequestReverbPreset;
+            m_FieldContext.VM.RequestReverbVolume                += OnRequestReverbVolume;
             m_FieldContext.VM.RequestSfx                         += OnRequestSfx;
             m_FieldContext.VM.RequestSetPlayerEntity             += OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSetEntityVisible            += OnRequestSetEntityVisible;
@@ -328,6 +331,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSfx                         -= OnRequestSfx;
             m_FieldContext.VM.RequestMusic                       -= OnRequestMusic;
             m_FieldContext.VM.RequestMusicStemState              -= OnRequestMusicStemState;
+            m_FieldContext.VM.RequestReverbPreset                -= OnRequestReverbPreset;
+            m_FieldContext.VM.RequestReverbVolume                -= OnRequestReverbVolume;
             m_FieldContext.VM.RequestFieldTransition             -= OnSetFieldModuleArgs;
         }
 
@@ -817,6 +822,16 @@ namespace RPGFramework.Field
         private void OnRequestSfx(ulong nameHash)
         {
             m_SfxPlayer.Play(nameHash);
+        }
+
+        private void OnRequestReverbPreset(byte preset)
+        {
+            m_MusicPlayer.SetReverbPreset((ReverbPreset)preset);
+        }
+
+        private void OnRequestReverbVolume(float volume)
+        {
+            m_MusicPlayer.SetReverbVolume(volume);
         }
 
         private void OnRequestSetPlayerEntity(FieldEntityRuntime entity)

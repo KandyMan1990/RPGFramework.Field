@@ -40,6 +40,7 @@ namespace RPGFramework.Field.Editor
         public bool              StopsInit     { get; }
         public bool              NeedsBody     { get; }
         public bool              NeedsAnimator { get; }
+        public string            Package       { get; }
 
         public IReadOnlyList<FieldArgumentInfo> Arguments { get; }
 
@@ -53,6 +54,7 @@ namespace RPGFramework.Field.Editor
             StopsInit     = attribute.StopsInit;
             NeedsBody     = attribute.NeedsBody;
             NeedsAnimator = attribute.NeedsAnimator;
+            Package       = attribute.Package;
             Arguments     = arguments;
         }
     }

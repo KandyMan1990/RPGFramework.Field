@@ -18,6 +18,8 @@ namespace RPGFramework.Field
         internal event Action<ulong, ulong>                       RequestMusic;
         internal event Action<ulong, float>                       RequestMusicStemState;
         internal event Action<ulong>                              RequestSfx;
+        internal event Action<byte>                               RequestReverbPreset;
+        internal event Action<float>                              RequestReverbVolume;
         internal event Action<FieldEntityRuntime>                 RequestSetPlayerEntity;
         internal event Action<int, bool>                          RequestSetEntityVisible;
         internal event Action<int, bool>                          RequestSetEntitySolid;
@@ -417,6 +419,8 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.PlayAmbientLoop, PlayAmbientLoopOpcodeHandler },
                        // { FieldScriptOpCode.SetAllSoundVolume, SetAllSoundVolumeOpcodeHandler },
                        // { FieldScriptOpCode.FadeAllSoundVolume, FadeAllSoundVolumeOpcodeHandler },
+                       { FieldScriptOpCode.SetReverbPreset, SetReverbPresetOpcodeHandler },
+                       { FieldScriptOpCode.SetReverbVolume, SetReverbVolumeOpcodeHandler },
 
                        // Video
                        // { FieldScriptOpCode.PrepareMovie, PrepareMovieOpcodeHandler },
@@ -2280,6 +2284,28 @@ namespace RPGFramework.Field
         {
             ulong nameHash = ReadUlong(ctx);
             RequestSfx?.Invoke(nameHash);
+        }
+
+        /// <summary>
+        /// Switch the PS1 reverb to a preset.
+        /// </summary>
+        private void SetReverbPresetOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            byte              preset  = ReadArgumentByte(ctx, ref sources);
+
+            RequestReverbPreset?.Invoke(preset);
+        }
+
+        /// <summary>
+        /// Set how loud the PS1 reverb plays, 0 to 1.
+        /// </summary>
+        private void SetReverbVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            float             volume  = ReadArgumentFloat(ctx, ref sources);
+
+            RequestReverbVolume?.Invoke(volume);
         }
     }
 }

@@ -195,6 +195,12 @@ namespace RPGFramework.Field
         /// </summary>
         public bool NeedsAnimator { get; set; }
 
+        /// <summary>
+        /// The package the opcode acts through, for one that does nothing without an optional package installed. The
+        /// editor offers it only where that package is; a script that already uses it still compiles and runs.
+        /// </summary>
+        public string Package { get; set; }
+
         public FieldOpCodeAttribute(string scriptName, ArgumentLayout layout)
         {
             ScriptName = scriptName;

@@ -71,7 +71,8 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Every opcode that can actually run, grouped the way the enum groups them.
+        /// Every opcode that can actually run, grouped the way the enum groups them, leaving out any that acts through a
+        /// package this project does not have.
         /// </summary>
         private void FillOpCodeMenu(DropdownMenu menu, List<FieldScriptBlock> target)
         {
@@ -84,6 +85,11 @@ namespace RPGFramework.Field.Editor
 
             foreach (FieldOpCodeInfo opCode in FieldOpCodeCatalogue.All)
             {
+                if (opCode.Package != null && !UnityEditor.PackageManager.PackageInfo.IsPackageRegistered(opCode.Package))
+                {
+                    continue;
+                }
+
                 string category = GetCategory(opCode.OpCode);
                 string label = string.IsNullOrEmpty(opCode.Summary)
                                    ? $"{category}/{opCode.ScriptName}"

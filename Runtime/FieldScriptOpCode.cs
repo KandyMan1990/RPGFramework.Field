@@ -1,4 +1,5 @@
-﻿using RPGFramework.Battle.SharedTypes;
+﻿using RPGFramework.Audio.Music;
+using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core.Memory;
 using RPGFramework.Field.FieldVmArgs;
 
@@ -1196,6 +1197,14 @@ namespace RPGFramework.Field
         PlayAmbientLoop    = 0x0808, // int id - a looping ambience, distinct from a one-shot
         SetAllSoundVolume  = 0x0809, // float volume
         FadeAllSoundVolume = 0x080A, // float volume, float duration
+
+        [FieldOpCode("SET_REVERB_PRESET", ArgumentLayout.Sequential, Summary = "Switch the PS1 reverb to one of the console's presets, until the next song that names one", Package = "com.rpgframework.psxreverb")]
+        [Argument(0, "preset", ArgumentType.Byte, EnumType = typeof(ReverbPreset), Description = "a different preset cuts the reverb's tail")]
+        SetReverbPreset = 0x080B,
+
+        [FieldOpCode("SET_REVERB_VOLUME", ArgumentLayout.Sequential, Summary = "Set how loud the PS1 reverb plays for every sound, until the next song that names a volume", Package = "com.rpgframework.psxreverb")]
+        [Argument(0, "volume", ArgumentType.Float, Description = "0 to 1")]
+        SetReverbVolume = 0x080C,
 
         // Video (0x0900)
         PrepareMovie = 0x0900, // int id
