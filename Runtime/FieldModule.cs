@@ -186,9 +186,11 @@ namespace RPGFramework.Field
 
         void IUpdatable.Update()
         {
-            foreach (FieldEntityRuntime entity in m_FieldContext.Entities)
+            IReadOnlyList<FieldEntityRuntime> runtimes = m_FieldContext.Entities;
+
+            for (int i = 0; i < runtimes.Count; i++)
             {
-                entity.Update(m_FieldContext.VM);
+                runtimes[i].Update(m_FieldContext.VM);
             }
 
             float deltaTime = Time.deltaTime;
@@ -893,8 +895,12 @@ namespace RPGFramework.Field
                 return;
             }
 
-            foreach (FieldEntity pushed in m_PlayerMovementDriver.Pushed)
+            IReadOnlyList<FieldEntity> pushedEntities = m_PlayerMovementDriver.Pushed;
+
+            for (int i = 0; i < pushedEntities.Count; i++)
             {
+                FieldEntity pushed = pushedEntities[i];
+
                 if (pushed.RaisesPush && pushed.TryGetScriptIndex(FieldScriptType.OnPush, out int eventId))
                 {
                     m_FieldContext.VM.RequestScript(pushed.EntityId, eventId);
