@@ -17,6 +17,12 @@ namespace RPGFramework.Field
     {
         internal event Action<FieldArgs>                          RequestFieldTransition;
         internal event Action<ulong, ulong>                       RequestMusic;
+        internal event Action<ulong, ulong, float, float>         RequestMusicCrossfade;
+        internal event Action                                     RequestStopMusic;
+        internal Func<bool>                                       IsMusicPlaying;
+        internal event Action<float, float>                       RequestMusicVolume;
+        internal event Action<float, float, float>                RequestMusicVolumeFrom;
+        internal Func<bool>                                       IsMusicVolumeFading;
         internal event Action<ulong, float>                       RequestMusicStemState;
         internal event Action<ulong>                              RequestSfx;
         internal event Action<byte>                               RequestReverbPreset;
@@ -410,11 +416,11 @@ namespace RPGFramework.Field
 
                        // Audio
                        { FieldScriptOpCode.PlayMusic, PlayMusicOpcodeHandler },
-                       // { FieldScriptOpCode.StopMusic, StopMusicOpcodeHandler },
-                       // { FieldScriptOpCode.SetMusicVolume, SetMusicVolumeOpcodeHandler },
-                       // { FieldScriptOpCode.FadeMusicVolume, FadeMusicVolumeOpcodeHandler },
+                       { FieldScriptOpCode.StopMusic, StopMusicOpcodeHandler },
+                       { FieldScriptOpCode.SetMusicVolume, SetMusicVolumeOpcodeHandler },
+                       { FieldScriptOpCode.FadeMusicVolume, FadeMusicVolumeOpcodeHandler },
                        { FieldScriptOpCode.SetMusicStemState, SetMusicStemStateOpcodeHandler },
-                       // { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
+                       { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
                        // { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
                        { FieldScriptOpCode.PlaySound, PlaySoundOpcodeHandler },
                        // { FieldScriptOpCode.PlayAmbientLoop, PlayAmbientLoopOpcodeHandler },
@@ -422,6 +428,9 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.FadeAllSoundVolume, FadeAllSoundVolumeOpcodeHandler },
                        { FieldScriptOpCode.SetReverbPreset, SetReverbPresetOpcodeHandler },
                        { FieldScriptOpCode.SetReverbVolume, SetReverbVolumeOpcodeHandler },
+                       { FieldScriptOpCode.CrossfadeMusic, CrossfadeMusicOpcodeHandler },
+                       { FieldScriptOpCode.FadeMusicVolumeFrom, FadeMusicVolumeFromOpcodeHandler },
+                       { FieldScriptOpCode.WaitForMusicVolume, WaitForMusicVolumeOpcodeHandler },
 
                        // Video
                        // { FieldScriptOpCode.PrepareMovie, PrepareMovieOpcodeHandler },
@@ -2253,6 +2262,37 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Stop the music at once.
+        /// </summary>
+        private void StopMusicOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestStopMusic?.Invoke();
+        }
+
+        /// <summary>
+        /// Set the volume the field plays its music at.
+        /// </summary>
+        private void SetMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            float             volume  = ReadArgumentFloat(ctx, ref sources);
+
+            RequestMusicVolume?.Invoke(volume, 0f);
+        }
+
+        /// <summary>
+        /// Fade the field's music to a volume over the given seconds.
+        /// </summary>
+        private void FadeMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            float             volume  = ReadArgumentFloat(ctx, ref sources);
+            float             seconds = ReadArgumentFloat(ctx, ref sources);
+
+            RequestMusicVolume?.Invoke(volume, seconds);
+        }
+
+        /// <summary>
         /// Switch the playing music to one of its stem states, fading over the given number of seconds.
         /// </summary>
         private void SetMusicStemStateOpcodeHandler(ScriptExecutionContext ctx)
@@ -2262,6 +2302,18 @@ namespace RPGFramework.Field
             float             fadeSeconds   = ReadArgumentFloat(ctx, ref sources);
 
             RequestMusicStemState?.Invoke(stateNameHash, fadeSeconds);
+        }
+
+        /// <summary>
+        /// Store whether music is playing, or still loading to play.
+        /// </summary>
+        private void CheckIfMusicIsPlayingOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadDestination(ctx, out MemoryBank bank, out ushort address);
+
+            bool playing = IsMusicPlaying();
+
+            WriteVariableBool(ctx, bank, address, playing);
         }
 
         /// <summary>
@@ -2293,6 +2345,42 @@ namespace RPGFramework.Field
             float             volume  = ReadArgumentFloat(ctx, ref sources);
 
             RequestReverbVolume?.Invoke(volume);
+        }
+
+        /// <summary>
+        /// Fade the playing music out and a track in, starting in one of its stem states, over the given seconds, to the
+        /// given volume.
+        /// </summary>
+        private void CrossfadeMusicOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources       = default;
+            ulong             nameHash      = ReadUlong(ctx);
+            ulong             stateNameHash = ReadUlong(ctx);
+            float             seconds       = ReadArgumentFloat(ctx, ref sources);
+            float             volume        = ReadArgumentFloat(ctx, ref sources);
+
+            RequestMusicCrossfade?.Invoke(nameHash, stateNameHash, seconds, volume);
+        }
+
+        /// <summary>
+        /// Fade the field's music from one volume to another over the given seconds.
+        /// </summary>
+        private void FadeMusicVolumeFromOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            float             from    = ReadArgumentFloat(ctx, ref sources);
+            float             volume  = ReadArgumentFloat(ctx, ref sources);
+            float             seconds = ReadArgumentFloat(ctx, ref sources);
+
+            RequestMusicVolumeFrom?.Invoke(from, volume, seconds);
+        }
+
+        /// <summary>
+        /// Wait until the field's music has finished fading to a volume.
+        /// </summary>
+        private void WaitForMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsMusicVolumeFading()));
         }
     }
 }

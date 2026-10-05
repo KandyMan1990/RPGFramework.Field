@@ -1177,9 +1177,17 @@ namespace RPGFramework.Field
         [Argument(1, "state", ArgumentType.MusicStateName, Description = "which stem state it starts on")]
         PlayMusic = 0x0800,
 
-        StopMusic       = 0x0801,
-        SetMusicVolume  = 0x0802, // float volume
-        FadeMusicVolume = 0x0803, // float volume, float seconds
+        [FieldOpCode("STOP_MUSIC", ArgumentLayout.Sequential, Summary = "Stop the music at once. To fade it out, fade its volume first")]
+        StopMusic = 0x0801,
+
+        [FieldOpCode("SET_MUSIC_VOLUME", ArgumentLayout.Sequential, Summary = "Set the volume the field plays its music at, kept until set again")]
+        [Argument(0, "volume", ArgumentType.Float, Description = "0 to 1. Music started with PLAY_MUSIC plays at it", Default = "1")]
+        SetMusicVolume = 0x0802,
+
+        [FieldOpCode("FADE_MUSIC_VOLUME", ArgumentLayout.Sequential, Summary = "Fade the field's music to a volume, kept until set again")]
+        [Argument(0, "volume",  ArgumentType.Float, Description = "0 to 1. 0 fades the music out without stopping it")]
+        [Argument(1, "seconds", ArgumentType.Float, Description = "how long the fade takes")]
+        FadeMusicVolume = 0x0803,
 
         [FieldOpCode("MUSIC_STEM_STATE", ArgumentLayout.Sequential, Summary = "Switch the music to one of the stem states its asset declares")]
         [Argument(0, "track",       ArgumentType.MusicNameHint,  Description = "which track's states to choose from — not compiled, it applies to whatever is playing")]
@@ -1187,8 +1195,11 @@ namespace RPGFramework.Field
         [Argument(2, "fadeSeconds", ArgumentType.Float,          Description = "0 changes immediately")]
         SetMusicStemState = 0x0804,
 
+        [FieldOpCode("IS_MUSIC_PLAYING", ArgumentLayout.BankUnary, Summary = "Store whether music is playing: from when it is asked for until it is stopped, or ends if it does not loop")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Bool)]
         CheckIfMusicIsPlaying = 0x0805,
-        SetBattleMusic        = 0x0806,
+
+        SetBattleMusic = 0x0806,
 
         [FieldOpCode("PLAY_SOUND", ArgumentLayout.Sequential, Summary = "Play a sound effect once")]
         [Argument(0, "sound", ArgumentType.SoundName, Description = "the sound asset's name, as it appears in the SFX provider")]
@@ -1205,6 +1216,22 @@ namespace RPGFramework.Field
         [FieldOpCode("SET_REVERB_VOLUME", ArgumentLayout.Sequential, Summary = "Set how loud the PS1 reverb plays for every sound, until the next song that names a volume", Package = "com.rpgframework.psxreverb")]
         [Argument(0, "volume", ArgumentType.Float, Description = "0 to 1")]
         SetReverbVolume = 0x080C,
+
+        [FieldOpCode("CROSSFADE_MUSIC", ArgumentLayout.Sequential, Summary = "Fade the playing music out and a track in, over the same seconds")]
+        [Argument(0, "track",   ArgumentType.MusicName,      Description = "the music asset's name, as it appears in the music provider")]
+        [Argument(1, "state",   ArgumentType.MusicStateName, Description = "which stem state it starts on")]
+        [Argument(2, "seconds", ArgumentType.Float,          Description = "a crossfade during another cuts the music already fading out")]
+        [Argument(3, "volume",  ArgumentType.Float,          Description = "0 to 1, what it fades in to. For this track only: the field's music volume is not changed", Default = "1")]
+        CrossfadeMusic = 0x080D,
+
+        [FieldOpCode("FADE_MUSIC_VOLUME_FROM", ArgumentLayout.Sequential, Summary = "Fade the field's music from one volume to another, kept until set again")]
+        [Argument(0, "from",    ArgumentType.Float, Description = "0 to 1, the volume it starts the fade at")]
+        [Argument(1, "volume",  ArgumentType.Float, Description = "0 to 1, the volume it fades to")]
+        [Argument(2, "seconds", ArgumentType.Float, Description = "how long the fade takes")]
+        FadeMusicVolumeFrom = 0x080E,
+
+        [FieldOpCode("WAIT_FOR_MUSIC_VOLUME", ArgumentLayout.Sequential, Summary = "Wait until the field's music has faded to the volume it was sent to", StopsInit = true)]
+        WaitForMusicVolume = 0x080F,
 
         // Video (0x0900)
         PrepareMovie = 0x0900, // int id

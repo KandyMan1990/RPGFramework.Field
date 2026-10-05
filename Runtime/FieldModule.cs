@@ -58,10 +58,12 @@ namespace RPGFramework.Field
         private readonly ICurrentModuleStore    m_CurrentModuleStore;
         private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
         private readonly SavedPlayerPose        m_SavedPlayerPose;
+        private readonly FieldMusicVolumeStore  m_MusicVolumeStore;
         private readonly ISettingsService       m_SettingsService;
         private readonly ISaveEnabledStore      m_SaveEnabledStore;
         private readonly ILocationNameStore     m_LocationNameStore;
 
+        private Task                     m_MusicVolumeFade = Task.CompletedTask;
         private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
         private IInputContext            m_ExplorationInputContext;
         private BlockAllInputContext     m_ScriptInputLock;
@@ -132,6 +134,7 @@ namespace RPGFramework.Field
             m_CurrentModuleStore   = currentModuleStore;
             m_FieldResumeDataStore = fieldResumeDataStore;
             m_SavedPlayerPose      = new SavedPlayerPose(memoryService, variableMap);
+            m_MusicVolumeStore     = new FieldMusicVolumeStore(memoryService, variableMap);
             m_SettingsService      = settingsService;
             m_SaveEnabledStore     = saveEnabledStore;
             m_LocationNameStore    = locationNameStore;
@@ -244,6 +247,10 @@ namespace RPGFramework.Field
         {
             m_FieldContext.VM.RequestFieldTransition             += OnSetFieldModuleArgs;
             m_FieldContext.VM.RequestMusic                       += OnRequestMusic;
+            m_FieldContext.VM.RequestMusicCrossfade              += OnRequestMusicCrossfade;
+            m_FieldContext.VM.RequestStopMusic                   += OnRequestStopMusic;
+            m_FieldContext.VM.RequestMusicVolume                 += OnRequestMusicVolume;
+            m_FieldContext.VM.RequestMusicVolumeFrom             += OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              += OnRequestMusicStemState;
             m_FieldContext.VM.RequestReverbPreset                += OnRequestReverbPreset;
             m_FieldContext.VM.RequestReverbVolume                += OnRequestReverbVolume;
@@ -266,6 +273,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityMovementSpeed      += OnRequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestMoveEntity                  += OnRequestMoveEntity;
             m_FieldContext.VM.IsEntityMoving                     =  IsEntityMoving;
+            m_FieldContext.VM.IsMusicVolumeFading                =  IsMusicVolumeFading;
+            m_FieldContext.VM.IsMusicPlaying                     =  IsMusicPlaying;
             m_FieldContext.VM.RequestStopMovement                += OnRequestStopMovement;
             m_FieldContext.VM.RequestSetBaseAnimation            += OnRequestSetBaseAnimation;
             m_FieldContext.VM.RequestPlayAnimation               += OnRequestPlayAnimation;
@@ -313,6 +322,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetBaseAnimation            -= OnRequestSetBaseAnimation;
             m_FieldContext.VM.RequestStopMovement                -= OnRequestStopMovement;
             m_FieldContext.VM.IsEntityMoving                     =  null;
+            m_FieldContext.VM.IsMusicVolumeFading                =  null;
+            m_FieldContext.VM.IsMusicPlaying                     =  null;
             m_FieldContext.VM.RequestMoveEntity                  -= OnRequestMoveEntity;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= OnRequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= OnRequestSetEntityToFaceEntity;
@@ -332,6 +343,10 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetPlayerEntity             -= OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSfx                         -= OnRequestSfx;
             m_FieldContext.VM.RequestMusic                       -= OnRequestMusic;
+            m_FieldContext.VM.RequestMusicCrossfade              -= OnRequestMusicCrossfade;
+            m_FieldContext.VM.RequestStopMusic                   -= OnRequestStopMusic;
+            m_FieldContext.VM.RequestMusicVolume                 -= OnRequestMusicVolume;
+            m_FieldContext.VM.RequestMusicVolumeFrom             -= OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              -= OnRequestMusicStemState;
             m_FieldContext.VM.RequestReverbPreset                -= OnRequestReverbPreset;
             m_FieldContext.VM.RequestReverbVolume                -= OnRequestReverbVolume;
@@ -813,7 +828,47 @@ namespace RPGFramework.Field
 
         private void OnRequestMusic(ulong nameHash, ulong stateNameHash)
         {
-            m_MusicPlayer.PlayAsync(nameHash, stateNameHash).FireAndForget();
+            m_MusicPlayer.PlayAsync(nameHash, stateNameHash, 0f, m_MusicVolumeStore.Get()).FireAndForget();
+        }
+
+        // The crossfade's volume is for that track alone, and the field's music volume stays as it was.
+        private void OnRequestMusicCrossfade(ulong nameHash, ulong stateNameHash, float seconds, float volume)
+        {
+            m_MusicPlayer.CrossfadeAsync(nameHash, stateNameHash, seconds, volume).FireAndForget();
+        }
+
+        private void OnRequestStopMusic()
+        {
+            m_MusicPlayer.StopAsync(0f).FireAndForget();
+        }
+
+        private void OnRequestMusicVolume(float volume, float seconds)
+        {
+            m_MusicVolumeStore.Set(Mathf.Clamp01(volume));
+
+            m_MusicVolumeFade = m_MusicPlayer.SetSongVolumeAsync(volume, seconds);
+            m_MusicVolumeFade.FireAndForget();
+        }
+
+        private void OnRequestMusicVolumeFrom(float from, float volume, float seconds)
+        {
+            m_MusicPlayer.SetSongVolumeAsync(from).FireAndForget();
+
+            OnRequestMusicVolume(volume, seconds);
+        }
+
+        private bool IsMusicPlaying()
+        {
+            bool playing = m_MusicPlayer.IsPlaying();
+
+            return playing;
+        }
+
+        private bool IsMusicVolumeFading()
+        {
+            bool fading = !m_MusicVolumeFade.IsCompleted;
+
+            return fading;
         }
 
         private void OnRequestMusicStemState(ulong stateNameHash, float fadeSeconds)

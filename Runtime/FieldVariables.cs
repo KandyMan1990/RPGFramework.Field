@@ -36,6 +36,12 @@ namespace RPGFramework.Field
         /// </summary>
         public const string PLAYER_FACING = "PlayerFacing";
 
+        /// <summary>
+        /// The volume the field plays its music at, 0 to 1, set by <c>SET_MUSIC_VOLUME</c> and <c>FADE_MUSIC_VOLUME</c>
+        /// and kept across fields, battles and saves. Music started with <c>PLAY_MUSIC</c> plays at it.
+        /// </summary>
+        public const string MUSIC_VOLUME = "MusicVolume";
+
         private static readonly RequiredVariable[] s_Variables =
         {
             new RequiredVariable(CURRENT_FIELD,     MemoryBank.Persistent, VariableWidth.ULong, "The field the player is in. Its default is the field a new game begins in"),
@@ -43,7 +49,8 @@ namespace RPGFramework.Field
             new RequiredVariable(PLAYER_POSITION_X, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
             new RequiredVariable(PLAYER_POSITION_Y, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
             new RequiredVariable(PLAYER_POSITION_Z, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
-            new RequiredVariable(PLAYER_FACING,     MemoryBank.Persistent, VariableWidth.Float, "Which way the player faced when the game was saved, in degrees around the field's up axis. Its default is not used")
+            new RequiredVariable(PLAYER_FACING,     MemoryBank.Persistent, VariableWidth.Float, "Which way the player faced when the game was saved, in degrees around the field's up axis. Its default is not used"),
+            new RequiredVariable(MUSIC_VOLUME,      MemoryBank.Persistent, VariableWidth.Float, "The volume the field plays its music at, 0 to 1, as SET_MUSIC_VOLUME and FADE_MUSIC_VOLUME leave it. Its default is a new game's", VariableDefaults.FromFloat(1f))
         };
 
         public IReadOnlyList<RequiredVariable> Variables => s_Variables;

@@ -104,6 +104,11 @@ namespace RPGFramework.Field.Editor
 
         internal static string DefaultFor(FieldArgumentInfo argument)
         {
+            if (argument.Default != null)
+            {
+                return argument.Default;
+            }
+
             switch (argument.Type)
             {
                 case ArgumentType.Bool:

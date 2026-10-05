@@ -236,6 +236,12 @@ namespace RPGFramework.Field
         /// </summary>
         public Type EnumType { get; set; }
 
+        /// <summary>
+        /// What a new block starts with, as script text, where the type's own — zero, false — would be a trap, as a
+        /// music volume of zero is silence.
+        /// </summary>
+        public string Default { get; set; }
+
         public ArgumentAttribute(int index, string name, ArgumentType type)
         {
             Index = index;

@@ -15,6 +15,7 @@ namespace RPGFramework.Field.Editor
         public VariableWidth Width       { get; }
         public string        Description { get; }
         public Type          EnumType    { get; }
+        public string        Default     { get; }
 
         internal FieldArgumentInfo(ArgumentAttribute attribute)
         {
@@ -23,6 +24,7 @@ namespace RPGFramework.Field.Editor
             Width       = attribute.Width;
             Description = attribute.Description;
             EnumType    = attribute.EnumType;
+            Default     = attribute.Default;
         }
     }
 
