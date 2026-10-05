@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core;
@@ -1179,12 +1180,7 @@ namespace RPGFramework.Field
 
         private static int ReadInt(ScriptExecutionContext ctx)
         {
-            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
-
-            int value = bytecode[ctx.InstructionPointer]           |
-                        bytecode[ctx.InstructionPointer + 1] << 8  |
-                        bytecode[ctx.InstructionPointer + 2] << 16 |
-                        bytecode[ctx.InstructionPointer + 3] << 24;
+            int value = BinaryPrimitives.ReadInt32LittleEndian(ctx.Bytecode.AsSpan(ctx.InstructionPointer));
 
             ctx.InstructionPointer += sizeof(int);
 
@@ -1201,16 +1197,7 @@ namespace RPGFramework.Field
 
         private static ulong ReadUlong(ScriptExecutionContext ctx)
         {
-            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
-
-            ulong value = bytecode[ctx.InstructionPointer]                  |
-                          (ulong)bytecode[ctx.InstructionPointer + 1] << 8  |
-                          (ulong)bytecode[ctx.InstructionPointer + 2] << 16 |
-                          (ulong)bytecode[ctx.InstructionPointer + 3] << 24 |
-                          (ulong)bytecode[ctx.InstructionPointer + 4] << 32 |
-                          (ulong)bytecode[ctx.InstructionPointer + 5] << 40 |
-                          (ulong)bytecode[ctx.InstructionPointer + 6] << 48 |
-                          (ulong)bytecode[ctx.InstructionPointer + 7] << 56;
+            ulong value = BinaryPrimitives.ReadUInt64LittleEndian(ctx.Bytecode.AsSpan(ctx.InstructionPointer));
 
             ctx.InstructionPointer += sizeof(ulong);
 
