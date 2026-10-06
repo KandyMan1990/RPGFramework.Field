@@ -34,13 +34,19 @@ namespace RPGFramework.Field.Editor
 
             StringBuilder layout = new StringBuilder();
 
-            foreach (VariableDefinition variable in variables)
+            for (int i = 0; i < variables.Count; i++)
             {
+                VariableDefinition variable = variables[i];
+
                 layout.Append(variable.Name).Append(' ').Append(variable.Bank).Append(' ').Append(variable.Offset).Append(' ')
                       .Append(variable.Width).Append(' ').Append(variable.Count);
 
-                foreach (VariableRecordField field in variable.Fields)
+                IReadOnlyList<VariableRecordField> fields = variable.Fields;
+
+                for (int j = 0; j < fields.Count; j++)
                 {
+                    VariableRecordField field = fields[j];
+
                     layout.Append(' ').Append(field.Name).Append(' ').Append(field.Width).Append(' ').Append(field.Count);
                 }
 
@@ -61,12 +67,18 @@ namespace RPGFramework.Field.Editor
             List<CompiledFieldEntity> compiled = new List<CompiledFieldEntity>(fieldEntities.Entities.Count);
             int                       scriptId = 0;
 
-            foreach (FieldEntityRecord record in fieldEntities.Entities)
+            List<FieldEntityRecord> records = fieldEntities.Entities;
+
+            for (int i = 0; i < records.Count; i++)
             {
+                FieldEntityRecord record = records[i];
+
                 List<CompiledFieldScript> scripts = new List<CompiledFieldScript>(record.Scripts.Count);
 
-                foreach (FieldScriptRecord script in record.Scripts)
+                for (int j = 0; j < record.Scripts.Count; j++)
                 {
+                    FieldScriptRecord script = record.Scripts[j];
+
                     scripts.Add(new CompiledFieldScript(script.Type, scriptId, FieldScriptCompiler.Compile(script.Text), script.Slot));
                     scriptId++;
                 }
@@ -85,10 +97,18 @@ namespace RPGFramework.Field.Editor
         {
             SortedSet<string> animationNames = new SortedSet<string>();
 
-            foreach (FieldEntityRecord record in fieldEntities.Entities)
+            List<FieldEntityRecord> records = fieldEntities.Entities;
+
+            for (int i = 0; i < records.Count; i++)
             {
-                foreach (FieldScriptRecord script in record.Scripts)
+                FieldEntityRecord record = records[i];
+
+                List<FieldScriptRecord> scripts = record.Scripts;
+
+                for (int j = 0; j < scripts.Count; j++)
                 {
+                    FieldScriptRecord script = scripts[j];
+
                     CollectAnimationNames(script.Text, animationNames);
                 }
             }
@@ -98,8 +118,12 @@ namespace RPGFramework.Field.Editor
 
         private static void CollectAnimationNames(string scriptText, SortedSet<string> animationNames)
         {
-            foreach (string line in scriptText.Split('\n'))
+            string[] lines = scriptText.Split('\n');
+
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))

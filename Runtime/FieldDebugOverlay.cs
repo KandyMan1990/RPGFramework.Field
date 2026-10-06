@@ -128,8 +128,10 @@ namespace RPGFramework.Field
             Painter2D painter = context.painter2D;
             painter.lineWidth = LINE_WIDTH;
 
-            foreach ((Vector3 from, Vector3 to, Color colour) in m_Lines)
+            for (int i = 0; i < m_Lines.Count; i++)
             {
+                (Vector3 from, Vector3 to, Color colour) = m_Lines[i];
+
                 if (m_Camera.WorldToViewportPoint(from).z <= 0f || m_Camera.WorldToViewportPoint(to).z <= 0f)
                 {
                     continue;

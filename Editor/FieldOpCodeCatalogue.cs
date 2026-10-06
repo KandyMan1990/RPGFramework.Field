@@ -114,8 +114,12 @@ namespace RPGFramework.Field.Editor
             List<string>               problems    = new List<string>();
             Dictionary<string, string> scriptNames = new Dictionary<string, string>();
 
-            foreach (FieldInfo field in typeof(FieldScriptOpCode).GetFields(BindingFlags.Public | BindingFlags.Static))
+            FieldInfo[] fields = typeof(FieldScriptOpCode).GetFields(BindingFlags.Public | BindingFlags.Static);
+
+            for (int i = 0; i < fields.Length; i++)
             {
+                FieldInfo field = fields[i];
+
                 FieldOpCodeAttribute opCodeAttribute = field.GetCustomAttribute<FieldOpCodeAttribute>();
                 ArgumentAttribute[]  arguments       = (ArgumentAttribute[])field.GetCustomAttributes<ArgumentAttribute>();
 
@@ -144,8 +148,10 @@ namespace RPGFramework.Field.Editor
 
                 bool[] seen = new bool[arguments.Length];
 
-                foreach (ArgumentAttribute argument in arguments)
+                for (int j = 0; j < arguments.Length; j++)
                 {
+                    ArgumentAttribute argument = arguments[j];
+
                     // The editor offers an enum's names but writes the number, so the number has to be one the
                     // argument's encoding can carry.
                     if (argument.EnumType != null && (!argument.EnumType.IsEnum || argument.Type != ArgumentType.Byte && argument.Type != ArgumentType.UShort))
@@ -191,8 +197,12 @@ namespace RPGFramework.Field.Editor
             s_ByOpCode     = new Dictionary<FieldScriptOpCode, FieldOpCodeInfo>();
             s_ByScriptName = new Dictionary<string, FieldOpCodeInfo>();
 
-            foreach (FieldInfo field in typeof(FieldScriptOpCode).GetFields(BindingFlags.Public | BindingFlags.Static))
+            FieldInfo[] fields = typeof(FieldScriptOpCode).GetFields(BindingFlags.Public | BindingFlags.Static);
+
+            for (int i = 0; i < fields.Length; i++)
             {
+                FieldInfo field = fields[i];
+
                 FieldOpCodeAttribute opCodeAttribute = field.GetCustomAttribute<FieldOpCodeAttribute>();
 
                 if (opCodeAttribute == null)
@@ -208,8 +218,10 @@ namespace RPGFramework.Field.Editor
 
                 List<FieldArgumentInfo> arguments = new List<FieldArgumentInfo>(argumentAttributes.Count);
 
-                foreach (ArgumentAttribute argumentAttribute in argumentAttributes)
+                for (int j = 0; j < argumentAttributes.Count; j++)
                 {
+                    ArgumentAttribute argumentAttribute = argumentAttributes[j];
+
                     arguments.Add(new FieldArgumentInfo(argumentAttribute));
                 }
 

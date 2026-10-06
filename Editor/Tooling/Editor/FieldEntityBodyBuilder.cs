@@ -210,8 +210,12 @@ namespace RPGFramework.Field.Editor
         {
             int entityId = 0;
 
-            foreach (FieldEntityRecord record in field.Entities)
+            List<FieldEntityRecord> records = field.Entities;
+
+            for (int i = 0; i < records.Count; i++)
             {
+                FieldEntityRecord record = records[i];
+
                 if (record.EntityId >= entityId)
                 {
                     entityId = record.EntityId + 1;

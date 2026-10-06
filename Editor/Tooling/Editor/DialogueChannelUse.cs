@@ -16,8 +16,10 @@ namespace RPGFramework.Field.Editor
 
         internal void Read(string[] lines, string scriptDescription)
         {
-            foreach (string line in lines)
+            for (int j = 0; j < lines.Length; j++)
             {
+                string line = lines[j];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))

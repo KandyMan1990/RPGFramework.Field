@@ -83,8 +83,12 @@ namespace RPGFramework.Field.Editor
                                                                                                              NotifyChanged();
                                                                                                          });
 
-            foreach (FieldOpCodeInfo opCode in FieldOpCodeCatalogue.All)
+            IReadOnlyList<FieldOpCodeInfo> opCodes = FieldOpCodeCatalogue.All;
+
+            for (int i = 0; i < opCodes.Count; i++)
             {
+                FieldOpCodeInfo opCode = opCodes[i];
+
                 if (opCode.Package != null && !UnityEditor.PackageManager.PackageInfo.IsPackageRegistered(opCode.Package))
                 {
                     continue;
@@ -372,8 +376,10 @@ namespace RPGFramework.Field.Editor
 
         private static void RenameJumps(List<FieldScriptBlock> blocks, string from, string to)
         {
-            foreach (FieldScriptBlock block in blocks)
+            for (int j = 0; j < blocks.Count; j++)
             {
+                FieldScriptBlock block = blocks[j];
+
                 if (block.IsRecognised)
                 {
                     for (int i = 0; i < block.OpCode.Arguments.Count && i < block.Arguments.Count; i++)
@@ -411,8 +417,10 @@ namespace RPGFramework.Field.Editor
 
         private static void CollectLabelNames(List<FieldScriptBlock> blocks, List<string> names)
         {
-            foreach (FieldScriptBlock block in blocks)
+            for (int i = 0; i < blocks.Count; i++)
             {
+                FieldScriptBlock block = blocks[i];
+
                 if (block.IsLabel)
                 {
                     names.Add(block.LabelName);
@@ -511,8 +519,12 @@ namespace RPGFramework.Field.Editor
             List<string> labels = new List<string>(m_Field.Entities.Count);
             string       shown  = current;
 
-            foreach (FieldEntityRecord entity in m_Field.Entities)
+            List<FieldEntityRecord> entities = m_Field.Entities;
+
+            for (int i = 0; i < entities.Count; i++)
             {
+                FieldEntityRecord entity = entities[i];
+
                 string entityLabel = $"{entity.EntityId}: {entity.Name}";
 
                 labels.Add(entityLabel);
@@ -554,8 +566,10 @@ namespace RPGFramework.Field.Editor
             List<string> labels = new List<string>(blockers.Length);
             string       shown  = current;
 
-            foreach (FieldBlocker blocker in blockers)
+            for (int i = 0; i < blockers.Length; i++)
             {
+                FieldBlocker blocker = blockers[i];
+
                 string blockerLabel = $"{blocker.name} ({blocker.Id})";
 
                 labels.Add(blockerLabel);
@@ -705,8 +719,10 @@ namespace RPGFramework.Field.Editor
 
                     List<string> labels = new List<string>(spawns.Count);
 
-                    foreach (SpawnChoice spawn in spawns)
+                    for (int i = 0; i < spawns.Count; i++)
                     {
+                        SpawnChoice spawn = spawns[i];
+
                         labels.Add(spawn.Label);
                     }
 
@@ -871,8 +887,12 @@ namespace RPGFramework.Field.Editor
             int offered = 0;
 
             // An array is offered at its first element, and a record by its fields; an index is then edited in the text.
-            foreach (VariableDefinition variable in m_VariableMap.Variables)
+            IReadOnlyList<VariableDefinition> variables = m_VariableMap.Variables;
+
+            for (int i = 0; i < variables.Count; i++)
             {
+                VariableDefinition variable = variables[i];
+
                 string label = $"{variable.Bank}/{variable.Name}{DescribeCount(variable.Count)}";
                 string token = $"${variable.Name}{FirstElement(variable.Count)}";
 
@@ -887,8 +907,12 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                foreach (VariableRecordField field in variable.Fields)
+                IReadOnlyList<VariableRecordField> fields = variable.Fields;
+
+                for (int j = 0; j < fields.Count; j++)
                 {
+                    VariableRecordField field = fields[j];
+
                     if (!Fits(argument, width, field.Width))
                     {
                         continue;
@@ -972,8 +996,10 @@ namespace RPGFramework.Field.Editor
         {
             List<string> keys = new List<string>();
 
-            foreach (LocalisationSheetAsset sheet in m_Sheets)
+            for (int i = 0; i < m_Sheets.Count; i++)
             {
+                LocalisationSheetAsset sheet = m_Sheets[i];
+
                 if (sheet != null)
                 {
                     keys.AddRange(sheet.Keys);
@@ -1077,8 +1103,12 @@ namespace RPGFramework.Field.Editor
                 return animationNames;
             }
 
-            foreach (AnimatorControllerLayer layer in controller.layers)
+            AnimatorControllerLayer[] layers = controller.layers;
+
+            for (int i = 0; i < layers.Length; i++)
             {
+                AnimatorControllerLayer layer = layers[i];
+
                 CollectAnimationNames(layer.stateMachine, animationNames);
             }
 
@@ -1089,13 +1119,21 @@ namespace RPGFramework.Field.Editor
 
         private static void CollectAnimationNames(AnimatorStateMachine stateMachine, List<string> animationNames)
         {
-            foreach (ChildAnimatorState state in stateMachine.states)
+            ChildAnimatorState[] states = stateMachine.states;
+
+            for (int i = 0; i < states.Length; i++)
             {
+                ChildAnimatorState state = states[i];
+
                 animationNames.Add(state.state.name);
             }
 
-            foreach (ChildAnimatorStateMachine child in stateMachine.stateMachines)
+            ChildAnimatorStateMachine[] children = stateMachine.stateMachines;
+
+            for (int i = 0; i < children.Length; i++)
             {
+                ChildAnimatorStateMachine child = children[i];
+
                 CollectAnimationNames(child.stateMachine, animationNames);
             }
         }
@@ -1185,8 +1223,12 @@ namespace RPGFramework.Field.Editor
         {
             List<SpawnChoice> choices = new List<SpawnChoice>();
 
-            foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(FieldDesignerData)))
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(FieldDesignerData));
+
+            for (int i = 0; i < guids.Length; i++)
             {
+                string guid = guids[i];
+
                 FieldDesignerData designerData = AssetDatabase.LoadAssetAtPath<FieldDesignerData>(AssetDatabase.GUIDToAssetPath(guid));
 
                 if (designerData == null)
@@ -1194,8 +1236,10 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                foreach (FieldDefinitionAuthoring field in designerData.FieldDatabase.Fields)
+                for (int j = 0; j < designerData.FieldDatabase.Fields.Count; j++)
                 {
+                    FieldDefinitionAuthoring field = designerData.FieldDatabase.Fields[j];
+
                     if (field.Prefab == null || field.Prefab.name != fieldName)
                     {
                         continue;
@@ -1203,8 +1247,12 @@ namespace RPGFramework.Field.Editor
 
                     // Inactive ones included: a spawn point is a marker, and one parked under a disabled
                     // object is still somewhere a script can send the player.
-                    foreach (SpawnPoint spawnPoint in field.Prefab.GetComponentsInChildren<SpawnPoint>(true))
+                    SpawnPoint[] spawnPoints = field.Prefab.GetComponentsInChildren<SpawnPoint>(true);
+
+                    for (int k = 0; k < spawnPoints.Length; k++)
                     {
+                        SpawnPoint spawnPoint = spawnPoints[k];
+
                         choices.Add(new SpawnChoice($"{spawnPoint.gameObject.name} ({spawnPoint.Id})", spawnPoint.Id));
                     }
 
@@ -1217,8 +1265,10 @@ namespace RPGFramework.Field.Editor
 
         private static string LabelForSpawnId(List<SpawnChoice> spawns, string written)
         {
-            foreach (SpawnChoice spawn in spawns)
+            for (int i = 0; i < spawns.Count; i++)
             {
+                SpawnChoice spawn = spawns[i];
+
                 if (spawn.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) == written)
                 {
                     return spawn.Label;
@@ -1281,8 +1331,12 @@ namespace RPGFramework.Field.Editor
         {
             List<string> names = new List<string>();
 
-            foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(FieldDesignerData)))
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(FieldDesignerData));
+
+            for (int i = 0; i < guids.Length; i++)
             {
+                string guid = guids[i];
+
                 FieldDesignerData designerData = AssetDatabase.LoadAssetAtPath<FieldDesignerData>(AssetDatabase.GUIDToAssetPath(guid));
 
                 if (designerData == null)
@@ -1290,8 +1344,10 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                foreach (FieldDefinitionAuthoring field in designerData.FieldDatabase.Fields)
+                for (int j = 0; j < designerData.FieldDatabase.Fields.Count; j++)
                 {
+                    FieldDefinitionAuthoring field = designerData.FieldDatabase.Fields[j];
+
                     if (field.Prefab == null || names.Contains(field.Prefab.name))
                     {
                         continue;
@@ -1310,8 +1366,12 @@ namespace RPGFramework.Field.Editor
         {
             List<string> names = new List<string>();
 
-            foreach (string guid in AssetDatabase.FindAssets("t:" + typeof(T).Name))
+            string[] guids = AssetDatabase.FindAssets("t:" + typeof(T).Name);
+
+            for (int i = 0; i < guids.Length; i++)
             {
+                string guid = guids[i];
+
                 T provider = AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guid));
 
                 if (provider == null)
@@ -1337,8 +1397,12 @@ namespace RPGFramework.Field.Editor
 
         private static VariableMapAsset FindVariableMap()
         {
-            foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(VariableMapAsset)))
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(VariableMapAsset));
+
+            for (int i = 0; i < guids.Length; i++)
             {
+                string guid = guids[i];
+
                 VariableMapAsset map = AssetDatabase.LoadAssetAtPath<VariableMapAsset>(AssetDatabase.GUIDToAssetPath(guid));
 
                 if (map != null)

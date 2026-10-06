@@ -47,8 +47,12 @@ namespace RPGFramework.Field
         {
             Tilemap walkable = null;
 
-            foreach (Tilemap tilemap in Object.FindObjectsByType<Tilemap>(FindObjectsInactive.Include))
+            Tilemap[] tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsInactive.Include);
+
+            for (int i = 0; i < tilemaps.Length; i++)
             {
+                Tilemap tilemap = tilemaps[i];
+
                 if (tilemap.GetComponentInParent<FieldBlocker>(true) == null)
                 {
                     walkable = tilemap;

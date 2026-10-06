@@ -110,8 +110,10 @@ namespace RPGFramework.Field
         /// </summary>
         private void DrawBlockers()
         {
-            foreach (FieldBlocker blocker in m_Blockers)
+            for (int i = 0; i < m_Blockers.Length; i++)
             {
+                FieldBlocker blocker = m_Blockers[i];
+
                 bool blocking = blocker.IsBlocking;
 
                 DrawColliders(blocker.GetComponentsInChildren<Collider>(true), blocker.GetComponentsInChildren<Collider2D>(true), blocking ? Color.red : Color.gray, blocking);
@@ -120,8 +122,10 @@ namespace RPGFramework.Field
 
         private void DrawColliders(Collider[] colliders, Collider2D[] colliders2D, Color colour, bool hasBounds)
         {
-            foreach (Collider collider in colliders)
+            for (int i = 0; i < colliders.Length; i++)
             {
+                Collider collider = colliders[i];
+
                 if (collider is BoxCollider box)
                 {
                     m_DebugOverlay.Box(box.transform.localToWorldMatrix, box.center, box.size, colour);
@@ -134,8 +138,10 @@ namespace RPGFramework.Field
                 }
             }
 
-            foreach (Collider2D collider in colliders2D)
+            for (int i = 0; i < colliders2D.Length; i++)
             {
+                Collider2D collider = colliders2D[i];
+
                 if (collider is BoxCollider2D box)
                 {
                     m_DebugOverlay.Rectangle(box.transform, box.offset, box.size, colour);

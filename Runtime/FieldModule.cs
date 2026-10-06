@@ -414,8 +414,10 @@ namespace RPGFramework.Field
             m_Blockers     = fieldGameObject.GetComponentsInChildren<FieldBlocker>(true);
             m_BlockersById = new Dictionary<byte, FieldBlocker>(m_Blockers.Length);
 
-            foreach (FieldBlocker blocker in m_Blockers)
+            for (int i = 0; i < m_Blockers.Length; i++)
             {
+                FieldBlocker blocker = m_Blockers[i];
+
                 blocker.Bind();
                 m_BlockersById.Add(blocker.Id, blocker);
             }
@@ -424,8 +426,10 @@ namespace RPGFramework.Field
             m_Entities       = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
             m_AnimationNames = BuildAnimationNames(fieldEntities);
 
-            foreach (CompiledFieldEntity record in fieldEntities.Compiled)
+            for (int i = 0; i < fieldEntities.Compiled.Count; i++)
             {
+                CompiledFieldEntity record = fieldEntities.Compiled[i];
+
                 AddEntityComponents(record);
             }
 
@@ -440,8 +444,10 @@ namespace RPGFramework.Field
         {
             Dictionary<ulong, string> animationNames = new Dictionary<ulong, string>(fieldEntities.AnimationNames.Count);
 
-            foreach (string animationName in fieldEntities.AnimationNames)
+            for (int i = 0; i < fieldEntities.AnimationNames.Count; i++)
             {
+                string animationName = fieldEntities.AnimationNames[i];
+
                 animationNames[Fnv1a64.Hash(animationName)] = animationName;
             }
 
@@ -498,8 +504,10 @@ namespace RPGFramework.Field
             FieldVM                  vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(fieldEntities.Compiled.Count);
 
-            foreach (CompiledFieldEntity record in fieldEntities.Compiled)
+            for (int j = 0; j < fieldEntities.Compiled.Count; j++)
             {
+                CompiledFieldEntity record = fieldEntities.Compiled[j];
+
                 int[]  scriptIdsByEvent = new int[record.Scripts.Count];
                 byte[] slotsByEvent     = new byte[record.Scripts.Count];
 
@@ -538,8 +546,10 @@ namespace RPGFramework.Field
         {
             FieldVM vm = m_FieldContext.VM;
 
-            foreach (FieldEntityRuntime entity in m_FieldContext.Entities)
+            for (int i = 0; i < m_FieldContext.Entities.Count; i++)
             {
+                FieldEntityRuntime entity = m_FieldContext.Entities[i];
+
                 ScriptRunOutcome outcome = entity.RunInitScript(vm);
 
 #if UNITY_EDITOR
@@ -588,8 +598,10 @@ namespace RPGFramework.Field
         /// </summary>
         private void StartDefaultScripts(FieldEntities fieldEntities)
         {
-            foreach (CompiledFieldEntity record in fieldEntities.Compiled)
+            for (int i = 0; i < fieldEntities.Compiled.Count; i++)
             {
+                CompiledFieldEntity record = fieldEntities.Compiled[i];
+
                 record.TryGetScriptIndex(FieldScriptType.Default, out int eventId);
 
                 m_FieldContext.VM.StartDefaultScript(record.EntityId, eventId);
@@ -667,13 +679,17 @@ namespace RPGFramework.Field
                 m_Entities[entityId].MovementDriver.ResumeRotation(rotationState);
             }
 
-            foreach (int entityId in m_FieldContext.VisibleEntityIds)
+            for (int i = 0; i < m_FieldContext.VisibleEntityIds.Count; i++)
             {
+                int entityId = m_FieldContext.VisibleEntityIds[i];
+
                 ShowOrHideEntity(entityId, true);
             }
 
-            foreach (int entityId in m_FieldContext.HiddenEntityIds)
+            for (int i = 0; i < m_FieldContext.HiddenEntityIds.Count; i++)
             {
+                int entityId = m_FieldContext.HiddenEntityIds[i];
+
                 ShowOrHideEntity(entityId, false);
             }
 

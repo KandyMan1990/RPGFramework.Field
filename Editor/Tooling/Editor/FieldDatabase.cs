@@ -127,8 +127,12 @@ namespace RPGFramework.Field.Editor
             List<string> problems = new List<string>();
 
             // Everything the block editor and compiler know about an opcode comes from these attributes.
-            foreach (string problem in FieldOpCodeCatalogue.Validate())
+            string[] opCodeProblems = FieldOpCodeCatalogue.Validate();
+
+            for (int i = 0; i < opCodeProblems.Length; i++)
             {
+                string problem = opCodeProblems[i];
+
                 problems.Add($"Opcode table: {problem}");
             }
 
@@ -166,13 +170,21 @@ namespace RPGFramework.Field.Editor
                 HashSet<int>         blockerIds       = new HashSet<int>();
                 DialogueChannelUse   dialogueChannels = new DialogueChannelUse();
 
-                foreach (FieldBlocker blocker in prefab.GetComponentsInChildren<FieldBlocker>(true))
+                FieldBlocker[] blockers = prefab.GetComponentsInChildren<FieldBlocker>(true);
+
+                for (int j = 0; j < blockers.Length; j++)
                 {
+                    FieldBlocker blocker = blockers[j];
+
                     ValidateBlocker(fieldEntities.Dimension, blocker, prefab.name, blockerIds, problems);
                 }
 
-                foreach (FieldEntityRecord record in fieldEntities.Entities)
+                List<FieldEntityRecord> records = fieldEntities.Entities;
+
+                for (int j = 0; j < records.Count; j++)
                 {
+                    FieldEntityRecord record = records[j];
+
                     scriptCounts[record.EntityId] = record.Scripts.Count;
 
                     if (record.Body != null)
@@ -181,16 +193,22 @@ namespace RPGFramework.Field.Editor
                     }
                 }
 
-                foreach (FieldEntityRecord record in fieldEntities.Entities)
+                for (int j = 0; j < records.Count; j++)
                 {
+                    FieldEntityRecord record = records[j];
+
                     ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, blockerIds, dialogueChannels, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
 
                 // A body no record claims is never bound, so its triggers never fire and nothing can move or show it.
-                foreach (FieldEntity body in prefab.GetComponentsInChildren<FieldEntity>(true))
+                FieldEntity[] prefabBodies = prefab.GetComponentsInChildren<FieldEntity>(true);
+
+                for (int j = 0; j < prefabBodies.Length; j++)
                 {
+                    FieldEntity body = prefabBodies[j];
+
                     if (!bodies.Contains(body))
                     {
                         problems.Add($"{prefab.name} / '{body.name}' has a {nameof(FieldEntity)} no entity uses as its body, so nothing drives it. Give an entity it as its body in the Field Designer, or remove the component");
@@ -221,12 +239,18 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            foreach (string guid in guids)
+            for (int i = 0; i < guids.Length; i++)
             {
+                string guid = guids[i];
+
                 VariableMapAsset map = AssetDatabase.LoadAssetAtPath<VariableMapAsset>(AssetDatabase.GUIDToAssetPath(guid));
 
-                foreach (string problem in map.Validate())
+                List<string> mapProblems = map.Validate();
+
+                for (int j = 0; j < mapProblems.Count; j++)
                 {
+                    string problem = mapProblems[j];
+
                     problems.Add($"Variable map '{map.name}': {problem}");
                 }
 
@@ -255,8 +279,10 @@ namespace RPGFramework.Field.Editor
 
         private GameObject FindFieldPrefab(ulong fieldNameHash)
         {
-            foreach (FieldDefinitionAuthoring field in m_Fields)
+            for (int i = 0; i < m_Fields.Count; i++)
             {
+                FieldDefinitionAuthoring field = m_Fields[i];
+
                 if (field.Prefab != null && Fnv1a64.Hash(field.Prefab.name) == fieldNameHash)
                 {
                     return field.Prefab;
@@ -454,8 +480,10 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         private static void ValidateScriptRequests(FieldEntityRecord record, Dictionary<int, int> scriptCounts, string scriptDescription, string[] lines, List<string> problems)
         {
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
@@ -562,8 +590,10 @@ namespace RPGFramework.Field.Editor
 
         private static void ValidateBlockerTargets(HashSet<int> blockerIds, string scriptDescription, string[] lines, List<string> problems)
         {
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
@@ -592,8 +622,10 @@ namespace RPGFramework.Field.Editor
 
         private static void ValidateEntityTargets(Dictionary<int, int> scriptCounts, HashSet<int> withBodies, string scriptDescription, string[] lines, List<string> problems)
         {
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsBody)
@@ -635,8 +667,10 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string name = FieldScriptLine.Split(line)[0];
 
                 if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.NeedsBody)
@@ -660,8 +694,10 @@ namespace RPGFramework.Field.Editor
 
             Animator animator = body.GetComponentInChildren<Animator>(true);
 
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsAnimator)
@@ -753,8 +789,12 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            foreach (AnimatorControllerParameter parameter in Controller(animator).parameters)
+            AnimatorControllerParameter[] parameters = Controller(animator).parameters;
+
+            for (int i = 0; i < parameters.Length; i++)
             {
+                AnimatorControllerParameter parameter = parameters[i];
+
                 if (parameter.name != state.speedParameter || parameter.defaultFloat != 0f)
                 {
                     continue;
@@ -771,8 +811,12 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         private static void ValidateStateStays(Animator animator, AnimatorState state, string stateName, string scriptDescription, List<string> problems)
         {
-            foreach (AnimatorStateTransition transition in state.transitions)
+            AnimatorStateTransition[] transitions = state.transitions;
+
+            for (int i = 0; i < transitions.Length; i++)
             {
+                AnimatorStateTransition transition = transitions[i];
+
                 if (!transition.hasExitTime || transition.conditions.Length > 0)
                 {
                     continue;
@@ -800,8 +844,12 @@ namespace RPGFramework.Field.Editor
                 return states;
             }
 
-            foreach (AnimatorControllerLayer layer in controller.layers)
+            AnimatorControllerLayer[] layers = controller.layers;
+
+            for (int i = 0; i < layers.Length; i++)
             {
+                AnimatorControllerLayer layer = layers[i];
+
                 CollectStates(layer.stateMachine, states);
             }
 
@@ -824,13 +872,21 @@ namespace RPGFramework.Field.Editor
 
         private static void CollectStates(AnimatorStateMachine stateMachine, Dictionary<string, AnimatorState> states)
         {
-            foreach (ChildAnimatorState state in stateMachine.states)
+            ChildAnimatorState[] childStates = stateMachine.states;
+
+            for (int i = 0; i < childStates.Length; i++)
             {
+                ChildAnimatorState state = childStates[i];
+
                 states[state.state.name] = state.state;
             }
 
-            foreach (ChildAnimatorStateMachine child in stateMachine.stateMachines)
+            ChildAnimatorStateMachine[] children = stateMachine.stateMachines;
+
+            for (int i = 0; i < children.Length; i++)
             {
+                ChildAnimatorStateMachine child = children[i];
+
                 CollectStates(child.stateMachine, states);
             }
         }
@@ -848,8 +904,10 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string name = FieldScriptLine.Split(line)[0];
 
                 if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.StopsInit)
@@ -868,8 +926,10 @@ namespace RPGFramework.Field.Editor
             bool hasCollisionTrigger   = body != null && body.GetComponentInChildren<FieldCollisionTrigger>(true)   != null;
             bool hasInteractionTrigger = body != null && body.GetComponentInChildren<FieldInteractionTrigger>(true) != null;
 
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string name = FieldScriptLine.Split(line)[0];
 
                 if (!FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode))
@@ -928,8 +988,10 @@ namespace RPGFramework.Field.Editor
 
         private static bool HasMapJump(string[] lines)
         {
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 if (FieldOpCodeCatalogue.TryGet(FieldScriptLine.Split(line)[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.JumpToAnotherMap)
                 {
                     return true;
@@ -946,8 +1008,10 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         private void ValidateMapJumps(string scriptDescription, string[] lines, List<string> problems)
         {
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || opCode.OpCode != FieldScriptOpCode.JumpToAnotherMap)
@@ -978,8 +1042,10 @@ namespace RPGFramework.Field.Editor
 
         private GameObject FindFieldPrefab(string fieldName)
         {
-            foreach (FieldDefinitionAuthoring field in m_Fields)
+            for (int i = 0; i < m_Fields.Count; i++)
             {
+                FieldDefinitionAuthoring field = m_Fields[i];
+
                 if (field.Prefab != null && field.Prefab.name == fieldName)
                 {
                     return field.Prefab;
@@ -1003,8 +1069,12 @@ namespace RPGFramework.Field.Editor
         {
             List<string> keys = new List<string>();
 
-            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(LocalisationSheetAsset)}"))
+            string[] guids = AssetDatabase.FindAssets($"t:{nameof(LocalisationSheetAsset)}");
+
+            for (int i = 0; i < guids.Length; i++)
             {
+                string guid = guids[i];
+
                 LocalisationSheetAsset sheet = AssetDatabase.LoadAssetAtPath<LocalisationSheetAsset>(AssetDatabase.GUIDToAssetPath(guid));
 
                 if (sheet != null)
@@ -1023,8 +1093,12 @@ namespace RPGFramework.Field.Editor
             HashSet<string> known       = new HashSet<string>(StringComparer.Ordinal);
             List<string>    withoutKeys = new List<string>();
 
-            foreach (LocalisationSheetAsset sheet in sheets ?? Array.Empty<LocalisationSheetAsset>())
+            LocalisationSheetAsset[] fieldSheets = sheets ?? Array.Empty<LocalisationSheetAsset>();
+
+            for (int i = 0; i < fieldSheets.Length; i++)
             {
+                LocalisationSheetAsset sheet = fieldSheets[i];
+
                 if (sheet == null)
                 {
                     continue;
@@ -1038,8 +1112,12 @@ namespace RPGFramework.Field.Editor
                 known.UnionWith(sheet.Keys);
             }
 
-            foreach (FieldEntityRecord record in fieldEntities.Entities)
+            List<FieldEntityRecord> records = fieldEntities.Entities;
+
+            for (int j = 0; j < records.Count; j++)
             {
+                FieldEntityRecord record = records[j];
+
                 for (int i = 0; i < record.Scripts.Count; i++)
                 {
                     foreach (string key in DialogueKeysIn(record.Scripts[i].Text))
@@ -1059,8 +1137,12 @@ namespace RPGFramework.Field.Editor
 
         private static IEnumerable<string> DialogueKeysIn(string scriptText)
         {
-            foreach (string line in scriptText.Split('\n'))
+            string[] lines = scriptText.Split('\n');
+
+            for (int i = 0; i < lines.Length; i++)
             {
+                string line = lines[i];
+
                 string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
@@ -1110,13 +1192,21 @@ namespace RPGFramework.Field.Editor
 
             if (body != null)
             {
-                foreach (Collider collider in body.GetComponentsInChildren<Collider>(true))
+                Collider[] colliders = body.GetComponentsInChildren<Collider>(true);
+
+                for (int i = 0; i < colliders.Length; i++)
                 {
+                    Collider collider = colliders[i];
+
                     hasSolidCollider |= !collider.isTrigger;
                 }
 
-                foreach (Collider2D collider in body.GetComponentsInChildren<Collider2D>(true))
+                Collider2D[] colliders2D = body.GetComponentsInChildren<Collider2D>(true);
+
+                for (int i = 0; i < colliders2D.Length; i++)
                 {
+                    Collider2D collider = colliders2D[i];
+
                     hasSolidCollider |= !collider.isTrigger;
                 }
             }
@@ -1148,8 +1238,12 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            foreach (SpawnPoint spawnPoint in prefab.GetComponentsInChildren<SpawnPoint>(true))
+            SpawnPoint[] spawnPoints = prefab.GetComponentsInChildren<SpawnPoint>(true);
+
+            for (int i = 0; i < spawnPoints.Length; i++)
             {
+                SpawnPoint spawnPoint = spawnPoints[i];
+
                 if (Contains(trigger, spawnPoint.Position))
                 {
                     problems.Add($"{prefab.name} / spawn point '{spawnPoint.name}' is inside {entityName}'s gateway, so a player arriving there leaves again at once");

@@ -203,8 +203,10 @@ namespace RPGFramework.Field
 
         private Vector2 Depenetrate(Vector2 position)
         {
-            foreach (Collider2D own in m_SolidColliders)
+            for (int j = 0; j < m_SolidColliders.Length; j++)
             {
+                Collider2D own = m_SolidColliders[j];
+
                 int count = own.Overlap(SOLID_ONLY, m_Overlaps);
 
                 for (int i = 0; i < count; i++)
@@ -243,8 +245,12 @@ namespace RPGFramework.Field
         {
             List<Collider2D> solid = new List<Collider2D>();
 
-            foreach (Collider2D collider in body.GetComponentsInChildren<Collider2D>(true))
+            Collider2D[] colliders = body.GetComponentsInChildren<Collider2D>(true);
+
+            for (int i = 0; i < colliders.Length; i++)
             {
+                Collider2D collider = colliders[i];
+
                 if (collider.isTrigger || collider.attachedRigidbody != body)
                 {
                     continue;

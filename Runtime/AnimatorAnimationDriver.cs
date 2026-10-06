@@ -333,8 +333,12 @@ namespace RPGFramework.Field
         {
             bool hasParameter = false;
 
-            foreach (AnimatorControllerParameter parameter in animator.parameters)
+            AnimatorControllerParameter[] parameters = animator.parameters;
+
+            for (int i = 0; i < parameters.Length; i++)
             {
+                AnimatorControllerParameter parameter = parameters[i];
+
                 if (parameter.name == parameterName)
                 {
                     hasParameter = true;

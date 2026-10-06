@@ -22,19 +22,29 @@ namespace RPGFramework.Field.Editor
             m_DialogueSheets = new HashSet<string>();
             m_Styles         = DialogueEditorUtility.FindProjectTextStyles();
 
-            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(FieldDesignerData)}"))
+            string[] guids = AssetDatabase.FindAssets($"t:{nameof(FieldDesignerData)}");
+
+            for (int i = 0; i < guids.Length; i++)
             {
+                string guid = guids[i];
+
                 FieldDesignerData data = AssetDatabase.LoadAssetAtPath<FieldDesignerData>(AssetDatabase.GUIDToAssetPath(guid));
 
-                foreach (FieldDefinitionAuthoring field in data.Fields)
+                List<FieldDefinitionAuthoring> fields = data.Fields;
+
+                for (int j = 0; j < fields.Count; j++)
                 {
+                    FieldDefinitionAuthoring field = fields[j];
+
                     if (field.LocalisationSheets == null)
                     {
                         continue;
                     }
 
-                    foreach (LocalisationSheetAsset sheet in field.LocalisationSheets)
+                    for (int k = 0; k < field.LocalisationSheets.Length; k++)
                     {
+                        LocalisationSheetAsset sheet = field.LocalisationSheets[k];
+
                         if (sheet != null)
                         {
                             m_DialogueSheets.Add(sheet.SheetName);
@@ -51,8 +61,12 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            foreach (string problem in DialogueMarkup.Validate(text, m_Styles))
+            List<string> markupProblems = DialogueMarkup.Validate(text, m_Styles);
+
+            for (int i = 0; i < markupProblems.Count; i++)
             {
+                string problem = markupProblems[i];
+
                 problems.Add($"[{sheetName}] {key} ({language}): {problem}");
             }
         }

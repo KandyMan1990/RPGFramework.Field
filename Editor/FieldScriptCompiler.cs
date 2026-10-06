@@ -230,8 +230,10 @@ namespace RPGFramework.Field.Editor
             List<string> problems = new List<string>();
             int          length   = (int)ms.Length;
 
-            foreach (PendingJump jump in jumps)
+            for (int i = 0; i < jumps.Count; i++)
             {
+                PendingJump jump = jumps[i];
+
                 if (!labels.TryGetValue(jump.Label, out int target))
                 {
                     problems.Add($"line {jump.LineNumber}: {jump.ScriptName} goes to [{jump.Label}], which no LABEL in this script names");
@@ -268,13 +270,17 @@ namespace RPGFramework.Field.Editor
         {
             string[] assetGuids = UnityEditor.AssetDatabase.FindAssets("t:" + nameof(FieldDesignerData));
 
-            foreach (string assetGuid in assetGuids)
+            for (int i = 0; i < assetGuids.Length; i++)
             {
+                string assetGuid = assetGuids[i];
+
                 string            assetPath         = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
                 FieldDesignerData fieldDesignerData = UnityEditor.AssetDatabase.LoadAssetAtPath<FieldDesignerData>(assetPath);
 
-                foreach (FieldDefinitionAuthoring field in fieldDesignerData.FieldDatabase.Fields)
+                for (int j = 0; j < fieldDesignerData.FieldDatabase.Fields.Count; j++)
                 {
+                    FieldDefinitionAuthoring field = fieldDesignerData.FieldDatabase.Fields[j];
+
                     if (field.Prefab.name == fieldName)
                     {
                         ulong hash = Fnv1a64.Hash(fieldName);
@@ -898,8 +904,12 @@ namespace RPGFramework.Field.Editor
                 {
                     List<string> fieldNames = new List<string>();
 
-                    foreach (VariableRecordField each in definition.Fields)
+                    IReadOnlyList<VariableRecordField> recordFields = definition.Fields;
+
+                    for (int i = 0; i < recordFields.Count; i++)
                     {
+                        VariableRecordField each = recordFields[i];
+
                         fieldNames.Add(each.Name);
                     }
 

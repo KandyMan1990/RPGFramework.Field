@@ -20,8 +20,12 @@ namespace RPGFramework.Field
         {
             int highest = -1;
 
-            foreach (SpawnPoint other in fieldRoot.GetComponentsInChildren<SpawnPoint>(true))
+            SpawnPoint[] others = fieldRoot.GetComponentsInChildren<SpawnPoint>(true);
+
+            for (int i = 0; i < others.Length; i++)
             {
+                SpawnPoint other = others[i];
+
                 if (other != except && other.m_Id > highest)
                 {
                     highest = other.m_Id;

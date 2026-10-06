@@ -645,8 +645,10 @@ namespace RPGFramework.Field.Editor
             List<FieldEntity> bodies  = new List<FieldEntity>(m_CurrentlyOpenPrefab.GetComponentsInChildren<FieldEntity>(true));
             List<string>      choices = new List<string> { NO_BODY };
 
-            foreach (FieldEntity body in bodies)
+            for (int i = 0; i < bodies.Count; i++)
             {
+                FieldEntity body = bodies[i];
+
                 choices.Add(body.gameObject.name);
             }
 

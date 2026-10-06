@@ -44,8 +44,10 @@ namespace RPGFramework.Field.Editor
 
         internal static string FieldNameForHash(List<string> names, ulong hash)
         {
-            foreach (string name in names)
+            for (int i = 0; i < names.Count; i++)
             {
+                string name = names[i];
+
                 if (Fnv1a64.Hash(name) == hash)
                 {
                     return name;

@@ -52,8 +52,12 @@ namespace RPGFramework.Field
         {
             int highest = -1;
 
-            foreach (FieldBlocker other in fieldRoot.GetComponentsInChildren<FieldBlocker>(true))
+            FieldBlocker[] others = fieldRoot.GetComponentsInChildren<FieldBlocker>(true);
+
+            for (int i = 0; i < others.Length; i++)
             {
+                FieldBlocker other = others[i];
+
                 if (other != except && other.m_Id > highest)
                 {
                     highest = other.m_Id;

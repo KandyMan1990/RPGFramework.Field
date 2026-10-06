@@ -94,8 +94,10 @@ namespace RPGFramework.Field.Editor
         {
             List<string> arguments = new List<string>(opCode.Arguments.Count);
 
-            foreach (FieldArgumentInfo argument in opCode.Arguments)
+            for (int i = 0; i < opCode.Arguments.Count; i++)
             {
+                FieldArgumentInfo argument = opCode.Arguments[i];
+
                 arguments.Add(DefaultFor(argument));
             }
 
@@ -215,8 +217,12 @@ namespace RPGFramework.Field.Editor
 
             Stack<FieldScriptBlock> openBlocks = new Stack<FieldScriptBlock>();
 
-            foreach (string rawLine in scriptText.Split('\n'))
+            string[] rawLines = scriptText.Split('\n');
+
+            for (int j = 0; j < rawLines.Length; j++)
             {
+                string rawLine = rawLines[j];
+
                 string line = rawLine.Trim();
 
                 if (line.Length == 0)
@@ -326,8 +332,10 @@ namespace RPGFramework.Field.Editor
         {
             string indent = string.Concat(System.Linq.Enumerable.Repeat(INDENT, depth));
 
-            foreach (FieldScriptBlock block in blocks)
+            for (int i = 0; i < blocks.Count; i++)
             {
+                FieldScriptBlock block = blocks[i];
+
                 sb.Append(indent);
                 sb.AppendLine(block.ToLine());
 

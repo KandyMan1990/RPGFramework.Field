@@ -219,8 +219,12 @@ namespace RPGFramework.Field
 
             bool found = false;
 
-            foreach (RaycastHit hit in m_Rigidbody.SweepTestAll(heading, distance, QueryTriggerInteraction.Ignore))
+            RaycastHit[] hits = m_Rigidbody.SweepTestAll(heading, distance, QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < hits.Length; i++)
             {
+                RaycastHit hit = hits[i];
+
                 if (!FieldEntity.Blocks(hit.collider) || found && hit.distance >= nearest.distance)
                 {
                     continue;
@@ -235,8 +239,10 @@ namespace RPGFramework.Field
 
         private Vector3 Depenetrate(Vector3 position)
         {
-            foreach (Collider own in m_SolidColliders)
+            for (int j = 0; j < m_SolidColliders.Length; j++)
             {
+                Collider own = m_SolidColliders[j];
+
                 Bounds bounds = own.bounds;
 
                 int count = Physics.OverlapBoxNonAlloc(bounds.center, bounds.extents, m_Overlaps, Quaternion.identity, Physics.AllLayers, QueryTriggerInteraction.Ignore);
@@ -277,8 +283,12 @@ namespace RPGFramework.Field
         {
             List<Collider> solid = new List<Collider>();
 
-            foreach (Collider collider in body.GetComponentsInChildren<Collider>(true))
+            Collider[] colliders = body.GetComponentsInChildren<Collider>(true);
+
+            for (int i = 0; i < colliders.Length; i++)
             {
+                Collider collider = colliders[i];
+
                 if (collider.isTrigger || collider.attachedRigidbody != body)
                 {
                     continue;
