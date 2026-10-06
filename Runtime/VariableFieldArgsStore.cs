@@ -17,7 +17,7 @@ namespace RPGFramework.Field
         private readonly ushort         m_FieldAddress;
         private readonly ushort         m_SpawnAddress;
 
-        public VariableFieldArgsStore(IMemoryService memoryService, IVariableMap variableMap)
+        internal VariableFieldArgsStore(IMemoryService memoryService, IVariableMap variableMap)
         {
             variableMap.TryGetVariable(FieldVariables.CURRENT_FIELD, out VariableDefinition field);
             variableMap.TryGetVariable(FieldVariables.CURRENT_SPAWN, out VariableDefinition spawn);

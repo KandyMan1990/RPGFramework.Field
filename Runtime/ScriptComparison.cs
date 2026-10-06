@@ -6,7 +6,7 @@
     /// The comparison is written into the script as a byte; naming the values means an author picks
     /// "is equal to" from a list rather than remembering that 0 means equality.
     /// </summary>
-    public enum ScriptComparison : byte
+    internal enum ScriptComparison : byte
     {
         Equal              = 0x0,
         NotEqual           = 0x1,
@@ -31,12 +31,13 @@
         BitIsClear = 0xA
     }
 
-    public static class ScriptComparisonExtensions
+#if UNITY_EDITOR
+    internal static class ScriptComparisonExtensions
     {
         /// <summary>
         /// The comparisons that test bits, which mean nothing for a float.
         /// </summary>
-        public static bool IsBitTest(this ScriptComparison comparison)
+        internal static bool IsBitTest(this ScriptComparison comparison)
         {
             bool isBitTest = comparison == ScriptComparison.AnyBitInCommon  ||
                              comparison == ScriptComparison.AnyBitDifferent ||
@@ -51,7 +52,7 @@
         /// How the comparison is written in a script, so <c>$flag == 1</c> reads as it would anywhere
         /// else. The bit tests have no operator, so they use their names.
         /// </summary>
-        public static string ToScriptText(this ScriptComparison comparison)
+        internal static string ToScriptText(this ScriptComparison comparison)
         {
             switch (comparison)
             {
@@ -70,7 +71,7 @@
             }
         }
 
-        public static bool TryParse(string text, out ScriptComparison comparison)
+        internal static bool TryParse(string text, out ScriptComparison comparison)
         {
             switch (text)
             {
@@ -116,4 +117,5 @@
             return parsed;
         }
     }
+#endif
 }

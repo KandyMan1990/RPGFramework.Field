@@ -5,7 +5,7 @@ using RPGFramework.Field.FieldVmArgs;
 
 namespace RPGFramework.Field
 {
-    public enum FieldScriptOpCode : ushort
+    internal enum FieldScriptOpCode : ushort
     {
         // Script flow and control (0x0000)
         [FieldOpCode("RETURN", ArgumentLayout.Sequential, Summary = "End this script and free its priority slot")]

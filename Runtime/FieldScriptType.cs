@@ -4,7 +4,7 @@
     /// What an entity's script is for. The position of a script in an entity's list is its
     /// <b>event id</b> — what a script-request opcode names — and these say what each position means.
     /// </summary>
-    public enum FieldScriptType
+    internal enum FieldScriptType
     {
         /// <summary>
         /// Setup, run at field load before the field is shown: position, model, visibility, solidity.

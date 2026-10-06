@@ -2,10 +2,10 @@
 {
     public class FieldDefinition
     {
-        public string   AssetName          { get; }
-        public string   AssetPath          { get; }
-        public string[] LocalisationSheets { get; }
-        public ulong    LocationName       { get; }
+        internal string   AssetName          { get; }
+        internal string   AssetPath          { get; }
+        internal string[] LocalisationSheets { get; }
+        internal ulong    LocationName       { get; }
 
         public FieldDefinition(string   assetName,
                                string   assetPath,

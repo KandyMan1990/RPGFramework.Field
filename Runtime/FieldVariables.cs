@@ -9,7 +9,7 @@ namespace RPGFramework.Field
     /// The variables the field module requires of every game's map, and the field module's place among the
     /// modules a new game can begin in.
     /// </summary>
-    public sealed class FieldVariables : IRequiredVariables, IStartModule
+    internal sealed class FieldVariables : IRequiredVariables, IStartModule
     {
         /// <summary>
         /// The field the player is in, as its name's hash. Its default is the field a new game begins in.

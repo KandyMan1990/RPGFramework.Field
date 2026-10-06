@@ -4,8 +4,8 @@ namespace RPGFramework.Field
 {
     public sealed class SpawnPoint : MonoBehaviour
     {
-        public int        Id       => m_Id;
-        public Vector3    Position => transform.position;
+        internal int        Id       => m_Id;
+        internal Vector3    Position => transform.position;
         internal Quaternion Rotation => transform.rotation;
 
         [SerializeField]

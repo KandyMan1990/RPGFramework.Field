@@ -7,7 +7,7 @@ namespace RPGFramework.Field
     /// A script request can name any slot, and shares it with the event that runs there: a script requested
     /// into <see cref="Interaction" /> keeps the player from talking to the entity until it returns.
     /// </summary>
-    public enum FieldScriptPriority : byte
+    internal enum FieldScriptPriority : byte
     {
         /// <summary>
         /// The init script, then <see cref="FieldScriptType.Default" /> once every entity's init has run.

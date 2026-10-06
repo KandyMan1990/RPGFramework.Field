@@ -17,7 +17,7 @@ namespace RPGFramework.Field
     /// How an opcode's arguments are laid out in bytecode. The enum's argument list says what an author
     /// supplies; the layout says how those values become bytes.
     /// </summary>
-    public enum ArgumentLayout
+    internal enum ArgumentLayout
     {
         /// <summary>
         /// Arguments written in order. Every argument that can come from a variable is preceded by a sources
@@ -56,7 +56,7 @@ namespace RPGFramework.Field
     /// semantic types encode identically to their underlying width but tell the field editor to show a
     /// dropdown rather than a bare number field.
     /// </summary>
-    public enum ArgumentType
+    internal enum ArgumentType
     {
         Byte,
         UShort,
@@ -157,7 +157,7 @@ namespace RPGFramework.Field
     /// and the editor will not show it.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field)]
-    public sealed class FieldOpCodeAttribute : Attribute
+    internal sealed class FieldOpCodeAttribute : Attribute
     {
         public string         ScriptName { get; }
         public ArgumentLayout Layout     { get; }
@@ -215,7 +215,7 @@ namespace RPGFramework.Field
     /// inputs into correct bytecode.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
-    public sealed class ArgumentAttribute : Attribute
+    internal sealed class ArgumentAttribute : Attribute
     {
         public int           Index    { get; }
         public string        Name     { get; }
@@ -262,16 +262,17 @@ namespace RPGFramework.Field
         }
     }
 
-    public static class ArgumentTypes
+    internal static class ArgumentTypes
     {
+        internal const int DIALOGUE_CHANNEL_COUNT = 8;
+
+#if UNITY_EDITOR
         /// <summary>
         /// Whether an argument of this type can be written as a variable, and the variable width it needs.
         /// <paramref name="declaredWidth" /> is the width an <see cref="ArgumentType.Variable" /> or
         /// <see cref="ArgumentType.Value" /> argument declares.
         /// </summary>
-        public const int DIALOGUE_CHANNEL_COUNT = 8;
-
-        public static bool TryGetVariableWidth(ArgumentType type, VariableWidth declaredWidth, out VariableWidth width)
+        internal static bool TryGetVariableWidth(ArgumentType type, VariableWidth declaredWidth, out VariableWidth width)
         {
             switch (type)
             {
@@ -315,7 +316,7 @@ namespace RPGFramework.Field
         /// Whether a <see cref="ArgumentLayout.Sequential" /> argument of this type carries a source nibble.
         /// The bank layouts encode their own sources, so their variable types are not included.
         /// </summary>
-        public static bool TakesSource(ArgumentType type)
+        internal static bool TakesSource(ArgumentType type)
         {
             bool takesSource = type != ArgumentType.Variable &&
                                type != ArgumentType.Value    &&
@@ -329,7 +330,7 @@ namespace RPGFramework.Field
         /// <paramref name="variableWidth" />. A bool reads only a bool. An integer reads any integer no wider than
         /// itself, converted as a cast would convert it. A float reads a float or an integer of up to four bytes.
         /// </summary>
-        public static bool CanRead(VariableWidth argumentWidth, VariableWidth variableWidth)
+        internal static bool CanRead(VariableWidth argumentWidth, VariableWidth variableWidth)
         {
             bool canRead = argumentWidth switch
                            {
@@ -341,5 +342,6 @@ namespace RPGFramework.Field
 
             return canRead;
         }
+#endif
     }
 }

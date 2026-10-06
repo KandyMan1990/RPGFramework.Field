@@ -50,7 +50,7 @@ namespace RPGFramework.Field
             m_IsActive = active;
         }
 
-        public void SetInteractionRange(float range)
+        internal void SetInteractionRange(float range)
         {
             m_InteractionRange = range;
         }

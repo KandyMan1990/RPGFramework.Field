@@ -1,11 +1,11 @@
 #if UNITY_EDITOR
 namespace RPGFramework.Field
 {
-    public static class FieldDebugDrawing
+    internal static class FieldDebugDrawing
     {
-        public const string INTERACTION_PREF_KEY = "RPGFramework.Field.DrawInteraction";
+        internal const string INTERACTION_PREF_KEY = "RPGFramework.Field.DrawInteraction";
 
-        public static bool Interaction
+        internal static bool Interaction
         {
             get
             {

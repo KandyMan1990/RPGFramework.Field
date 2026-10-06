@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Field.Editor
 {
-    public class ModalWindow : EditorWindow
+    internal class ModalWindow : EditorWindow
     {
         public event Action<string, string, string> OnConfirm;
 
