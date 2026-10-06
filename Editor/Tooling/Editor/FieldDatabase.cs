@@ -19,12 +19,12 @@ namespace RPGFramework.Field.Editor
         private readonly string m_AssetBundlesPath = Path.Combine(Application.streamingAssetsPath, "Field");
 
         [SerializeField]
-        private List<FieldDatabaseAssetAuthoring> m_Fields = new List<FieldDatabaseAssetAuthoring>();
+        private List<FieldDefinitionAuthoring> m_Fields = new List<FieldDefinitionAuthoring>();
 
         [SerializeField]
         private ulong m_ExportedLayoutHash;
 
-        public List<FieldDatabaseAssetAuthoring> Fields => m_Fields;
+        public List<FieldDefinitionAuthoring> Fields => m_Fields;
 
         /// <summary>
         /// <see cref="FieldExport.LayoutHash" /> of the variable map the fields were last exported against.
@@ -63,19 +63,19 @@ namespace RPGFramework.Field.Editor
 
             sb.AppendLine($"\tinternal class {scriptFileName.Replace(" ", "")} : IFieldDatabase");
             sb.AppendLine("\t{");
-            sb.AppendLine("\t\tprivate readonly Dictionary<ulong, FieldDatabaseAsset> m_FieldsByNameHash;");
+            sb.AppendLine("\t\tprivate readonly Dictionary<ulong, FieldDefinition> m_FieldsByNameHash;");
             sb.AppendLine();
             sb.AppendLine($"\t\tinternal {scriptFileName.Replace(" ", "")}()");
             sb.AppendLine("\t\t{");
 
             sb.AppendLine("\t\t\tstring assetBundlesPath = Path.Combine(Application.streamingAssetsPath, \"Field\");");
-            sb.AppendLine($"\t\t\tm_FieldsByNameHash = new Dictionary<ulong, FieldDatabaseAsset>({count})");
+            sb.AppendLine($"\t\t\tm_FieldsByNameHash = new Dictionary<ulong, FieldDefinition>({count})");
             sb.AppendLine("\t\t\t{");
             for (int i = 0; i < count; i++)
             {
                 string fieldName = m_Fields[i].Prefab.name;
 
-                sb.AppendLine($"\t\t\t\t[Fnv1a64.Hash(\"{fieldName}\")] = new FieldDatabaseAsset(\"{fieldName}\", Path.Combine(assetBundlesPath, \"{fieldName.ToLower()}\"),");
+                sb.AppendLine($"\t\t\t\t[Fnv1a64.Hash(\"{fieldName}\")] = new FieldDefinition(\"{fieldName}\", Path.Combine(assetBundlesPath, \"{fieldName.ToLower()}\"),");
                 sb.AppendLine("\t\t\t\t\tnew string[]");
                 sb.AppendLine("\t\t\t\t\t{");
                 for (int j = 0; j < m_Fields[i].LocalisationSheets.Length; j++)
@@ -255,7 +255,7 @@ namespace RPGFramework.Field.Editor
 
         private GameObject FindFieldPrefab(ulong fieldNameHash)
         {
-            foreach (FieldDatabaseAssetAuthoring field in m_Fields)
+            foreach (FieldDefinitionAuthoring field in m_Fields)
             {
                 if (field.Prefab != null && Fnv1a64.Hash(field.Prefab.name) == fieldNameHash)
                 {
@@ -978,7 +978,7 @@ namespace RPGFramework.Field.Editor
 
         private GameObject FindFieldPrefab(string fieldName)
         {
-            foreach (FieldDatabaseAssetAuthoring field in m_Fields)
+            foreach (FieldDefinitionAuthoring field in m_Fields)
             {
                 if (field.Prefab != null && field.Prefab.name == fieldName)
                 {

@@ -2,7 +2,7 @@ using RPGFramework.Core;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Field.SharedTypes;
-using RPGFramework.Field.SharedTypes.Providers;
+using RPGFramework.Field.SharedTypes.Stores;
 
 namespace RPGFramework.Field
 {
@@ -27,7 +27,7 @@ namespace RPGFramework.Field
             m_SpawnAddress  = (ushort)spawn.Offset;
         }
 
-        FieldArgs IFieldArgsStore.Get
+        FieldArgs IFieldArgsStore.Args
         {
             get
             {

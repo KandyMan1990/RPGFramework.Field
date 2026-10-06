@@ -6,7 +6,7 @@ using RPGFramework.Audio;
 using RPGFramework.Audio.Music;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Battle.SharedTypes.Constants;
-using RPGFramework.Battle.SharedTypes.Providers;
+using RPGFramework.Battle.SharedTypes.Stores;
 using RPGFramework.Core;
 using RPGFramework.Core.Data;
 using RPGFramework.Core.Dialogue;
@@ -23,12 +23,12 @@ using RPGFramework.DI;
 using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
 using RPGFramework.Field.SharedTypes.Constants;
-using RPGFramework.Field.SharedTypes.Providers;
+using RPGFramework.Field.SharedTypes.Stores;
 using RPGFramework.Hashing;
 using RPGFramework.Localisation;
 using RPGFramework.Menu.SharedTypes;
 using RPGFramework.Menu.SharedTypes.Constants;
-using RPGFramework.Menu.SharedTypes.Providers;
+using RPGFramework.Menu.SharedTypes.Stores;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -50,9 +50,9 @@ namespace RPGFramework.Field
         private readonly IMemoryService         m_MemoryService;
         private readonly ITempMemoryArgs        m_TempMemoryArgs;
         private readonly IScreenFadeService     m_ScreenFadeService;
-        private readonly IBattleArgsProvider    m_BattleArgsProvider;
+        private readonly IBattleArgsStore       m_BattleArgsStore;
         private readonly IFieldArgsStore        m_FieldArgsStore;
-        private readonly IMenuArgsProvider      m_MenuArgsProvider;
+        private readonly IMenuArgsStore         m_MenuArgsStore;
         private readonly IChangeModuleStore     m_ChangeModuleStore;
         private readonly IResumeModuleStore     m_ResumeModuleStore;
         private readonly ICurrentModuleStore    m_CurrentModuleStore;
@@ -83,8 +83,8 @@ namespace RPGFramework.Field
         private Dictionary<byte, FieldBlocker>         m_BlockersById;
         private int                                    m_PlayerEntityId;
 
-        private bool               m_FieldTransitionRequested;
-        private FieldDatabaseAsset m_FieldDatabaseAsset;
+        private bool            m_FieldTransitionRequested;
+        private FieldDefinition m_FieldDefinition;
 
         private bool m_BattleTransitionRequested;
         private bool m_MenuTransitionRequested;
@@ -103,9 +103,9 @@ namespace RPGFramework.Field
                            IMemoryService        memoryService,
                            ITempMemoryArgs       tempMemoryArgs,
                            IScreenFadeService    screenFadeService,
-                           IBattleArgsProvider   battleArgsProvider,
+                           IBattleArgsStore      battleArgsStore,
                            IFieldArgsStore       fieldArgsStore,
-                           IMenuArgsProvider     menuArgsProvider,
+                           IMenuArgsStore        menuArgsStore,
                            IChangeModuleStore    changeModuleStore,
                            IResumeModuleStore    resumeModuleStore,
                            ICurrentModuleStore   currentModuleStore,
@@ -126,9 +126,9 @@ namespace RPGFramework.Field
             m_MemoryService        = memoryService;
             m_TempMemoryArgs       = tempMemoryArgs;
             m_ScreenFadeService    = screenFadeService;
-            m_BattleArgsProvider   = battleArgsProvider;
+            m_BattleArgsStore      = battleArgsStore;
             m_FieldArgsStore       = fieldArgsStore;
-            m_MenuArgsProvider     = menuArgsProvider;
+            m_MenuArgsStore        = menuArgsStore;
             m_ChangeModuleStore    = changeModuleStore;
             m_ResumeModuleStore    = resumeModuleStore;
             m_CurrentModuleStore   = currentModuleStore;
@@ -182,7 +182,7 @@ namespace RPGFramework.Field
         private void RequestMenuModule(byte menuId)
         {
             MenuArgs args = new MenuArgs(menuId);
-            m_MenuArgsProvider.Set(args);
+            m_MenuArgsStore.Set(args);
 
             m_MenuTransitionRequested = true;
         }
@@ -402,12 +402,12 @@ namespace RPGFramework.Field
 
         private async Task<FieldEntities> PreLoadFieldAsync()
         {
-            FieldArgs fieldArgs = m_FieldArgsStore.Get;
-            m_FieldDatabaseAsset = m_FieldDatabase.Get(fieldArgs.FieldId);
+            FieldArgs fieldArgs = m_FieldArgsStore.Args;
+            m_FieldDefinition = m_FieldDatabase.Get(fieldArgs.FieldId);
 
-            await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldDatabaseAsset.LocalisationSheets);
+            await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldDefinition.LocalisationSheets);
 
-            GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(m_FieldDatabaseAsset);
+            GameObject   fieldGameObject = await m_FieldPresentation.LoadAsync(m_FieldDefinition);
             SpawnPoint[] spawnPoints     = fieldGameObject.GetComponentsInChildren<SpawnPoint>();
             m_InitialPlayerSpawn = Array.Find(spawnPoints, sp => sp.Id == fieldArgs.SpawnId);
 
@@ -493,7 +493,7 @@ namespace RPGFramework.Field
             m_CurrentModuleStore.SetModuleId(FieldConstants.MODULE_ID);
 
             m_SaveEnabledStore.ResetSaveEnabled();
-            m_LocationNameStore.SetLocationName(m_FieldDatabaseAsset.LocationName);
+            m_LocationNameStore.SetLocationName(m_FieldDefinition.LocationName);
 
             FieldVM                  vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
             List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(fieldEntities.Compiled.Count);
@@ -619,7 +619,7 @@ namespace RPGFramework.Field
             }
             else if (m_InitialPlayerSpawn == null)
             {
-                FieldArgs fieldArgs = m_FieldArgsStore.Get;
+                FieldArgs fieldArgs = m_FieldArgsStore.Args;
                 Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialisePlayer)} No spawn point with id [{fieldArgs.SpawnId}] in this field, so the player keeps whatever position its init script gave it");
             }
             else
@@ -802,7 +802,7 @@ namespace RPGFramework.Field
 
             await m_FieldPresentation.Unload();
 
-            m_LocalisationService.UnloadLocalisationData(m_FieldDatabaseAsset.LocalisationSheets);
+            m_LocalisationService.UnloadLocalisationData(m_FieldDefinition.LocalisationSheets);
         }
 
         private bool IsDialogueWindowOpen(byte channel)
@@ -1543,7 +1543,7 @@ namespace RPGFramework.Field
 
         private float GetFieldMessageSpeed()
         {
-            m_SettingsService.TryGetSection(FrameworkSettingsSectionDatabase.CONFIG_DATA, out SaveSection<ConfigData_V1> configData);
+            m_SettingsService.TryGetSection(FrameworkSettingsSections.CONFIG_DATA, out SaveSection<ConfigData_V1> configData);
 
             float messageSpeed = configData.Data.FieldMessageSpeed;
 
@@ -1624,7 +1624,7 @@ namespace RPGFramework.Field
 
         private void OnRequestSetBattleModeOptions(BattleArgs args)
         {
-            m_BattleArgsProvider.Set(args);
+            m_BattleArgsStore.Set(args);
         }
 
         /// <summary>

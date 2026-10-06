@@ -270,7 +270,7 @@ namespace RPGFramework.Field.Editor
                 string            assetPath         = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
                 FieldDesignerData fieldDesignerData = UnityEditor.AssetDatabase.LoadAssetAtPath<FieldDesignerData>(assetPath);
 
-                foreach (FieldDatabaseAssetAuthoring field in fieldDesignerData.FieldDatabase.Fields)
+                foreach (FieldDefinitionAuthoring field in fieldDesignerData.FieldDatabase.Fields)
                 {
                     if (field.Prefab.name == fieldName)
                     {

@@ -10,8 +10,8 @@ namespace RPGFramework.Field.Editor
         [HideInInspector]
         private FieldDatabase m_FieldDatabase = new FieldDatabase();
 
-        public FieldDatabase                     FieldDatabase => m_FieldDatabase;
-        public List<FieldDatabaseAssetAuthoring> Fields        => m_FieldDatabase.Fields;
+        public FieldDatabase                  FieldDatabase => m_FieldDatabase;
+        public List<FieldDefinitionAuthoring> Fields        => m_FieldDatabase.Fields;
 
         public void Save()
         {

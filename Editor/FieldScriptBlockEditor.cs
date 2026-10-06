@@ -1198,7 +1198,7 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                foreach (FieldDatabaseAssetAuthoring field in designerData.FieldDatabase.Fields)
+                foreach (FieldDefinitionAuthoring field in designerData.FieldDatabase.Fields)
                 {
                     if (field.Prefab == null || field.Prefab.name != fieldName)
                     {
@@ -1294,7 +1294,7 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                foreach (FieldDatabaseAssetAuthoring field in designerData.FieldDatabase.Fields)
+                foreach (FieldDefinitionAuthoring field in designerData.FieldDatabase.Fields)
                 {
                     if (field.Prefab == null || names.Contains(field.Prefab.name))
                     {

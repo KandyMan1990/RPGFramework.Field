@@ -26,7 +26,7 @@ namespace RPGFramework.Field.Editor
             {
                 FieldDesignerData data = AssetDatabase.LoadAssetAtPath<FieldDesignerData>(AssetDatabase.GUIDToAssetPath(guid));
 
-                foreach (FieldDatabaseAssetAuthoring field in data.Fields)
+                foreach (FieldDefinitionAuthoring field in data.Fields)
                 {
                     if (field.LocalisationSheets == null)
                     {

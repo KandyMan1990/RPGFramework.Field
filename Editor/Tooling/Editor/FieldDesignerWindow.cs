@@ -24,7 +24,7 @@ namespace RPGFramework.Field.Editor
         private VisualTreeAsset m_Uxml;
 
         private FieldDesignerData            m_FieldDesignerData;
-        private FieldDatabaseAssetAuthoring  m_CurrentFieldAsset;
+        private FieldDefinitionAuthoring     m_CurrentFieldAsset;
         private List<LocalisationSheetAsset> m_LocalisationSheetAssets;
 
         private ModalWindow   m_Window;
@@ -180,7 +180,7 @@ namespace RPGFramework.Field.Editor
 
         private void AddFieldButtonCallback(ClickEvent e)
         {
-            m_FieldDesignerData.Fields.Add(new FieldDatabaseAssetAuthoring());
+            m_FieldDesignerData.Fields.Add(new FieldDefinitionAuthoring());
             m_FieldsContainerListView.RefreshItems();
         }
 

@@ -8,7 +8,7 @@ namespace RPGFramework.Field
         private GameObject  m_Instance;
         private AssetBundle m_AssetBundle;
 
-        async Task<GameObject> IFieldPresentation.LoadAsync(FieldDatabaseAsset asset)
+        async Task<GameObject> IFieldPresentation.LoadAsync(FieldDefinition asset)
         {
             AssetBundleCreateRequest bundleRequest = AssetBundle.LoadFromFileAsync(asset.AssetPath);
             await bundleRequest;
