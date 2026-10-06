@@ -50,7 +50,10 @@ namespace RPGFramework.Field.Editor
                 if (string.IsNullOrEmpty(line))
                     continue;
 
-                string[] parts = line.Split(' ');
+                if (!FieldScriptLine.TrySplit(line, out string[] parts, out string problem))
+                {
+                    throw new Exception($"line {lineIndex + 1}: {problem}");
+                }
 
                 switch (parts[0])
                 {
@@ -349,7 +352,7 @@ namespace RPGFramework.Field.Editor
             // something else — as an old REQUEST_SCRIPT's slot would read as its event.
             if (parts.Length - 1 > opCode.Arguments.Count)
             {
-                throw new Exception($"line {lineNumber}: {parts[0]} takes {opCode.Arguments.Count} argument(s), but was given {parts.Length - 1}");
+                throw new Exception($"line {lineNumber}: {parts[0]} takes {opCode.Arguments.Count} argument(s), but was given {parts.Length - 1}. A name with a space in it goes in double quotes");
             }
 
             bw.Write((ushort)opCode.OpCode);

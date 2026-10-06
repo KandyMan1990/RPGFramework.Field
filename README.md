@@ -124,7 +124,8 @@ RETURN
 - **`$name` reads or writes a variable** from the variable map. `$items[3]` names an array's element, and
   `$leader.hp` a record's field. Any number, flag or id argument can be a variable.
 - **`IF_` blocks** compare two values, with an optional `ELSE`, and close with `END_IF`. **`LABEL`s** mark where jumps go.
-- **Names are hashed when compiled**, so reordering a list never repoints a script, but a name can't contain a space.
+- **Names are hashed when compiled**, so reordering a list never repoints a script. A name with a space in it is
+  written in double quotes, `PLAY_MUSIC "Town Theme" AllStems`, which the block editor does itself.
 - **Opcodes cover:**
   - flow, waits and requesting other scripts;
   - variables, maths and random numbers;

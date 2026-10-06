@@ -989,13 +989,13 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         private VisualElement KeyList(FieldScriptBlock block, int argumentIndex, string label, string current)
         {
-            List<string> keys    = new List<string>(current.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+            List<string> keys    = string.IsNullOrWhiteSpace(current) ? new List<string>() : new List<string>(FieldScriptLine.Split(current));
             List<string> choices = m_DialogueKeys ??= GatherDialogueKeys();
 
             VisualElement list = new VisualElement();
             list.Add(new Label(label));
 
-            void Write() => Set(block, argumentIndex, string.Join(" ", keys), true);
+            void Write() => Set(block, argumentIndex, FieldScriptLine.Join(keys, 0), true);
 
             for (int i = 0; i < keys.Count; i++)
             {
@@ -1011,7 +1011,7 @@ namespace RPGFramework.Field.Editor
                     typed.RegisterValueChangedCallback(e =>
                                                        {
                                                            keys[index] = e.newValue;
-                                                           Set(block, argumentIndex, string.Join(" ", keys));
+                                                           Set(block, argumentIndex, FieldScriptLine.Join(keys, 0));
                                                        });
                     key = typed;
                 }
@@ -1022,7 +1022,7 @@ namespace RPGFramework.Field.Editor
                     chosen.RegisterValueChangedCallback(e =>
                                                         {
                                                             keys[index] = e.newValue;
-                                                            Set(block, argumentIndex, string.Join(" ", keys));
+                                                            Set(block, argumentIndex, FieldScriptLine.Join(keys, 0));
                                                         });
                     key = chosen;
                 }
@@ -1052,8 +1052,7 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// Every state in the entity's Animator controller, sub-state machines included. Offered rather than typed so
         /// a name cannot be mistyped — it is hashed into the bytecode, where a typo is indistinguishable from a state
-        /// that does not exist. A name with a space in it is left out: arguments are read one word at a time, so it
-        /// could not be written down.
+        /// that does not exist.
         /// </summary>
         private List<string> GatherAnimationNames()
         {
@@ -1092,10 +1091,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (ChildAnimatorState state in stateMachine.states)
             {
-                if (!state.state.name.Contains(' '))
-                {
-                    animationNames.Add(state.state.name);
-                }
+                animationNames.Add(state.state.name);
             }
 
             foreach (ChildAnimatorStateMachine child in stateMachine.stateMachines)

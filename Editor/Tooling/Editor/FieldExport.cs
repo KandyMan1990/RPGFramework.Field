@@ -100,7 +100,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (string line in scriptText.Split('\n'))
             {
-                string[] parts = line.Trim().Split(' ');
+                string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {

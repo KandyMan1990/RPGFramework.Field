@@ -10,7 +10,9 @@ namespace RPGFramework.Field.Editor
     /// Arguments are held as text rather than typed values because that is what the compiler consumes
     /// and what a script file contains. A variable argument is <c>$name</c>, a literal is the number or
     /// <c>true</c>/<c>false</c> itself — so a block round trips through the text form without needing a
-    /// second representation that could disagree with it.
+    /// second representation that could disagree with it. A name is held without the quotes a space in it
+    /// needs, which <see cref="ToLine" /> adds; a list that runs to the end of the line is held as script
+    /// text, quotes and all.
     /// </summary>
     internal sealed class FieldScriptBlock
     {
@@ -153,15 +155,19 @@ namespace RPGFramework.Field.Editor
 
             StringBuilder sb = new StringBuilder(OpCode.ScriptName);
 
-            foreach (string argument in Arguments)
+            for (int i = 0; i < Arguments.Count; i++)
             {
+                string argument = Arguments[i];
+
                 if (string.IsNullOrWhiteSpace(argument))
                 {
                     continue;
                 }
 
+                bool isScriptText = i < OpCode.Arguments.Count && OpCode.Arguments[i].Type == ArgumentType.LocalisationKeyList;
+
                 sb.Append(' ');
-                sb.Append(argument.Trim());
+                sb.Append(isScriptText ? argument.Trim() : FieldScriptLine.Quote(argument.Trim()));
             }
 
             string line = sb.ToString();
@@ -254,7 +260,12 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                string[] parts = line.Split(' ');
+                // A line that does not split cleanly is kept as written, for the compiler to say what is wrong.
+                if (!FieldScriptLine.TrySplit(line, out string[] parts, out _))
+                {
+                    body.Add(new FieldScriptBlock(line));
+                    continue;
+                }
 
                 // Anything but exactly one name is kept as written rather than guessed at.
                 if (parts[0] == LABEL_BLOCK && parts.Length == 2)
@@ -279,7 +290,7 @@ namespace RPGFramework.Field.Editor
                     if (isLastAndVariadic)
                     {
                         // The list runs to the end of the line, so it is one field holding the rest.
-                        arguments.Add(string.Join(" ", parts, i + 1, System.Math.Max(0, parts.Length - i - 1)));
+                        arguments.Add(FieldScriptLine.Join(parts, i + 1));
                         break;
                     }
 

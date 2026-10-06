@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -456,7 +456,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (string line in lines)
             {
-                string[] parts = line.Trim().Split(' ');
+                string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
@@ -564,7 +564,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (string line in lines)
             {
-                string[] parts = line.Trim().Split(' ');
+                string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
@@ -594,7 +594,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (string line in lines)
             {
-                string[] parts = line.Trim().Split(' ');
+                string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsBody)
                 {
@@ -637,7 +637,7 @@ namespace RPGFramework.Field.Editor
 
             foreach (string line in lines)
             {
-                string name = line.Trim().Split(' ')[0];
+                string name = FieldScriptLine.Split(line)[0];
 
                 if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.NeedsBody)
                 {
@@ -662,7 +662,7 @@ namespace RPGFramework.Field.Editor
 
             foreach (string line in lines)
             {
-                string[] parts = line.Trim().Split(' ');
+                string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsAnimator)
                 {
@@ -713,8 +713,8 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// Arguments are read one word at a time, so a state whose name contains a space is cut at the first and can
-        /// never be named. Saying which state was meant turns a confusing miss into a rename.
+        /// A state whose name has a space in it, written without quotes, is cut at the space. Saying which state was
+        /// meant turns a confusing miss into a pair of quotes.
         /// </summary>
         private static string NoSuchStateProblem(Animator animator, Dictionary<string, AnimatorState> states, string stateName, string scriptDescription)
         {
@@ -725,7 +725,7 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                return $"{scriptDescription} names the animation [{stateName}], which is [{candidate}] on [{animator.gameObject.name}] cut at its first space. An animation name is read one word at a time, so rename the state without spaces";
+                return $"{scriptDescription} names the animation [{stateName}], which is [{candidate}] on [{animator.gameObject.name}] cut at its first space. Put a name with a space in it in double quotes";
             }
 
             string noSuchState = $"{scriptDescription} names the animation [{stateName}], which the controller on [{animator.gameObject.name}] has no state for. It has {string.Join(", ", states.Keys)}";
@@ -850,7 +850,7 @@ namespace RPGFramework.Field.Editor
 
             foreach (string line in lines)
             {
-                string name = line.Trim().Split(' ')[0];
+                string name = FieldScriptLine.Split(line)[0];
 
                 if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.StopsInit)
                 {
@@ -870,7 +870,7 @@ namespace RPGFramework.Field.Editor
 
             foreach (string line in lines)
             {
-                string name = line.Trim().Split(' ')[0];
+                string name = FieldScriptLine.Split(line)[0];
 
                 if (!FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode))
                 {
@@ -930,7 +930,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (string line in lines)
             {
-                if (FieldOpCodeCatalogue.TryGet(line.Trim().Split(' ')[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.JumpToAnotherMap)
+                if (FieldOpCodeCatalogue.TryGet(FieldScriptLine.Split(line)[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.JumpToAnotherMap)
                 {
                     return true;
                 }
@@ -948,7 +948,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (string line in lines)
             {
-                string[] parts = line.Trim().Split(' ');
+                string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || opCode.OpCode != FieldScriptOpCode.JumpToAnotherMap)
                 {
@@ -1061,7 +1061,7 @@ namespace RPGFramework.Field.Editor
         {
             foreach (string line in scriptText.Split('\n'))
             {
-                string[] parts = line.Trim().Split(' ');
+                string[] parts = FieldScriptLine.Split(line);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
