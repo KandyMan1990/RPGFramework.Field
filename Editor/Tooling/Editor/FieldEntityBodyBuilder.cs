@@ -131,7 +131,7 @@ namespace RPGFramework.Field.Editor
                                      FieldBodyPreset.ExaminePoint       => "Talked to and nothing else: a poster, a window, a place worth examining that is part of the scenery.",
                                      FieldBodyPreset.Area               => "An area the player walks into and out of, for enter and leave scripts that are not a way out.",
                                      FieldBodyPreset.SavePoint          => "An area where the player can save: entering it allows saving and leaving it stops it. For a game that saves only at save points.",
-                                     FieldBodyPreset.Plain              => "Somewhere to be, and nothing else. For a body that is wired by hand.",
+                                     FieldBodyPreset.Plain              => "Seen and moved by scripts, but nothing touches it: a bird overhead, a prop in a cutscene. Add colliders of your own for anything more.",
                                      _                                  => string.Empty
                                  };
 

@@ -54,10 +54,14 @@ namespace RPGFramework.Field.Editor
         private string        m_CurrentlyOpenPrefabPath;
         private FieldEntities m_OpenFieldEntities;
 
+        /// <summary>
+        /// Opens as a tab beside the Scene view: a floating window drops behind the main editor window on macOS as soon
+        /// as anything else is clicked.
+        /// </summary>
         [MenuItem("RPG Framework/Field Designer Window", priority = 0)]
         public static void ShowWindow()
         {
-            GetWindow<FieldDesignerWindow>();
+            GetWindow<FieldDesignerWindow>(typeof(SceneView));
         }
 
         private void OnEnable()

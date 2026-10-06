@@ -48,7 +48,7 @@ Bodies are built from **presets** named for what they are for:
 | Examine point | an interaction trigger only, so it doesn't block | — |
 | Area | a trigger area | — |
 | Save point | a trigger area, with placeholder visuals | allows saving while the player stands in it |
-| Plain | nothing | — |
+| Plain | nothing: seen and moved by scripts, walked through and never talked to | — |
 
 A body's visuals are your own prefab, placed as its visible object.
 
