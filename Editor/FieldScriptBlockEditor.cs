@@ -887,7 +887,8 @@ namespace RPGFramework.Field.Editor
             int offered = 0;
 
             // An array is offered at its first element, and a record by its fields; an index is then edited in the text.
-            IReadOnlyList<VariableDefinition> variables = m_VariableMap.Variables;
+            IVariableMap                      variableMap = m_VariableMap;
+            IReadOnlyList<VariableDefinition> variables   = variableMap.Variables;
 
             for (int i = 0; i < variables.Count; i++)
             {

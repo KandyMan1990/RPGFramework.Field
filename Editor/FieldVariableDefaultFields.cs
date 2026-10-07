@@ -14,9 +14,9 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class CurrentFieldDefaultField : IVariableDefaultField
     {
-        public string VariableName => FieldVariables.CURRENT_FIELD;
+        string IVariableDefaultField.VariableName => FieldVariables.CURRENT_FIELD;
 
-        public VisualElement Create(SerializedProperty variable)
+        VisualElement IVariableDefaultField.Create(SerializedProperty variable)
         {
             SerializedProperty defaultValue = variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
             List<string>       names        = FieldScriptBlockEditor.GatherFieldNames();
@@ -64,9 +64,9 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class CurrentSpawnDefaultField : IVariableDefaultField
     {
-        public string VariableName => FieldVariables.CURRENT_SPAWN;
+        string IVariableDefaultField.VariableName => FieldVariables.CURRENT_SPAWN;
 
-        public VisualElement Create(SerializedProperty variable)
+        VisualElement IVariableDefaultField.Create(SerializedProperty variable)
         {
             VisualElement      slot         = new VisualElement();
             SerializedProperty fieldDefault = FindDefault(variable.serializedObject, FieldVariables.CURRENT_FIELD);

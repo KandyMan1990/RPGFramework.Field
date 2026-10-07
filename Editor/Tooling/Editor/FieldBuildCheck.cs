@@ -10,9 +10,9 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class FieldBuildCheck : IPreprocessBuildWithReport
     {
-        public int callbackOrder => 0;
+        int IOrderedCallback.callbackOrder => 0;
 
-        public void OnPreprocessBuild(BuildReport report)
+        void IPreprocessBuildWithReport.OnPreprocessBuild(BuildReport report)
         {
             FieldDesignerData data = FieldDesignerDataUtility.FindData();
 

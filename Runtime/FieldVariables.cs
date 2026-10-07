@@ -53,9 +53,9 @@ namespace RPGFramework.Field
             new RequiredVariable(MUSIC_VOLUME,      MemoryBank.Persistent, VariableWidth.Float, "The volume the field plays its music at, 0 to 1, as SET_MUSIC_VOLUME and FADE_MUSIC_VOLUME leave it. Its default is a new game's", VariableDefaults.FromFloat(1f))
         };
 
-        public IReadOnlyList<RequiredVariable> Variables => s_Variables;
+        IReadOnlyList<RequiredVariable> IRequiredVariables.Variables => s_Variables;
 
-        public byte   ModuleId   => FieldConstants.MODULE_ID;
-        public string ModuleName => "Field";
+        byte IStartModule.  ModuleId   => FieldConstants.MODULE_ID;
+        string IStartModule.ModuleName => "Field";
     }
 }

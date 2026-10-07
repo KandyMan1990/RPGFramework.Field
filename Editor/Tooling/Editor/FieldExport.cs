@@ -24,7 +24,7 @@ namespace RPGFramework.Field.Editor
         /// and a record's fields — in an order the list's own does not change. Scripts address variables by the offset
         /// they had when compiled, so fields exported under one layout are wrong under another.
         /// </summary>
-        internal static ulong LayoutHash(VariableMapAsset map)
+        internal static ulong LayoutHash(IVariableMap map)
         {
             List<VariableDefinition> variables = new List<VariableDefinition>(map.Variables);
 

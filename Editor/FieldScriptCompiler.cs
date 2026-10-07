@@ -31,7 +31,7 @@ namespace RPGFramework.Field.Editor
             using MemoryStream ms = new MemoryStream();
             using BinaryWriter bw = new BinaryWriter(ms);
 
-            VariableMapAsset variableMap = null;
+            IVariableMap variableMap = null;
 
             // A jump names a label, which may be further down, so its argument is left blank and filled in once
             // the whole script is known. A label sits between instructions, so a jump can only ever land on one.
@@ -323,7 +323,7 @@ namespace RPGFramework.Field.Editor
             return hash;
         }
 
-        private static void WriteOpCode(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref VariableMapAsset variableMap, Stack<OpenBlock> openBlocks)
+        private static void WriteOpCode(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref IVariableMap variableMap, Stack<OpenBlock> openBlocks)
         {
             switch (opCode.Layout)
             {
@@ -352,7 +352,7 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// Encode an opcode from its argument attributes. See <see cref="ArgumentLayout.Sequential" /> for the layout.
         /// </summary>
-        private static void WriteSequential(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref VariableMapAsset variableMap)
+        private static void WriteSequential(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref IVariableMap variableMap)
         {
             // A surplus argument would otherwise be dropped without a word, and the ones before it read as meaning
             // something else — as an old REQUEST_SCRIPT's slot would read as its event.
@@ -381,7 +381,7 @@ namespace RPGFramework.Field.Editor
             }
         }
 
-        private static void WriteSourcedArgument(BinaryWriter bw, MemoryStream ms, ArgumentType type, string token, string scriptName, int lineNumber, ref int sourcesPosition, ref VariableMapAsset variableMap)
+        private static void WriteSourcedArgument(BinaryWriter bw, MemoryStream ms, ArgumentType type, string token, string scriptName, int lineNumber, ref int sourcesPosition, ref IVariableMap variableMap)
         {
             byte   source  = ARGUMENT_IMMEDIATE;
             ushort address = 0;
@@ -563,7 +563,7 @@ namespace RPGFramework.Field.Editor
         /// distance written here is the number of bytes to skip when the comparison does not hold — so
         /// it is filled in by <see cref="CloseComparison" /> rather than written by an author.
         /// </summary>
-        private static void WriteComparison(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref VariableMapAsset variableMap, Stack<OpenBlock> openBlocks)
+        private static void WriteComparison(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref IVariableMap variableMap, Stack<OpenBlock> openBlocks)
         {
             if (parts.Length < 4)
             {
@@ -669,7 +669,7 @@ namespace RPGFramework.Field.Editor
         /// value. 0 means the value follows inline at its width; 1..3 select Persistent/Session/Temp, and the value is
         /// the variable's width byte and address instead.
         /// </summary>
-        private static void WriteBinaryArguments(BinaryWriter bw, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref VariableMapAsset variableMap)
+        private static void WriteBinaryArguments(BinaryWriter bw, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref IVariableMap variableMap)
         {
             if (parts.Length < 3)
             {
@@ -691,7 +691,7 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// Emit <c>opcode, sources, destinationAddress</c> for opcodes that only name a destination.
         /// </summary>
-        private static void WriteDestinationOnly(BinaryWriter bw, FieldOpCodeInfo opCode, string[] parts, ref VariableMapAsset variableMap)
+        private static void WriteDestinationOnly(BinaryWriter bw, FieldOpCodeInfo opCode, string[] parts, ref IVariableMap variableMap)
         {
             if (parts.Length < 2)
             {
@@ -708,7 +708,7 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// Emit <c>opcode, sources, value</c> for opcodes that only read a value. The value's source is the low nibble.
         /// </summary>
-        private static void WriteSeed(BinaryWriter bw, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref VariableMapAsset variableMap)
+        private static void WriteSeed(BinaryWriter bw, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref IVariableMap variableMap)
         {
             if (parts.Length < 2)
             {
@@ -836,7 +836,7 @@ namespace RPGFramework.Field.Editor
         /// declares there, checking its width is exactly <paramref name="width" />, as a destination's must be. This is
         /// the whole point of the variable map: a script names what it means and the offset is resolved at build time.
         /// </summary>
-        private static ScriptVariable ResolveVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
+        private static ScriptVariable ResolveVariable(string token, string scriptName, ref IVariableMap variableMap, VariableWidth width)
         {
             ScriptVariable variable = LookUpVariable(token, scriptName, ref variableMap);
 
@@ -852,7 +852,7 @@ namespace RPGFramework.Field.Editor
         /// As <see cref="ResolveVariable" />, for a variable read as a value of <paramref name="width" />, which may be
         /// narrower — see <see cref="ArgumentTypes.CanRead" />.
         /// </summary>
-        private static ScriptVariable ResolveReadableVariable(string token, string scriptName, ref VariableMapAsset variableMap, VariableWidth width)
+        private static ScriptVariable ResolveReadableVariable(string token, string scriptName, ref IVariableMap variableMap, VariableWidth width)
         {
             ScriptVariable variable = LookUpVariable(token, scriptName, ref variableMap);
 
@@ -864,7 +864,7 @@ namespace RPGFramework.Field.Editor
             return variable;
         }
 
-        private static ScriptVariable LookUpVariable(string token, string scriptName, ref VariableMapAsset variableMap)
+        private static ScriptVariable LookUpVariable(string token, string scriptName, ref IVariableMap variableMap)
         {
             if (!IsVariableToken(token))
             {

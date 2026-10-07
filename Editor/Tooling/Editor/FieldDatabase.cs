@@ -254,8 +254,10 @@ namespace RPGFramework.Field.Editor
                     problems.Add($"Variable map '{map.name}': {problem}");
                 }
 
-                if (!map.TryGetVariable(FieldVariables.CURRENT_FIELD, out VariableDefinition field) ||
-                    !map.TryGetVariable(FieldVariables.CURRENT_SPAWN, out VariableDefinition spawn))
+                IVariableMap variableMap = map;
+
+                if (!variableMap.TryGetVariable(FieldVariables.CURRENT_FIELD, out VariableDefinition field) ||
+                    !variableMap.TryGetVariable(FieldVariables.CURRENT_SPAWN, out VariableDefinition spawn))
                 {
                     continue;
                 }
