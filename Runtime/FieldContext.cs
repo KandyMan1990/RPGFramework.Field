@@ -33,7 +33,7 @@ namespace RPGFramework.Field
         internal bool                                        MainMenuAccessible      => m_MainMenuAccessible;
         internal bool                                        IsInputLockedByScript   => m_IsInputLockedByScript;
 
-        private readonly List<FieldEntityRuntime>           m_Entities;
+        private readonly FieldEntityRuntime[]               m_Entities;
         private readonly List<int>                          m_VisibleEntityIds;
         private readonly List<int>                          m_HiddenEntityIds;
         private readonly Dictionary<int, Vector3>           m_EntityPositions;
@@ -55,14 +55,14 @@ namespace RPGFramework.Field
         private          bool                               m_MainMenuAccessible;
         private          bool                               m_IsInputLockedByScript;
 
-        internal FieldContext(FieldVM vm, List<FieldEntityRuntime> entities)
+        internal FieldContext(FieldVM vm, FieldEntityRuntime[] entities)
         {
             VM                        = vm;
             m_Entities                = entities;
             m_VisibleEntityIds        = new List<int>();
             m_HiddenEntityIds         = new List<int>();
-            m_EntityPositions         = new Dictionary<int, Vector3>(entities.Count);
-            m_EntityRotations         = new Dictionary<int, Quaternion>(entities.Count);
+            m_EntityPositions         = new Dictionary<int, Vector3>(entities.Length);
+            m_EntityRotations         = new Dictionary<int, Quaternion>(entities.Length);
             m_EntityRotationStates    = new Dictionary<int, RotationState>();
             m_InteractionsActive      = new Dictionary<int, bool>();
             m_Solidity                = new Dictionary<int, bool>();

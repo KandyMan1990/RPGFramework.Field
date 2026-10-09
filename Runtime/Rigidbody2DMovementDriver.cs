@@ -243,23 +243,36 @@ namespace RPGFramework.Field
 
         private static Collider2D[] GatherSolidColliders(Rigidbody2D body)
         {
-            List<Collider2D> solid = new List<Collider2D>();
-
             Collider2D[] colliders = body.GetComponentsInChildren<Collider2D>(true);
+            int          count     = 0;
 
             for (int i = 0; i < colliders.Length; i++)
             {
-                Collider2D collider = colliders[i];
-
-                if (collider.isTrigger || collider.attachedRigidbody != body)
+                if (IsSolid(colliders[i], body))
                 {
-                    continue;
+                    count++;
                 }
-
-                solid.Add(collider);
             }
 
-            return solid.ToArray();
+            Collider2D[] solid = new Collider2D[count];
+            int          next  = 0;
+
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (IsSolid(colliders[i], body))
+                {
+                    solid[next++] = colliders[i];
+                }
+            }
+
+            return solid;
+        }
+
+        private static bool IsSolid(Collider2D collider, Rigidbody2D body)
+        {
+            bool isSolid = !collider.isTrigger && collider.attachedRigidbody == body;
+
+            return isSolid;
         }
 
         private bool TryGetNearestHit(int hitCount, out RaycastHit2D nearest)

@@ -96,9 +96,9 @@ namespace RPGFramework.Field
         private FieldEntity m_Body;
 
         [SerializeField]
-        private List<CompiledFieldScript> m_Scripts;
+        private CompiledFieldScript[] m_Scripts;
 
-        internal CompiledFieldEntity(int entityId, FieldEntity body, List<CompiledFieldScript> scripts)
+        internal CompiledFieldEntity(int entityId, FieldEntity body, CompiledFieldScript[] scripts)
         {
             m_EntityId = entityId;
             m_Body     = body;
@@ -114,7 +114,7 @@ namespace RPGFramework.Field
         /// </summary>
         internal bool TryGetScriptIndex(FieldScriptType scriptType, out int eventId)
         {
-            for (int i = 0; i < m_Scripts.Count; i++)
+            for (int i = 0; i < m_Scripts.Length; i++)
             {
                 if (m_Scripts[i].Type == scriptType)
                 {

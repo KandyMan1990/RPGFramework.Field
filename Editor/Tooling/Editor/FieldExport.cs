@@ -62,10 +62,10 @@ namespace RPGFramework.Field.Editor
         /// Every script gets a field-wide id, in order, which is what the VM holds its bytecode under. An entity names
         /// its own scripts by event id, so nothing authored refers to these.
         /// </summary>
-        internal static List<CompiledFieldEntity> Compile(FieldEntities fieldEntities)
+        internal static CompiledFieldEntity[] Compile(FieldEntities fieldEntities)
         {
-            List<CompiledFieldEntity> compiled = new List<CompiledFieldEntity>(fieldEntities.Entities.Count);
-            int                       scriptId = 0;
+            CompiledFieldEntity[] compiled = new CompiledFieldEntity[fieldEntities.Entities.Count];
+            int                   scriptId = 0;
 
             List<FieldEntityRecord> records = fieldEntities.Entities;
 
@@ -73,17 +73,17 @@ namespace RPGFramework.Field.Editor
             {
                 FieldEntityRecord record = records[i];
 
-                List<CompiledFieldScript> scripts = new List<CompiledFieldScript>(record.Scripts.Count);
+                CompiledFieldScript[] scripts = new CompiledFieldScript[record.Scripts.Count];
 
                 for (int j = 0; j < record.Scripts.Count; j++)
                 {
                     FieldScriptRecord script = record.Scripts[j];
 
-                    scripts.Add(new CompiledFieldScript(script.Type, scriptId, FieldScriptCompiler.Compile(script.Text), script.Slot));
+                    scripts[j] = new CompiledFieldScript(script.Type, scriptId, FieldScriptCompiler.Compile(script.Text), script.Slot);
                     scriptId++;
                 }
 
-                compiled.Add(new CompiledFieldEntity(record.EntityId, record.Body, scripts));
+                compiled[i] = new CompiledFieldEntity(record.EntityId, record.Body, scripts);
             }
 
             return compiled;
@@ -93,7 +93,7 @@ namespace RPGFramework.Field.Editor
         /// Every animation name the field's scripts mention. A script compiles a name to its hash, which an Animator
         /// cannot be addressed by, so the names travel with the field for the module to resolve against.
         /// </summary>
-        internal static List<string> CollectAnimationNames(FieldEntities fieldEntities)
+        internal static string[] CollectAnimationNames(FieldEntities fieldEntities)
         {
             SortedSet<string> animationNames = new SortedSet<string>();
 
@@ -113,7 +113,11 @@ namespace RPGFramework.Field.Editor
                 }
             }
 
-            return new List<string>(animationNames);
+            string[] names = new string[animationNames.Count];
+
+            animationNames.CopyTo(names);
+
+            return names;
         }
 
         private static void CollectAnimationNames(string scriptText, SortedSet<string> animationNames)

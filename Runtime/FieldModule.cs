@@ -501,8 +501,8 @@ namespace RPGFramework.Field
             m_SaveEnabledStore.ResetSaveEnabled();
             m_LocationNameStore.SetLocationName(m_FieldDefinition.LocationName);
 
-            FieldVM                  vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
-            List<FieldEntityRuntime> entities = new List<FieldEntityRuntime>(fieldEntities.Compiled.Count);
+            FieldVM              vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
+            FieldEntityRuntime[] entities = new FieldEntityRuntime[fieldEntities.Compiled.Count];
 
             for (int j = 0; j < fieldEntities.Compiled.Count; j++)
             {
@@ -523,7 +523,7 @@ namespace RPGFramework.Field
 
                 FieldEntityRuntime fieldEntityRuntime = new FieldEntityRuntime(record.EntityId, scriptIdsByEvent, slotsByEvent);
 
-                entities.Add(fieldEntityRuntime);
+                entities[j] = fieldEntityRuntime;
                 vm.RegisterEntity(record.EntityId, fieldEntityRuntime);
             }
 

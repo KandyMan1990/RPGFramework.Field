@@ -46,7 +46,7 @@ namespace RPGFramework.Field.Editor
 
         public IReadOnlyList<FieldArgumentInfo> Arguments { get; }
 
-        internal FieldOpCodeInfo(FieldScriptOpCode opCode, FieldOpCodeAttribute attribute, List<FieldArgumentInfo> arguments)
+        internal FieldOpCodeInfo(FieldScriptOpCode opCode, FieldOpCodeAttribute attribute, FieldArgumentInfo[] arguments)
         {
             OpCode        = opCode;
             ScriptName    = attribute.ScriptName;
@@ -71,9 +71,9 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal static class FieldOpCodeCatalogue
     {
-        private static Dictionary<FieldScriptOpCode, FieldOpCodeInfo> s_ByOpCode;
-        private static Dictionary<string, FieldOpCodeInfo>            s_ByScriptName;
-        private static List<FieldOpCodeInfo>                          s_All;
+        private static Dictionary<FieldScriptOpCode, FieldOpCodeInfo> m_ByOpCode;
+        private static Dictionary<string, FieldOpCodeInfo>            m_ByScriptName;
+        private static FieldOpCodeInfo[]                              m_All;
 
         public static IReadOnlyList<FieldOpCodeInfo> All
         {
@@ -81,7 +81,7 @@ namespace RPGFramework.Field.Editor
             {
                 EnsureBuilt();
 
-                return s_All;
+                return m_All;
             }
         }
 
@@ -89,7 +89,7 @@ namespace RPGFramework.Field.Editor
         {
             EnsureBuilt();
 
-            bool found = s_ByOpCode.TryGetValue(opCode, out info);
+            bool found = m_ByOpCode.TryGetValue(opCode, out info);
 
             return found;
         }
@@ -98,7 +98,7 @@ namespace RPGFramework.Field.Editor
         {
             EnsureBuilt();
 
-            bool found = s_ByScriptName.TryGetValue(scriptName, out info);
+            bool found = m_ByScriptName.TryGetValue(scriptName, out info);
 
             return found;
         }
@@ -188,14 +188,15 @@ namespace RPGFramework.Field.Editor
 
         private static void EnsureBuilt()
         {
-            if (s_All != null)
+            if (m_All != null)
             {
                 return;
             }
 
-            s_All          = new List<FieldOpCodeInfo>();
-            s_ByOpCode     = new Dictionary<FieldScriptOpCode, FieldOpCodeInfo>();
-            s_ByScriptName = new Dictionary<string, FieldOpCodeInfo>();
+            List<FieldOpCodeInfo> all = new List<FieldOpCodeInfo>();
+
+            m_ByOpCode     = new Dictionary<FieldScriptOpCode, FieldOpCodeInfo>();
+            m_ByScriptName = new Dictionary<string, FieldOpCodeInfo>();
 
             FieldInfo[] fields = typeof(FieldScriptOpCode).GetFields(BindingFlags.Public | BindingFlags.Static);
 
@@ -216,22 +217,24 @@ namespace RPGFramework.Field.Editor
                 // and the order is what turns a block's inputs into correct bytecode.
                 argumentAttributes.Sort((a, b) => a.Index.CompareTo(b.Index));
 
-                List<FieldArgumentInfo> arguments = new List<FieldArgumentInfo>(argumentAttributes.Count);
+                FieldArgumentInfo[] arguments = new FieldArgumentInfo[argumentAttributes.Count];
 
                 for (int j = 0; j < argumentAttributes.Count; j++)
                 {
                     ArgumentAttribute argumentAttribute = argumentAttributes[j];
 
-                    arguments.Add(new FieldArgumentInfo(argumentAttribute));
+                    arguments[j] = new FieldArgumentInfo(argumentAttribute);
                 }
 
                 FieldScriptOpCode opCode = (FieldScriptOpCode)field.GetRawConstantValue();
                 FieldOpCodeInfo   info   = new FieldOpCodeInfo(opCode, opCodeAttribute, arguments);
 
-                s_All.Add(info);
-                s_ByOpCode[opCode]                         = info;
-                s_ByScriptName[opCodeAttribute.ScriptName] = info;
+                all.Add(info);
+                m_ByOpCode[opCode]                         = info;
+                m_ByScriptName[opCodeAttribute.ScriptName] = info;
             }
+
+            m_All = all.ToArray();
         }
     }
 }

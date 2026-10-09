@@ -306,11 +306,11 @@ namespace RPGFramework.Field.Editor
                 SaveOpenPrefab();
             }
 
-            List<string> problems = m_FieldDesignerData.FieldDatabase.ValidateFields();
+            string[] problems = m_FieldDesignerData.FieldDatabase.ValidateFields();
 
-            if (problems.Count > 0)
+            if (problems.Length > 0)
             {
-                string message = $"{problems.Count} problem(s) found. Nothing was exported.\n\n{string.Join("\n\n", problems)}";
+                string message = $"{problems.Length} problem(s) found. Nothing was exported.\n\n{string.Join("\n\n", problems)}";
 
                 Debug.LogError($"{nameof(FieldDesignerWindow)}::{nameof(OnGenerateFieldDatabaseScriptButtonClickedCallback)} {message}");
                 EditorUtility.DisplayDialog("Export failed", message, "OK");

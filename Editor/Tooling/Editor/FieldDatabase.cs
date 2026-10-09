@@ -122,7 +122,7 @@ namespace RPGFramework.Field.Editor
         /// runtime data is built reports it once, while authoring, to the person who can fix it.
         /// </summary>
         /// <returns>A readable problem per offending entity. Empty means every field is well-formed.</returns>
-        public List<string> ValidateFields()
+        public string[] ValidateFields()
         {
             List<string> problems = new List<string>();
 
@@ -220,7 +220,9 @@ namespace RPGFramework.Field.Editor
 
             ValidateVariableMaps(problems);
 
-            return problems;
+            string[] found = problems.ToArray();
+
+            return found;
         }
 
         /// <summary>
@@ -245,9 +247,9 @@ namespace RPGFramework.Field.Editor
 
                 VariableMapAsset map = AssetDatabase.LoadAssetAtPath<VariableMapAsset>(AssetDatabase.GUIDToAssetPath(guid));
 
-                List<string> mapProblems = map.Validate();
+                string[] mapProblems = map.Validate();
 
-                for (int j = 0; j < mapProblems.Count; j++)
+                for (int j = 0; j < mapProblems.Length; j++)
                 {
                     string problem = mapProblems[j];
 
@@ -1292,11 +1294,11 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            List<string> problems = ValidateFields();
+            string[] problems = ValidateFields();
 
-            if (problems.Count > 0)
+            if (problems.Length > 0)
             {
-                Debug.LogError($"{nameof(FieldDatabase)}::{nameof(BuildAssetBundles)} Not building — {problems.Count} problem(s) in the fields:\n  {string.Join("\n  ", problems)}");
+                Debug.LogError($"{nameof(FieldDatabase)}::{nameof(BuildAssetBundles)} Not building — {problems.Length} problem(s) in the fields:\n  {string.Join("\n  ", problems)}");
                 return;
             }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -32,11 +33,11 @@ namespace RPGFramework.Field
 
         [SerializeField]
         [HideInInspector]
-        private List<CompiledFieldEntity> m_Compiled = new List<CompiledFieldEntity>();
+        private CompiledFieldEntity[] m_Compiled = Array.Empty<CompiledFieldEntity>();
 
         [SerializeField]
         [HideInInspector]
-        private List<string> m_AnimationNames = new List<string>();
+        private string[] m_AnimationNames = Array.Empty<string>();
 
         internal FieldDimension                     Dimension      => m_Dimension;
         internal List<FieldEntityRecord>            Entities       => m_Entities;
@@ -47,7 +48,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Export only: replace the authored records with what they compiled to.
         /// </summary>
-        internal void SetCompiled(List<CompiledFieldEntity> compiled, List<string> animationNames)
+        internal void SetCompiled(CompiledFieldEntity[] compiled, string[] animationNames)
         {
             m_Compiled       = compiled;
             m_AnimationNames = animationNames;

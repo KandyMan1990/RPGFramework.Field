@@ -281,23 +281,36 @@ namespace RPGFramework.Field
 
         private static Collider[] GatherSolidColliders(Rigidbody body)
         {
-            List<Collider> solid = new List<Collider>();
-
             Collider[] colliders = body.GetComponentsInChildren<Collider>(true);
+            int        count     = 0;
 
             for (int i = 0; i < colliders.Length; i++)
             {
-                Collider collider = colliders[i];
-
-                if (collider.isTrigger || collider.attachedRigidbody != body)
+                if (IsSolid(colliders[i], body))
                 {
-                    continue;
+                    count++;
                 }
-
-                solid.Add(collider);
             }
 
-            return solid.ToArray();
+            Collider[] solid = new Collider[count];
+            int        next  = 0;
+
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (IsSolid(colliders[i], body))
+                {
+                    solid[next++] = colliders[i];
+                }
+            }
+
+            return solid;
+        }
+
+        private static bool IsSolid(Collider collider, Rigidbody body)
+        {
+            bool isSolid = !collider.isTrigger && collider.attachedRigidbody == body;
+
+            return isSolid;
         }
 
         private void HandleRotation(float deltaTime)

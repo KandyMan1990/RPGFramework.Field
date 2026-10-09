@@ -61,9 +61,9 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            List<string> markupProblems = DialogueMarkup.Validate(text, m_Styles);
+            string[] markupProblems = DialogueMarkup.Validate(text, m_Styles);
 
-            for (int i = 0; i < markupProblems.Count; i++)
+            for (int i = 0; i < markupProblems.Length; i++)
             {
                 string problem = markupProblems[i];
 
