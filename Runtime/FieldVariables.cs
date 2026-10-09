@@ -9,7 +9,10 @@ namespace RPGFramework.Field
     /// The variables the field module requires of every game's map, and the field module's place among the
     /// modules a new game can begin in.
     /// </summary>
-    internal sealed class FieldVariables : IRequiredVariables, IStartModule
+    internal sealed class FieldVariables
+#if UNITY_EDITOR
+        : IRequiredVariables, IStartModule
+#endif
     {
         /// <summary>
         /// The field the player is in, as its name's hash. Its default is the field a new game begins in.
@@ -42,7 +45,8 @@ namespace RPGFramework.Field
         /// </summary>
         public const string MUSIC_VOLUME = "MusicVolume";
 
-        private static readonly RequiredVariable[] s_Variables =
+#if UNITY_EDITOR
+        private static readonly RequiredVariable[] m_Variables =
         {
             new RequiredVariable(CURRENT_FIELD,     MemoryBank.Persistent, VariableWidth.ULong, "The field the player is in. Its default is the field a new game begins in"),
             new RequiredVariable(CURRENT_SPAWN,     MemoryBank.Persistent, VariableWidth.Int,   "The spawn point the player entered the current field by. Its default is where a new game begins"),
@@ -53,9 +57,10 @@ namespace RPGFramework.Field
             new RequiredVariable(MUSIC_VOLUME,      MemoryBank.Persistent, VariableWidth.Float, "The volume the field plays its music at, 0 to 1, as SET_MUSIC_VOLUME and FADE_MUSIC_VOLUME leave it. Its default is a new game's", VariableDefaults.FromFloat(1f))
         };
 
-        IReadOnlyList<RequiredVariable> IRequiredVariables.Variables => s_Variables;
+        IReadOnlyList<RequiredVariable> IRequiredVariables.Variables => m_Variables;
 
         byte IStartModule.  ModuleId   => FieldConstants.MODULE_ID;
         string IStartModule.ModuleName => "Field";
+#endif
     }
 }

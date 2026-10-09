@@ -47,6 +47,7 @@ namespace RPGFramework.Field
             return found;
         }
 
+#if UNITY_EDITOR
         /// <summary>
         /// Authoring only: what <c>VISIBILITY</c> shows and hides.
         /// </summary>
@@ -54,6 +55,7 @@ namespace RPGFramework.Field
         {
             m_VisibleObject = visibleObject;
         }
+#endif
 
         /// <summary>
         /// Whether other entities are stopped by this one. Its own movement is unaffected, as the reference's through

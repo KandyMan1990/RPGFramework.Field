@@ -24,6 +24,7 @@ namespace RPGFramework.Field
         [SerializeField]
         private List<FieldScriptRecord> m_Scripts = new List<FieldScriptRecord>();
 
+#if UNITY_EDITOR
         internal FieldEntityRecord(int entityId, string name, FieldEntity body)
         {
             m_EntityId = entityId;
@@ -39,6 +40,7 @@ namespace RPGFramework.Field
         internal void SetName(string name) => m_Name = name;
 
         internal void SetBody(FieldEntity body) => m_Body = body;
+#endif
     }
 
     /// <summary>
@@ -61,6 +63,7 @@ namespace RPGFramework.Field
         [SerializeField]
         private FieldScriptPriority m_Slot;
 
+#if UNITY_EDITOR
         internal FieldScriptRecord(FieldScriptType type, string name, string text)
         {
             m_Type = type;
@@ -80,6 +83,7 @@ namespace RPGFramework.Field
         internal void SetText(string text) => m_Text = text;
 
         internal void SetSlot(FieldScriptPriority slot) => m_Slot = slot;
+#endif
     }
 
     /// <summary>
@@ -98,12 +102,14 @@ namespace RPGFramework.Field
         [SerializeField]
         private CompiledFieldScript[] m_Scripts;
 
+#if UNITY_EDITOR
         internal CompiledFieldEntity(int entityId, FieldEntity body, CompiledFieldScript[] scripts)
         {
             m_EntityId = entityId;
             m_Body     = body;
             m_Scripts  = scripts;
         }
+#endif
 
         internal int                               EntityId => m_EntityId;
         internal FieldEntity                       Body     => m_Body;
@@ -145,6 +151,7 @@ namespace RPGFramework.Field
         [SerializeField]
         private FieldScriptPriority m_ChosenSlot;
 
+#if UNITY_EDITOR
         internal CompiledFieldScript(FieldScriptType type, int scriptId, byte[] bytecode, FieldScriptPriority chosenSlot)
         {
             m_Type       = type;
@@ -152,6 +159,7 @@ namespace RPGFramework.Field
             m_Bytecode   = bytecode;
             m_ChosenSlot = chosenSlot;
         }
+#endif
 
         internal FieldScriptType Type     => m_Type;
         internal int             ScriptId => m_ScriptId;

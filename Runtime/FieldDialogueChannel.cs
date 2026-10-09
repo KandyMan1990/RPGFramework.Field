@@ -23,14 +23,5 @@ namespace RPGFramework.Field
         /// Cancelled to close <see cref="Window" /> early, by <c>CLOSE_DIALOGUE_WINDOW</c>.
         /// </summary>
         internal CancellationTokenSource Close;
-
-        internal void Reset()
-        {
-            HasRect = false;
-            Rect    = default;
-            Style   = DialogueWindowStyle.Spoken;
-            Window  = null;
-            Close   = null;
-        }
     }
 }

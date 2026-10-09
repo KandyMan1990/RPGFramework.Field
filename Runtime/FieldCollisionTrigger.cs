@@ -14,7 +14,9 @@ namespace RPGFramework.Field
         private bool        m_IsEntityShown;
         private int         m_PlayerEntityId;
 
+#if UNITY_EDITOR
         internal bool IsListening => m_IsActive && m_IsEntityShown;
+#endif
 
         private void Awake()
         {
