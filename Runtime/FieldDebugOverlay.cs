@@ -15,12 +15,14 @@ namespace RPGFramework.Field
         private const float LINE_WIDTH = 2f;
         private const float ARC_STEP   = 10f;
 
-        private readonly List<(Vector3 From, Vector3 To, Color Colour)> m_Lines = new List<(Vector3, Vector3, Color)>();
+        private readonly List<(Vector3 From, Vector3 To, Color Colour)> m_Lines;
 
         private Camera m_Camera;
 
         internal FieldDebugOverlay()
         {
+            m_Lines = new List<(Vector3, Vector3, Color)>();
+
             pickingMode    = PickingMode.Ignore;
             style.position = Position.Absolute;
             style.left     = 0;

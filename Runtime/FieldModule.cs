@@ -62,18 +62,15 @@ namespace RPGFramework.Field
         private readonly ISettingsService       m_SettingsService;
         private readonly ISaveEnabledStore      m_SaveEnabledStore;
         private readonly ILocationNameStore     m_LocationNameStore;
+        private readonly DialogueInputContext   m_DialogueInputContext;
 
-        private Task                     m_MusicVolumeFade = Task.CompletedTask;
-        private FieldModuleMonoBehaviour m_FieldModuleMonoBehaviour;
-        private IInputContext            m_ExplorationInputContext;
-        private BlockAllInputContext     m_ScriptInputLock;
-
-        // Shared by every open dialogue window, so one press reaches them all; see DialogueInputContext.
-        private readonly DialogueInputContext m_DialogueInputContext = new DialogueInputContext();
-        private          int                  m_OpenDialogueWindows;
-        private          TransformHandle      m_CameraTransformHandle;
-        private          VisualElement        m_RootElement;
-
+        private Task                                   m_MusicVolumeFade;
+        private FieldModuleMonoBehaviour               m_FieldModuleMonoBehaviour;
+        private IInputContext                          m_ExplorationInputContext;
+        private BlockAllInputContext                   m_ScriptInputLock;
+        private int                                    m_OpenDialogueWindows;
+        private TransformHandle                        m_CameraTransformHandle;
+        private VisualElement                          m_RootElement;
         private InputAdapter                           m_InputAdapter;
         private FieldContext                           m_FieldContext;
         private SpawnPoint                             m_InitialPlayerSpawn;
@@ -82,15 +79,11 @@ namespace RPGFramework.Field
         private FieldBlocker[]                         m_Blockers;
         private Dictionary<byte, FieldBlocker>         m_BlockersById;
         private int                                    m_PlayerEntityId;
-
-        private bool            m_FieldTransitionRequested;
-        private FieldDefinition m_FieldDefinition;
-
-        private bool m_BattleTransitionRequested;
-        private bool m_MenuTransitionRequested;
-
-        private IMovementDriver m_PlayerMovementDriver;
-
+        private bool                                   m_FieldTransitionRequested;
+        private FieldDefinition                        m_FieldDefinition;
+        private bool                                   m_BattleTransitionRequested;
+        private bool                                   m_MenuTransitionRequested;
+        private IMovementDriver                        m_PlayerMovementDriver;
 
         internal FieldModule(ICoreModule           coreModule,
                              IDIResolver           diResolver,
@@ -140,6 +133,8 @@ namespace RPGFramework.Field
             m_LocationNameStore    = locationNameStore;
             m_DialogueChannels     = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
             m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
+            m_MusicVolumeFade      = Task.CompletedTask;
+            m_DialogueInputContext = new DialogueInputContext();
 
             for (int i = 0; i < m_DialogueChannels.Length; i++)
             {

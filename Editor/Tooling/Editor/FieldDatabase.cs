@@ -16,13 +16,18 @@ namespace RPGFramework.Field.Editor
     [Serializable]
     internal class FieldDatabase
     {
-        private readonly string m_AssetBundlesPath = Path.Combine(Application.streamingAssetsPath, "Field");
+        private readonly string m_AssetBundlesPath;
 
         [SerializeField]
         private List<FieldDefinitionAuthoring> m_Fields = new List<FieldDefinitionAuthoring>();
 
         [SerializeField]
         private ulong m_ExportedLayoutHash;
+
+        internal FieldDatabase()
+        {
+            m_AssetBundlesPath = Path.Combine(Application.streamingAssetsPath, "Field");
+        }
 
         public List<FieldDefinitionAuthoring> Fields => m_Fields;
 

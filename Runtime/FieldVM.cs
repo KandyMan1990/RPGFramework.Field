@@ -77,7 +77,7 @@ namespace RPGFramework.Field
         private readonly IMemoryService m_MemoryService;
         private readonly int            m_TempBytes;
 
-        private System.Random m_Random = new System.Random();
+        private System.Random m_Random;
 
         internal FieldVM(IMemoryService memoryService, int tempBytes)
         {
@@ -88,6 +88,7 @@ namespace RPGFramework.Field
 
             m_MemoryService = memoryService;
             m_TempBytes     = tempBytes;
+            m_Random        = new System.Random();
         }
 
         // TODO: once op codes are implemented, convert from dictionary to an array

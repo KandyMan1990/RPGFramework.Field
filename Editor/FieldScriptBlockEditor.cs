@@ -29,8 +29,8 @@ namespace RPGFramework.Field.Editor
         private readonly FieldEntities                         m_Field;
         private readonly FieldEntityRecord                     m_Entity;
         private readonly IReadOnlyList<LocalisationSheetAsset> m_Sheets;
-        private readonly Dictionary<string, List<SpawnChoice>> m_SpawnChoices      = new Dictionary<string, List<SpawnChoice>>();
-        private readonly Dictionary<string, List<string>>      m_StateNamesByTrack = new Dictionary<string, List<string>>();
+        private readonly Dictionary<string, List<SpawnChoice>> m_SpawnChoices;
+        private readonly Dictionary<string, List<string>>      m_StateNamesByTrack;
 
         private List<string>     m_DialogueKeys;
         private List<string>     m_AnimationNames;
@@ -42,11 +42,13 @@ namespace RPGFramework.Field.Editor
 
         public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, IReadOnlyList<LocalisationSheetAsset> sheets, Action<string> onChanged)
         {
-            m_OnChanged = onChanged;
-            m_Field     = field;
-            m_Entity    = entity;
-            m_Sheets    = sheets;
-            m_Blocks    = FieldScriptBlocks.Parse(scriptText);
+            m_OnChanged         = onChanged;
+            m_Field             = field;
+            m_Entity            = entity;
+            m_Sheets            = sheets;
+            m_Blocks            = FieldScriptBlocks.Parse(scriptText);
+            m_SpawnChoices      = new Dictionary<string, List<SpawnChoice>>();
+            m_StateNamesByTrack = new Dictionary<string, List<string>>();
 
             Add(BuildToolbar());
 
@@ -1144,13 +1146,14 @@ namespace RPGFramework.Field.Editor
         /// </summary>
         private sealed class MenuButton : Button, IToolbarMenuElement
         {
-            private readonly DropdownMenu         m_Menu = new DropdownMenu();
+            private readonly DropdownMenu         m_Menu;
             private readonly Action<DropdownMenu> m_Fill;
 
             DropdownMenu IToolbarMenuElement.menu => m_Menu;
 
             internal MenuButton(Action<DropdownMenu> fill)
             {
+                m_Menu  =  new DropdownMenu();
                 m_Fill  =  fill;
                 clicked += Open;
             }

@@ -11,8 +11,14 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class DialogueChannelUse
     {
-        private readonly HashSet<int>            m_Set   = new HashSet<int>();
-        private readonly Dictionary<int, string> m_Shown = new Dictionary<int, string>();
+        private readonly HashSet<int>            m_Set;
+        private readonly Dictionary<int, string> m_Shown;
+
+        internal DialogueChannelUse()
+        {
+            m_Set   = new HashSet<int>();
+            m_Shown = new Dictionary<int, string>();
+        }
 
         internal void Read(string[] lines, string scriptDescription)
         {
