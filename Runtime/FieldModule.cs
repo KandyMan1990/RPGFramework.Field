@@ -889,7 +889,7 @@ namespace RPGFramework.Field
 
         private void OnRequestSfx(ulong nameHash)
         {
-            m_SfxPlayer.Play(nameHash);
+            m_SfxPlayer.PlayAsync(nameHash).FireAndForget();
         }
 
         private void OnRequestReverbPreset(byte preset)
