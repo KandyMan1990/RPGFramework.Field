@@ -4,14 +4,14 @@
   "displayName": "RPG Framework Field",
   "description": "Field system for the RPG Framework",
   "dependencies": {
-    "com.rpgframework.audio": "3.0.0",
+    "com.rpgframework.audio": "4.0.0",
     "com.rpgframework.battle.sharedtypes": "0.2.0",
     "com.rpgframework.core": "0.8.0",
     "com.rpgframework.core.sharedtypes": "0.3.0",
-    "com.rpgframework.di": "4.0.1",
+    "com.rpgframework.di": "4.0.2",
     "com.rpgframework.field.sharedtypes": "0.3.0",
     "com.rpgframework.hashing": "2.0.1",
-    "com.rpgframework.localisation": "2.0.0",
+    "com.rpgframework.localisation": "2.1.0",
     "com.rpgframework.menu.sharedtypes": "0.3.0",
     "com.unity.mathematics": "1.4.0"
   },
