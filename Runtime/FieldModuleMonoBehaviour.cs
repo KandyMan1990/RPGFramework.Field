@@ -11,9 +11,8 @@ namespace RPGFramework.Field
         public InputAdapter    InputAdapter           => m_InputAdapter;
         public UIDocument      UIDocument             => m_UIDocument;
         public TransformHandle CameraTransformHandle  => m_Camera.transformHandle;
-#if UNITY_EDITOR
         public Camera          Camera                 => m_Camera;
-#endif
+        public bool            VisibleWhileSuspended  => m_VisibleWhileSuspended;
 
         [Tooltip("Used to determine the up direction in the game.  3D games should use 0,1,0 (XZ plane).  2D games should use 0,0,1 (XY plane).")]
         [SerializeField]
@@ -32,5 +31,9 @@ namespace RPGFramework.Field
 
         [SerializeField]
         private Camera m_Camera;
+
+        [Tooltip("Keep the field on screen, frozen, under a module opened over it, such as the menu. Off, its camera is switched off until the field resumes.")]
+        [SerializeField]
+        private bool m_VisibleWhileSuspended;
     }
 }

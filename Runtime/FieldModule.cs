@@ -31,7 +31,6 @@ using RPGFramework.Menu.SharedTypes.Constants;
 using RPGFramework.Menu.SharedTypes.Stores;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field
 {
@@ -53,8 +52,6 @@ namespace RPGFramework.Field
         private readonly IBattleArgsStore       m_BattleArgsStore;
         private readonly IFieldArgsStore        m_FieldArgsStore;
         private readonly IMenuArgsStore         m_MenuArgsStore;
-        private readonly IChangeModuleStore     m_ChangeModuleStore;
-        private readonly IResumeModuleStore     m_ResumeModuleStore;
         private readonly ICurrentModuleStore    m_CurrentModuleStore;
         private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
         private readonly SavedPlayerPose        m_SavedPlayerPose;
@@ -63,6 +60,8 @@ namespace RPGFramework.Field
         private readonly ISaveEnabledStore      m_SaveEnabledStore;
         private readonly ILocationNameStore     m_LocationNameStore;
         private readonly DialogueInputContext   m_DialogueInputContext;
+        private readonly IModuleScene           m_ModuleScene;
+        private readonly BlockAllInputContext   m_SuspendedInputBlock;
 
         private Task                                   m_MusicVolumeFade;
         private FieldModuleMonoBehaviour               m_FieldModuleMonoBehaviour;
@@ -84,6 +83,8 @@ namespace RPGFramework.Field
         private bool                                   m_BattleTransitionRequested;
         private bool                                   m_MenuTransitionRequested;
         private IMovementDriver                        m_PlayerMovementDriver;
+        private bool                                   m_Suspended;
+        private float                                  m_TimeScaleBeforeSuspend;
 
         internal FieldModule(ICoreModule           coreModule,
                              IDIResolver           diResolver,
@@ -99,14 +100,13 @@ namespace RPGFramework.Field
                              IBattleArgsStore      battleArgsStore,
                              IFieldArgsStore       fieldArgsStore,
                              IMenuArgsStore        menuArgsStore,
-                             IChangeModuleStore    changeModuleStore,
-                             IResumeModuleStore    resumeModuleStore,
                              ICurrentModuleStore   currentModuleStore,
                              IFieldResumeDataStore fieldResumeDataStore,
                              IVariableMap          variableMap,
                              ISettingsService      settingsService,
                              ISaveEnabledStore     saveEnabledStore,
-                             ILocationNameStore    locationNameStore)
+                             ILocationNameStore    locationNameStore,
+                             IModuleScene          moduleScene)
         {
             m_CoreModule           = coreModule;
             m_DIResolver           = diResolver;
@@ -122,8 +122,6 @@ namespace RPGFramework.Field
             m_BattleArgsStore      = battleArgsStore;
             m_FieldArgsStore       = fieldArgsStore;
             m_MenuArgsStore        = menuArgsStore;
-            m_ChangeModuleStore    = changeModuleStore;
-            m_ResumeModuleStore    = resumeModuleStore;
             m_CurrentModuleStore   = currentModuleStore;
             m_FieldResumeDataStore = fieldResumeDataStore;
             m_SavedPlayerPose      = new SavedPlayerPose(memoryService, variableMap);
@@ -135,6 +133,8 @@ namespace RPGFramework.Field
             m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
             m_MusicVolumeFade      = Task.CompletedTask;
             m_DialogueInputContext = new DialogueInputContext();
+            m_ModuleScene          = moduleScene;
+            m_SuspendedInputBlock  = new BlockAllInputContext();
 
             for (int i = 0; i < m_DialogueChannels.Length; i++)
             {
@@ -142,11 +142,11 @@ namespace RPGFramework.Field
             }
         }
 
-        async Task IModule.OnEnterAsync()
+        async Task IModule.OnEnterAsync(byte entry)
         {
             await m_ScreenFadeService.FadeOutAsync(true);
 
-            m_FieldModuleMonoBehaviour = Object.FindAnyObjectByType<FieldModuleMonoBehaviour>();
+            m_FieldModuleMonoBehaviour = m_ModuleScene.Find<FieldModuleMonoBehaviour>();
 
             m_InputAdapter = m_FieldModuleMonoBehaviour.InputAdapter;
             m_DIResolver.InjectInto(m_InputAdapter);
@@ -156,22 +156,101 @@ namespace RPGFramework.Field
 
             m_CameraTransformHandle = m_FieldModuleMonoBehaviour.CameraTransformHandle;
 
-            m_FieldContext = m_FieldResumeDataStore.Get<FieldContext>();
+            FieldContext fieldContext = m_FieldResumeDataStore.Get<FieldContext>();
 
-            if (m_FieldContext == null)
+            if (entry != ModuleEntries.RETURN || fieldContext == null)
             {
                 await LoadNewFieldAsync();
                 return;
             }
+
+            m_FieldContext = fieldContext;
 
             await ResumeFieldAsync();
         }
 
         async Task IModule.OnExitAsync()
         {
+            if (m_Suspended)
+            {
+                Unfreeze();
+            }
+
             await UnloadCurrentFieldAsync();
 
             m_InputRouter.Clear();
+        }
+
+        // The field stays loaded under the module opened over it, frozen by the time scale, so it carries on exactly as
+        // it was. Its world is left on: an Animator reset by being disabled, or a game's component told OnDisable, would
+        // lose what this keeps.
+        async Task IModule.OnSuspendAsync()
+        {
+            m_InputAdapter.Disable();
+            m_InputRouter.Push(m_SuspendedInputBlock);
+
+            UpdateManager.UnregisterUpdatable(this);
+            UpdateManager.UnregisterFixedUpdatable(this);
+
+            Freeze();
+
+            await m_ScreenFadeService.FadeOutAsync();
+
+            // One set of sheets resident at a time: what opens over the field loads its own, which may share some.
+            m_LocalisationService.UnloadLocalisationData(m_FieldDefinition.LocalisationSheets);
+
+            m_FieldModuleMonoBehaviour.UIDocument.rootVisualElement.style.display = DisplayStyle.None;
+            SetAudioListenerEnabled(false);
+
+            m_FieldModuleMonoBehaviour.Camera.enabled = m_FieldModuleMonoBehaviour.VisibleWhileSuspended;
+        }
+
+        async Task IModule.OnResumeAsync()
+        {
+            await m_LocalisationService.LoadNewLocalisationDataAsync(m_FieldDefinition.LocalisationSheets);
+
+            m_FieldModuleMonoBehaviour.Camera.enabled                             = true;
+            m_FieldModuleMonoBehaviour.UIDocument.rootVisualElement.style.display = DisplayStyle.Flex;
+            SetAudioListenerEnabled(true);
+
+            Unfreeze();
+
+            m_InputRouter.Pop(m_SuspendedInputBlock);
+
+            UpdateManager.RegisterUpdatable(this);
+            UpdateManager.RegisterFixedUpdatable(this);
+
+            await m_ScreenFadeService.FadeInAsync();
+
+            m_InputAdapter.Enable();
+        }
+
+        private void Freeze()
+        {
+            m_Suspended              = true;
+            m_TimeScaleBeforeSuspend = Time.timeScale;
+            Time.timeScale           = 0f;
+
+            Application.quitting += Unfreeze;
+        }
+
+        // Also as the game quits, play mode included, so a time scale of zero never outlives the session.
+        private void Unfreeze()
+        {
+            Application.quitting -= Unfreeze;
+
+            Time.timeScale = m_TimeScaleBeforeSuspend;
+            m_Suspended    = false;
+        }
+
+        private void SetAudioListenerEnabled(bool enabled)
+        {
+            AudioListener listener = m_ModuleScene.Find<AudioListener>();
+
+            if (listener != null)
+            {
+                listener.enabled = enabled;
+            }
         }
 
         private void RequestMenuModule(byte menuId)
@@ -367,18 +446,13 @@ namespace RPGFramework.Field
         {
             m_MenuTransitionRequested = false;
 
-            StoreToTempMemory();
-
             // The menu is where a save is made, so this is the pose a save holds.
             if (m_PlayerEntityId != FieldEntity.NO_ENTITY)
             {
                 m_SavedPlayerPose.Write(m_Entities[m_PlayerEntityId].Entity.transform, m_FieldModuleMonoBehaviour.Up);
             }
 
-            m_ResumeModuleStore.SetModuleId(FieldConstants.MODULE_ID);
-            m_ChangeModuleStore.SetModuleId(MenuConstants.MODULE_ID);
-
-            return m_CoreModule.RequestModuleChangeAsync();
+            return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.OPEN_MENU);
         }
 
         private Task TriggerBattleTransitionAsync()
@@ -389,10 +463,7 @@ namespace RPGFramework.Field
 
             StoreToTempMemory();
 
-            m_ResumeModuleStore.SetModuleId(FieldConstants.MODULE_ID);
-            m_ChangeModuleStore.SetModuleId(BattleConstants.MODULE_ID);
-
-            return m_CoreModule.RequestModuleChangeAsync();
+            return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.START_BATTLE);
         }
 
         private async Task<FieldEntities> PreLoadFieldAsync()
