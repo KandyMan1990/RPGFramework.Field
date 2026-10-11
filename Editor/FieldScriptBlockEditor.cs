@@ -1331,7 +1331,7 @@ namespace RPGFramework.Field.Editor
             return string.Empty;
         }
 
-        internal static List<string> GatherMusicNames()
+        private static List<string> GatherMusicNames()
         {
             List<string> names = GatherProviderNames<MusicAssetProvider>(provider => provider.AssetNames);
 

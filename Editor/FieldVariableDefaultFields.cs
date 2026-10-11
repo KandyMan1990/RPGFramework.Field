@@ -59,36 +59,6 @@ namespace RPGFramework.Field.Editor
     }
 
     /// <summary>
-    /// The track every battle plays in a new game, until a script sets another, chosen by name; the variable holds the
-    /// name's hash, and None, zero.
-    /// </summary>
-    internal sealed class BattleMusicDefaultField : IVariableDefaultField
-    {
-        string IVariableDefaultField.VariableName => CoreVariables.BATTLE_MUSIC;
-
-        VisualElement IVariableDefaultField.Create(SerializedProperty variable)
-        {
-            SerializedProperty defaultValue = variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
-            List<string>       names        = FieldScriptBlockEditor.GatherMusicNames();
-
-            names.Insert(0, "None");
-
-            string current = defaultValue.ulongValue == 0 ? names[0] : CurrentFieldDefaultField.NameForHash(names, defaultValue.ulongValue);
-
-            DropdownField field = new DropdownField("Battle music", names, Mathf.Max(0, names.IndexOf(current)));
-
-            if (current == null)
-            {
-                field.SetValueWithoutNotify(string.Empty);
-            }
-
-            field.RegisterValueChangedCallback(e => VariableDefinitionDrawer.Write(defaultValue, names.IndexOf(e.newValue) == 0 ? 0UL : Fnv1a64.Hash(e.newValue)));
-
-            return field;
-        }
-    }
-
-    /// <summary>
     /// Where in that field a new game begins, chosen from the spawn points of the field
     /// <see cref="FieldVariables.CURRENT_FIELD" /> defaults to, and rebuilt when that changes.
     /// </summary>
