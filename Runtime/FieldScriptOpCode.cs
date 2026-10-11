@@ -1199,6 +1199,8 @@ namespace RPGFramework.Field
         [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Bool)]
         CheckIfMusicIsPlaying = 0x0805,
 
+        [FieldOpCode("SET_BATTLE_MUSIC", ArgumentLayout.Sequential, Summary = "Set the track every battle plays from now on, kept in the save until set again")]
+        [Argument(0, "track", ArgumentType.MusicName, Description = "the music asset's name, as it appears in the music provider")]
         SetBattleMusic = 0x0806,
 
         [FieldOpCode("PLAY_SOUND", ArgumentLayout.Sequential, Summary = "Play a sound effect once")]

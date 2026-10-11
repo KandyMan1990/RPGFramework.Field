@@ -28,7 +28,7 @@ namespace RPGFramework.Field.Editor
                 return none;
             }
 
-            string current = FieldNameForHash(names, defaultValue.ulongValue);
+            string current = NameForHash(names, defaultValue.ulongValue);
 
             DropdownField field = new DropdownField("Starts in field", names, Mathf.Max(0, names.IndexOf(current)));
 
@@ -42,7 +42,7 @@ namespace RPGFramework.Field.Editor
             return field;
         }
 
-        internal static string FieldNameForHash(List<string> names, ulong hash)
+        internal static string NameForHash(List<string> names, ulong hash)
         {
             for (int i = 0; i < names.Count; i++)
             {
@@ -55,6 +55,36 @@ namespace RPGFramework.Field.Editor
             }
 
             return null;
+        }
+    }
+
+    /// <summary>
+    /// The track every battle plays in a new game, until a script sets another, chosen by name; the variable holds the
+    /// name's hash, and None, zero.
+    /// </summary>
+    internal sealed class BattleMusicDefaultField : IVariableDefaultField
+    {
+        string IVariableDefaultField.VariableName => CoreVariables.BATTLE_MUSIC;
+
+        VisualElement IVariableDefaultField.Create(SerializedProperty variable)
+        {
+            SerializedProperty defaultValue = variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
+            List<string>       names        = FieldScriptBlockEditor.GatherMusicNames();
+
+            names.Insert(0, "None");
+
+            string current = defaultValue.ulongValue == 0 ? names[0] : CurrentFieldDefaultField.NameForHash(names, defaultValue.ulongValue);
+
+            DropdownField field = new DropdownField("Battle music", names, Mathf.Max(0, names.IndexOf(current)));
+
+            if (current == null)
+            {
+                field.SetValueWithoutNotify(string.Empty);
+            }
+
+            field.RegisterValueChangedCallback(e => VariableDefinitionDrawer.Write(defaultValue, names.IndexOf(e.newValue) == 0 ? 0UL : Fnv1a64.Hash(e.newValue)));
+
+            return field;
         }
     }
 
@@ -88,7 +118,7 @@ namespace RPGFramework.Field.Editor
             SerializedProperty defaultValue = variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
             int                spawnId      = (int)VariableDefaults.ToInteger(defaultValue.ulongValue, VariableWidth.Int);
 
-            string fieldName = fieldDefault == null ? null : CurrentFieldDefaultField.FieldNameForHash(FieldScriptBlockEditor.GatherFieldNames(), fieldDefault.ulongValue);
+            string fieldName = fieldDefault == null ? null : CurrentFieldDefaultField.NameForHash(FieldScriptBlockEditor.GatherFieldNames(), fieldDefault.ulongValue);
 
             List<FieldScriptBlockEditor.SpawnChoice> spawns = fieldName == null ? new List<FieldScriptBlockEditor.SpawnChoice>() : FieldScriptBlockEditor.GatherSpawnChoices(fieldName);
 

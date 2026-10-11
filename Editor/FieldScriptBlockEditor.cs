@@ -968,13 +968,13 @@ namespace RPGFramework.Field.Editor
                     return m_FieldNames ??= GatherFieldNames();
 
                 case ArgumentType.MusicName:
-                    return m_MusicNames ??= GatherProviderNames<MusicAssetProvider>(provider => provider.AssetNames);
+                    return m_MusicNames ??= GatherMusicNames();
 
                 case ArgumentType.SoundName:
                     return m_SoundNames ??= GatherProviderNames<SfxAssetProvider>(provider => provider.AssetNames);
 
                 case ArgumentType.MusicNameHint:
-                    return m_MusicNames ??= GatherProviderNames<MusicAssetProvider>(provider => provider.AssetNames);
+                    return m_MusicNames ??= GatherMusicNames();
 
                 case ArgumentType.MusicStateName:
                     return GetMusicStateChoices(block);
@@ -1329,6 +1329,13 @@ namespace RPGFramework.Field.Editor
             }
 
             return string.Empty;
+        }
+
+        internal static List<string> GatherMusicNames()
+        {
+            List<string> names = GatherProviderNames<MusicAssetProvider>(provider => provider.AssetNames);
+
+            return names;
         }
 
         internal static List<string> GatherFieldNames()

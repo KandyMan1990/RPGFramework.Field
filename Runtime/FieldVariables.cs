@@ -39,12 +39,6 @@ namespace RPGFramework.Field
         /// </summary>
         public const string PLAYER_FACING = "PlayerFacing";
 
-        /// <summary>
-        /// The volume the field plays its music at, 0 to 1, set by <c>SET_MUSIC_VOLUME</c> and <c>FADE_MUSIC_VOLUME</c>
-        /// and kept across fields, battles and saves. Music started with <c>PLAY_MUSIC</c> plays at it.
-        /// </summary>
-        public const string MUSIC_VOLUME = "MusicVolume";
-
 #if UNITY_EDITOR
         private static readonly RequiredVariable[] m_Variables =
         {
@@ -53,8 +47,7 @@ namespace RPGFramework.Field
             new RequiredVariable(PLAYER_POSITION_X, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
             new RequiredVariable(PLAYER_POSITION_Y, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
             new RequiredVariable(PLAYER_POSITION_Z, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
-            new RequiredVariable(PLAYER_FACING,     MemoryBank.Persistent, VariableWidth.Float, "Which way the player faced when the game was saved, in degrees around the field's up axis. Its default is not used"),
-            new RequiredVariable(MUSIC_VOLUME,      MemoryBank.Persistent, VariableWidth.Float, "The volume the field plays its music at, 0 to 1, as SET_MUSIC_VOLUME and FADE_MUSIC_VOLUME leave it. Its default is a new game's", VariableDefaults.FromFloat(1f))
+            new RequiredVariable(PLAYER_FACING,     MemoryBank.Persistent, VariableWidth.Float, "Which way the player faced when the game was saved, in degrees around the field's up axis. Its default is not used")
         };
 
         IReadOnlyList<RequiredVariable> IRequiredVariables.Variables => m_Variables;

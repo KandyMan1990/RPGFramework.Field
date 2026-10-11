@@ -24,6 +24,7 @@ namespace RPGFramework.Field
         internal event Action<float, float, float>                RequestMusicVolumeFrom;
         internal Func<bool>                                       IsMusicVolumeFading;
         internal event Action<ulong, float>                       RequestMusicStemState;
+        internal event Action<ulong>                              RequestBattleMusic;
         internal event Action<ulong>                              RequestSfx;
         internal event Action<byte>                               RequestReverbPreset;
         internal event Action<float>                              RequestReverbVolume;
@@ -422,7 +423,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.FadeMusicVolume, FadeMusicVolumeOpcodeHandler },
                        { FieldScriptOpCode.SetMusicStemState, SetMusicStemStateOpcodeHandler },
                        { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
-                       // { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
+                       { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
                        { FieldScriptOpCode.PlaySound, PlaySoundOpcodeHandler },
                        // { FieldScriptOpCode.PlayAmbientLoop, PlayAmbientLoopOpcodeHandler },
                        // { FieldScriptOpCode.SetAllSoundVolume, SetAllSoundVolumeOpcodeHandler },
@@ -2315,6 +2316,16 @@ namespace RPGFramework.Field
             bool playing = IsMusicPlaying();
 
             WriteVariableBool(ctx, bank, address, playing);
+        }
+
+        /// <summary>
+        /// Set the track every battle plays.
+        /// </summary>
+        private void SetBattleMusicOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ulong nameHash = ReadUlong(ctx);
+
+            RequestBattleMusic?.Invoke(nameHash);
         }
 
         /// <summary>

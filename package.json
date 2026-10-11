@@ -4,7 +4,7 @@
   "displayName": "RPG Framework Field",
   "description": "Field system for the RPG Framework",
   "dependencies": {
-    "com.rpgframework.audio": "4.0.0",
+    "com.rpgframework.audio": "4.1.0",
     "com.rpgframework.battle.sharedtypes": "0.2.0",
     "com.rpgframework.core": "0.8.0",
     "com.rpgframework.core.sharedtypes": "0.3.0",

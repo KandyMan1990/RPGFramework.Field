@@ -36,6 +36,8 @@ namespace RPGFramework.Field
 {
     public partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
     {
+        private const float MUSIC_RESUME_SECONDS = 1f;
+
         private readonly ICoreModule            m_CoreModule;
         private readonly IDIResolver            m_DIResolver;
         private readonly IInputRouter           m_InputRouter;
@@ -55,10 +57,12 @@ namespace RPGFramework.Field
         private readonly ICurrentModuleStore    m_CurrentModuleStore;
         private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
         private readonly SavedPlayerPose        m_SavedPlayerPose;
-        private readonly FieldMusicVolumeStore  m_MusicVolumeStore;
+        private readonly IMusicVolumeStore      m_MusicVolumeStore;
         private readonly ISettingsService       m_SettingsService;
         private readonly ISaveEnabledStore      m_SaveEnabledStore;
         private readonly ILocationNameStore     m_LocationNameStore;
+        private readonly IBattleMusicStore      m_BattleMusicStore;
+        private readonly IPausedMusicStore      m_PausedMusicStore;
         private readonly DialogueInputContext   m_DialogueInputContext;
         private readonly IModuleScene           m_ModuleScene;
         private readonly BlockAllInputContext   m_SuspendedInputBlock;
@@ -106,6 +110,9 @@ namespace RPGFramework.Field
                              ISettingsService      settingsService,
                              ISaveEnabledStore     saveEnabledStore,
                              ILocationNameStore    locationNameStore,
+                             IBattleMusicStore     battleMusicStore,
+                             IMusicVolumeStore     musicVolumeStore,
+                             IPausedMusicStore     pausedMusicStore,
                              IModuleScene          moduleScene)
         {
             m_CoreModule           = coreModule;
@@ -125,10 +132,12 @@ namespace RPGFramework.Field
             m_CurrentModuleStore   = currentModuleStore;
             m_FieldResumeDataStore = fieldResumeDataStore;
             m_SavedPlayerPose      = new SavedPlayerPose(memoryService, variableMap);
-            m_MusicVolumeStore     = new FieldMusicVolumeStore(memoryService, variableMap);
+            m_MusicVolumeStore     = musicVolumeStore;
             m_SettingsService      = settingsService;
             m_SaveEnabledStore     = saveEnabledStore;
             m_LocationNameStore    = locationNameStore;
+            m_BattleMusicStore     = battleMusicStore;
+            m_PausedMusicStore     = pausedMusicStore;
             m_DialogueChannels     = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
             m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
             m_MusicVolumeFade      = Task.CompletedTask;
@@ -157,6 +166,7 @@ namespace RPGFramework.Field
             m_CameraTransformHandle = m_FieldModuleMonoBehaviour.CameraTransformHandle;
 
             FieldContext fieldContext = m_FieldResumeDataStore.Get<FieldContext>();
+            bool         musicPaused  = m_PausedMusicStore.TryTake(out MusicSnapshot pausedMusic);
 
             if (entry != ModuleEntries.RETURN || fieldContext == null)
             {
@@ -165,6 +175,11 @@ namespace RPGFramework.Field
             }
 
             m_FieldContext = fieldContext;
+
+            if (musicPaused)
+            {
+                m_MusicPlayer.ResumeAsync(pausedMusic, MUSIC_RESUME_SECONDS, m_MusicVolumeStore.MusicVolume).FireAndForget();
+            }
 
             await ResumeFieldAsync();
         }
@@ -200,7 +215,6 @@ namespace RPGFramework.Field
             m_LocalisationService.UnloadLocalisationData(m_FieldDefinition.LocalisationSheets);
 
             m_FieldModuleMonoBehaviour.UIDocument.rootVisualElement.style.display = DisplayStyle.None;
-            SetAudioListenerEnabled(false);
 
             m_FieldModuleMonoBehaviour.Camera.enabled = m_FieldModuleMonoBehaviour.VisibleWhileSuspended;
         }
@@ -211,7 +225,6 @@ namespace RPGFramework.Field
 
             m_FieldModuleMonoBehaviour.Camera.enabled                             = true;
             m_FieldModuleMonoBehaviour.UIDocument.rootVisualElement.style.display = DisplayStyle.Flex;
-            SetAudioListenerEnabled(true);
 
             Unfreeze();
 
@@ -241,16 +254,6 @@ namespace RPGFramework.Field
 
             Time.timeScale = m_TimeScaleBeforeSuspend;
             m_Suspended    = false;
-        }
-
-        private void SetAudioListenerEnabled(bool enabled)
-        {
-            AudioListener listener = m_ModuleScene.Find<AudioListener>();
-
-            if (listener != null)
-            {
-                listener.enabled = enabled;
-            }
         }
 
         private void RequestMenuModule(byte menuId)
@@ -326,6 +329,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusicVolume                 += OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             += OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              += OnRequestMusicStemState;
+            m_FieldContext.VM.RequestBattleMusic                 += OnRequestBattleMusic;
             m_FieldContext.VM.RequestReverbPreset                += OnRequestReverbPreset;
             m_FieldContext.VM.RequestReverbVolume                += OnRequestReverbVolume;
             m_FieldContext.VM.RequestSfx                         += OnRequestSfx;
@@ -422,6 +426,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusicVolume                 -= OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             -= OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              -= OnRequestMusicStemState;
+            m_FieldContext.VM.RequestBattleMusic                 -= OnRequestBattleMusic;
             m_FieldContext.VM.RequestReverbPreset                -= OnRequestReverbPreset;
             m_FieldContext.VM.RequestReverbVolume                -= OnRequestReverbVolume;
             m_FieldContext.VM.RequestFieldTransition             -= OnSetFieldModuleArgs;
@@ -910,7 +915,7 @@ namespace RPGFramework.Field
 
         private void OnRequestMusic(ulong nameHash, ulong stateNameHash)
         {
-            m_MusicPlayer.PlayAsync(nameHash, stateNameHash, 0f, m_MusicVolumeStore.Get()).FireAndForget();
+            m_MusicPlayer.PlayAsync(nameHash, stateNameHash, 0f, m_MusicVolumeStore.MusicVolume).FireAndForget();
         }
 
         // The crossfade's volume is for that track alone, and the field's music volume stays as it was.
@@ -926,7 +931,7 @@ namespace RPGFramework.Field
 
         private void OnRequestMusicVolume(float volume, float seconds)
         {
-            m_MusicVolumeStore.Set(Mathf.Clamp01(volume));
+            m_MusicVolumeStore.SetMusicVolume(Mathf.Clamp01(volume));
 
             m_MusicVolumeFade = m_MusicPlayer.SetSongVolumeAsync(volume, seconds);
             m_MusicVolumeFade.FireAndForget();
@@ -961,6 +966,11 @@ namespace RPGFramework.Field
         private void OnRequestSfx(ulong nameHash)
         {
             m_SfxPlayer.PlayAsync(nameHash).FireAndForget();
+        }
+
+        private void OnRequestBattleMusic(ulong nameHash)
+        {
+            m_BattleMusicStore.SetBattleMusic(nameHash);
         }
 
         private void OnRequestReverbPreset(byte preset)

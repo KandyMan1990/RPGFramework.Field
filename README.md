@@ -22,8 +22,9 @@ RPGFramework.DI, RPGFramework.Audio, RPGFramework.Localisation, RPGFramework.Has
 3. **In your global installer**, bind `IFieldArgsStore` to `VariableFieldArgsStore` and `IFieldResumeDataStore` to
    `FieldResumeDataStore`.
 4. **Add the scene to your game's module and scene databases** under `FieldConstants.MODULE_ID`.
-5. **Open your variable map.** Field's variables are added to it: the current field and spawn point, the player's saved
-   position and facing, and the music volume. Pick the field and spawn point a new game starts at as their defaults.
+5. **Open your variable map.** Field's variables are added to it: the current field and spawn point, and the player's
+   saved position and facing. Pick the field and spawn point a new game starts at as their defaults, and the battle
+   music it starts with, Core's `BattleMusic`, by name.
 
 ---
 
@@ -172,7 +173,12 @@ RETURN
   - The player's position and facing are saved with the game, and a loaded game resumes in the field it was saved in.
 - **Music:**
   - Scripts play, crossfade and stop music, and switch its stem states.
-  - They set or fade its volume, which is saved so it outlasts the menu and battles.
+  - They set or fade its volume, Core's `MusicVolume`, which is saved so it outlasts the menu and battles.
+  - They set the battle music, which every battle plays until a script sets another, and which is saved.
+  - A battle pauses the field's music, unless it keeps it playing, and the field picks it up where it was on the
+    return, fading it in over a second as the battle's fades out, with its echo and reverb as they were.
+  - A battle that keeps the music but plays its victory fanfare leaves the fanfare playing; the script that started it
+    fades it out and starts what comes next.
 
 ---
 
@@ -185,4 +191,4 @@ RETURN
 - **A field is loaded whole**; large areas aren't streamed.
 - **No NavMesh or walkmesh**: movement is physics, a tilemap or plain transforms.
 - **Animation events, timeline cutscenes and animated turning** aren't supported.
-- **Field music isn't yet paused and resumed around a battle.**
+- **Looping sounds** aren't built, so none are started again after a battle.
