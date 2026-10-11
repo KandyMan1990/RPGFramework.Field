@@ -32,6 +32,7 @@ namespace RPGFramework.Field
         /// </summary>
         bool IsPlaying { get; }
 
+        /// <summary>Stops what was played and goes back to the base animation.</summary>
         void ReturnToBase();
 
         /// <summary>
@@ -39,6 +40,7 @@ namespace RPGFramework.Field
         /// </summary>
         void PushState();
 
+        /// <summary>Puts back what <see cref="PushState" /> remembered; nothing when there is none.</summary>
         void PopState();
 
         /// <summary>
