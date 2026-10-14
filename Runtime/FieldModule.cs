@@ -38,34 +38,36 @@ namespace RPGFramework.Field
     {
         private const float MUSIC_RESUME_SECONDS = 1f;
 
-        private readonly ICoreModule            m_CoreModule;
-        private readonly IDIResolver            m_DIResolver;
-        private readonly IInputRouter           m_InputRouter;
-        private readonly IMusicPlayer           m_MusicPlayer;
-        private readonly ISfxPlayer             m_SfxPlayer;
-        private readonly IFieldDatabase         m_FieldDatabase;
-        private readonly IFieldPresentation     m_FieldPresentation;
-        private readonly ILocalisationService   m_LocalisationService;
-        private readonly FieldDialogueChannel[] m_DialogueChannels;
-        private readonly int[]                  m_MessageVariables;
-        private readonly IMemoryService         m_MemoryService;
-        private readonly ITempMemoryArgs        m_TempMemoryArgs;
-        private readonly IScreenFadeService     m_ScreenFadeService;
-        private readonly IBattleArgsStore       m_BattleArgsStore;
-        private readonly IFieldArgsStore        m_FieldArgsStore;
-        private readonly IMenuArgsStore         m_MenuArgsStore;
-        private readonly ICurrentModuleStore    m_CurrentModuleStore;
-        private readonly IFieldResumeDataStore  m_FieldResumeDataStore;
-        private readonly SavedPlayerPose        m_SavedPlayerPose;
-        private readonly IMusicVolumeStore      m_MusicVolumeStore;
-        private readonly ISettingsService       m_SettingsService;
-        private readonly ISaveEnabledStore      m_SaveEnabledStore;
-        private readonly ILocationNameStore     m_LocationNameStore;
-        private readonly IBattleMusicStore      m_BattleMusicStore;
-        private readonly IPausedMusicStore      m_PausedMusicStore;
-        private readonly DialogueInputContext   m_DialogueInputContext;
-        private readonly IModuleScene           m_ModuleScene;
-        private readonly BlockAllInputContext   m_SuspendedInputBlock;
+        private readonly ICoreModule               m_CoreModule;
+        private readonly IDIResolver               m_DIResolver;
+        private readonly IInputRouter              m_InputRouter;
+        private readonly IMusicPlayer              m_MusicPlayer;
+        private readonly ISfxPlayer                m_SfxPlayer;
+        private readonly IFieldDatabase            m_FieldDatabase;
+        private readonly IFieldPresentation        m_FieldPresentation;
+        private readonly ILocalisationService      m_LocalisationService;
+        private readonly FieldDialogueChannel[]    m_DialogueChannels;
+        private readonly int[]                     m_MessageVariables;
+        private readonly IMemoryService            m_MemoryService;
+        private readonly ITempMemoryArgs           m_TempMemoryArgs;
+        private readonly IScreenFadeService        m_ScreenFadeService;
+        private readonly IBattleArgsStore          m_BattleArgsStore;
+        private readonly IFieldArgsStore           m_FieldArgsStore;
+        private readonly IMenuArgsStore            m_MenuArgsStore;
+        private readonly ICurrentModuleStore       m_CurrentModuleStore;
+        private readonly IFieldResumeDataStore     m_FieldResumeDataStore;
+        private readonly SavedPlayerPose           m_SavedPlayerPose;
+        private readonly IMusicVolumeStore         m_MusicVolumeStore;
+        private readonly ISettingsService          m_SettingsService;
+        private readonly ISaveEnabledStore         m_SaveEnabledStore;
+        private readonly ILocationNameStore        m_LocationNameStore;
+        private readonly IBattleMusicStore         m_BattleMusicStore;
+        private readonly IPausedMusicStore         m_PausedMusicStore;
+        private readonly IBattleModeStore          m_BattleModeStore;
+        private readonly IBattleCompleteStateStore m_BattleCompleteStateStore;
+        private readonly DialogueInputContext      m_DialogueInputContext;
+        private readonly IModuleScene              m_ModuleScene;
+        private readonly BlockAllInputContext      m_SuspendedInputBlock;
 
         private Task                                   m_MusicVolumeFade;
         private FieldModuleMonoBehaviour               m_FieldModuleMonoBehaviour;
@@ -86,64 +88,69 @@ namespace RPGFramework.Field
         private FieldDefinition                        m_FieldDefinition;
         private bool                                   m_BattleTransitionRequested;
         private bool                                   m_MenuTransitionRequested;
+        private bool                                   m_GameOverRequested;
         private IMovementDriver                        m_PlayerMovementDriver;
         private bool                                   m_Suspended;
         private float                                  m_TimeScaleBeforeSuspend;
 
-        internal FieldModule(ICoreModule           coreModule,
-                             IDIResolver           diResolver,
-                             IInputRouter          inputRouter,
-                             IMusicPlayer          musicPlayer,
-                             ISfxPlayer            sfxPlayer,
-                             IFieldDatabase        fieldDatabase,
-                             IFieldPresentation    fieldPresentation,
-                             ILocalisationService  localisationService,
-                             IMemoryService        memoryService,
-                             ITempMemoryArgs       tempMemoryArgs,
-                             IScreenFadeService    screenFadeService,
-                             IBattleArgsStore      battleArgsStore,
-                             IFieldArgsStore       fieldArgsStore,
-                             IMenuArgsStore        menuArgsStore,
-                             ICurrentModuleStore   currentModuleStore,
-                             IFieldResumeDataStore fieldResumeDataStore,
-                             IVariableMap          variableMap,
-                             ISettingsService      settingsService,
-                             ISaveEnabledStore     saveEnabledStore,
-                             ILocationNameStore    locationNameStore,
-                             IBattleMusicStore     battleMusicStore,
-                             IMusicVolumeStore     musicVolumeStore,
-                             IPausedMusicStore     pausedMusicStore,
-                             IModuleScene          moduleScene)
+        internal FieldModule(ICoreModule               coreModule,
+                             IDIResolver               diResolver,
+                             IInputRouter              inputRouter,
+                             IMusicPlayer              musicPlayer,
+                             ISfxPlayer                sfxPlayer,
+                             IFieldDatabase            fieldDatabase,
+                             IFieldPresentation        fieldPresentation,
+                             ILocalisationService      localisationService,
+                             IMemoryService            memoryService,
+                             ITempMemoryArgs           tempMemoryArgs,
+                             IScreenFadeService        screenFadeService,
+                             IBattleArgsStore          battleArgsStore,
+                             IFieldArgsStore           fieldArgsStore,
+                             IMenuArgsStore            menuArgsStore,
+                             ICurrentModuleStore       currentModuleStore,
+                             IFieldResumeDataStore     fieldResumeDataStore,
+                             IVariableMap              variableMap,
+                             ISettingsService          settingsService,
+                             ISaveEnabledStore         saveEnabledStore,
+                             ILocationNameStore        locationNameStore,
+                             IBattleMusicStore         battleMusicStore,
+                             IMusicVolumeStore         musicVolumeStore,
+                             IPausedMusicStore         pausedMusicStore,
+                             IBattleModeStore          battleModeStore,
+                             IBattleCompleteStateStore battleCompleteStateStore,
+                             IModuleScene              moduleScene)
         {
-            m_CoreModule           = coreModule;
-            m_DIResolver           = diResolver;
-            m_InputRouter          = inputRouter;
-            m_MusicPlayer          = musicPlayer;
-            m_SfxPlayer            = sfxPlayer;
-            m_FieldDatabase        = fieldDatabase;
-            m_FieldPresentation    = fieldPresentation;
-            m_LocalisationService  = localisationService;
-            m_MemoryService        = memoryService;
-            m_TempMemoryArgs       = tempMemoryArgs;
-            m_ScreenFadeService    = screenFadeService;
-            m_BattleArgsStore      = battleArgsStore;
-            m_FieldArgsStore       = fieldArgsStore;
-            m_MenuArgsStore        = menuArgsStore;
-            m_CurrentModuleStore   = currentModuleStore;
-            m_FieldResumeDataStore = fieldResumeDataStore;
-            m_SavedPlayerPose      = new SavedPlayerPose(memoryService, variableMap);
-            m_MusicVolumeStore     = musicVolumeStore;
-            m_SettingsService      = settingsService;
-            m_SaveEnabledStore     = saveEnabledStore;
-            m_LocationNameStore    = locationNameStore;
-            m_BattleMusicStore     = battleMusicStore;
-            m_PausedMusicStore     = pausedMusicStore;
-            m_DialogueChannels     = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
-            m_MessageVariables     = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
-            m_MusicVolumeFade      = Task.CompletedTask;
-            m_DialogueInputContext = new DialogueInputContext();
-            m_ModuleScene          = moduleScene;
-            m_SuspendedInputBlock  = new BlockAllInputContext();
+            m_CoreModule               = coreModule;
+            m_DIResolver               = diResolver;
+            m_InputRouter              = inputRouter;
+            m_MusicPlayer              = musicPlayer;
+            m_SfxPlayer                = sfxPlayer;
+            m_FieldDatabase            = fieldDatabase;
+            m_FieldPresentation        = fieldPresentation;
+            m_LocalisationService      = localisationService;
+            m_MemoryService            = memoryService;
+            m_TempMemoryArgs           = tempMemoryArgs;
+            m_ScreenFadeService        = screenFadeService;
+            m_BattleArgsStore          = battleArgsStore;
+            m_FieldArgsStore           = fieldArgsStore;
+            m_MenuArgsStore            = menuArgsStore;
+            m_CurrentModuleStore       = currentModuleStore;
+            m_FieldResumeDataStore     = fieldResumeDataStore;
+            m_SavedPlayerPose          = new SavedPlayerPose(memoryService, variableMap);
+            m_MusicVolumeStore         = musicVolumeStore;
+            m_SettingsService          = settingsService;
+            m_SaveEnabledStore         = saveEnabledStore;
+            m_LocationNameStore        = locationNameStore;
+            m_BattleMusicStore         = battleMusicStore;
+            m_PausedMusicStore         = pausedMusicStore;
+            m_BattleModeStore          = battleModeStore;
+            m_BattleCompleteStateStore = battleCompleteStateStore;
+            m_DialogueChannels         = new FieldDialogueChannel[ArgumentTypes.DIALOGUE_CHANNEL_COUNT];
+            m_MessageVariables         = new int[DialogueMarkup.MESSAGE_VARIABLE_COUNT];
+            m_MusicVolumeFade          = Task.CompletedTask;
+            m_DialogueInputContext     = new DialogueInputContext();
+            m_ModuleScene              = moduleScene;
+            m_SuspendedInputBlock      = new BlockAllInputContext();
 
             for (int i = 0; i < m_DialogueChannels.Length; i++)
             {
@@ -290,6 +297,12 @@ namespace RPGFramework.Field
             DrawInteractionDebug();
 #endif
 
+            if (m_GameOverRequested)
+            {
+                TriggerGameOverAsync().FireAndForget();
+                return;
+            }
+
             if (m_FieldTransitionRequested)
             {
                 TriggerFieldTransitionAsync().FireAndForget();
@@ -372,14 +385,20 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetMessageVariable          += OnRequestSetMessageVariable;
             m_FieldContext.VM.IsDialogueWindowOpen               =  IsDialogueWindowOpen;
             m_FieldContext.VM.RequestAskPlayerToMakeAChoice      += OnRequestAskPlayerToMakeAChoice;
-            m_FieldContext.VM.RequestSetBattleModeOptions        += OnRequestSetBattleModeOptions;
+            m_FieldContext.VM.RequestSetBattleMode               += OnRequestSetBattleMode;
             m_FieldContext.VM.RequestStartBattle                 += OnRequestStartBattle;
+            m_FieldContext.VM.GetLastBattleResult                =  GetLastBattleResult;
+            m_FieldContext.VM.RequestGameOver                    += OnRequestGameOver;
+            m_FieldContext.VM.StartWaitingForButton              =  StartWaitingForButton;
         }
 
         private void UnsubscribeVm()
         {
+            m_FieldContext.VM.StartWaitingForButton              =  null;
+            m_FieldContext.VM.RequestGameOver                    -= OnRequestGameOver;
+            m_FieldContext.VM.GetLastBattleResult                =  null;
             m_FieldContext.VM.RequestStartBattle                 -= OnRequestStartBattle;
-            m_FieldContext.VM.RequestSetBattleModeOptions        -= OnRequestSetBattleModeOptions;
+            m_FieldContext.VM.RequestSetBattleMode               -= OnRequestSetBattleMode;
             m_FieldContext.VM.RequestAskPlayerToMakeAChoice      -= OnRequestAskPlayerToMakeAChoice;
             m_FieldContext.VM.IsDialogueWindowOpen               =  null;
             m_FieldContext.VM.RequestShowDialogueWindow          -= OnRequestShowDialogueWindow;
@@ -469,6 +488,13 @@ namespace RPGFramework.Field
             StoreToTempMemory();
 
             return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.START_BATTLE);
+        }
+
+        private Task TriggerGameOverAsync()
+        {
+            m_GameOverRequested = false;
+
+            return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.GAME_OVER);
         }
 
         private async Task<FieldEntities> PreLoadFieldAsync()
@@ -598,7 +624,14 @@ namespace RPGFramework.Field
                 vm.RegisterEntity(record.EntityId, fieldEntityRuntime);
             }
 
-            m_FieldContext = new FieldContext(vm, entities);
+            byte[] blockerIds = new byte[m_Blockers.Length];
+
+            for (int i = 0; i < m_Blockers.Length; i++)
+            {
+                blockerIds[i] = m_Blockers[i].Id;
+            }
+
+            m_FieldContext = new FieldContext(vm, entities, blockerIds);
 
             SubscribeVm();
 
@@ -735,89 +768,29 @@ namespace RPGFramework.Field
 
             SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
 
-            foreach ((int entityId, Vector3 position) in m_FieldContext.EntityPositions)
+            IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
+
+            // Where everything stood first, as a move toward another entity aims at where that entity is.
+            for (int i = 0; i < entities.Count; i++)
             {
-                OnRequestSetEntityPosition(entityId, position);
+                ApplyEntityPose(entities[i].EntityId);
             }
 
-            foreach ((int entityId, Quaternion rotation) in m_FieldContext.EntityRotations)
+            for (int i = 0; i < entities.Count; i++)
             {
-                OnRequestSetEntityRotation(entityId, rotation);
+                int entityId = entities[i].EntityId;
+
+                ApplyEntityState(entityId, m_FieldContext.EntityState(entityId).Set);
             }
 
-            foreach ((int entityId, RotationState rotationState) in m_FieldContext.EntityRotationStates)
+            for (int i = 0; i < m_FieldContext.BlockerCount; i++)
             {
-                m_Entities[entityId].MovementDriver.ResumeRotation(rotationState);
-            }
+                FieldBlockerState blocker = m_FieldContext.BlockerStateAt(i);
 
-            for (int i = 0; i < m_FieldContext.VisibleEntityIds.Count; i++)
-            {
-                int entityId = m_FieldContext.VisibleEntityIds[i];
-
-                ShowOrHideEntity(entityId, true);
-            }
-
-            for (int i = 0; i < m_FieldContext.HiddenEntityIds.Count; i++)
-            {
-                int entityId = m_FieldContext.HiddenEntityIds[i];
-
-                ShowOrHideEntity(entityId, false);
-            }
-
-            // After visibility, which switches interaction too: these hold the last value a script set.
-            foreach ((int entityId, bool active) in m_FieldContext.InteractionsActive)
-            {
-                m_Entities[entityId].InteractionTrigger.SetActive(active);
-            }
-
-            foreach ((int entityId, bool solid) in m_FieldContext.Solidity)
-            {
-                m_Entities[entityId].Entity.SetSolid(solid);
-            }
-
-            foreach ((int entityId, bool active) in m_FieldContext.PushScriptsActive)
-            {
-                m_Entities[entityId].Entity.SetPushActive(active);
-            }
-
-            foreach ((int entityId, float range) in m_FieldContext.InteractionRanges)
-            {
-                m_Entities[entityId].InteractionTrigger.SetInteractionRange(range);
-            }
-
-            foreach ((int entityId, float speed) in m_FieldContext.MovementSpeeds)
-            {
-                GetMovementDriver(entityId).SetMoveSpeed(speed);
-            }
-
-            foreach ((int entityId, MoveEntityArgs move) in m_FieldContext.MovesInProgress)
-            {
-                OnRequestMoveEntity(entityId, move);
-            }
-
-            foreach ((int entityId, ulong stateNameHash) in m_FieldContext.BaseAnimations)
-            {
-                GetAnimationDriver(entityId).SetBaseAnimation(m_AnimationNames[stateNameHash]);
-            }
-
-            foreach ((int entityId, float multiplier) in m_FieldContext.AnimationSpeeds)
-            {
-                GetAnimationDriver(entityId).SetSpeedMultiplier(multiplier);
-            }
-
-            foreach ((int entityId, PlayAnimationArgs args) in m_FieldContext.PlayedAnimations)
-            {
-                GetAnimationDriver(entityId).Play(m_AnimationNames[args.NameHash], args.Mode, args.From, args.To);
-            }
-
-            foreach ((int entityId, bool active) in m_FieldContext.CollisionTriggersActive)
-            {
-                m_Entities[entityId].CollisionTrigger.SetActive(active);
-            }
-
-            foreach ((byte blockerId, bool active) in m_FieldContext.BlockersActive)
-            {
-                m_BlockersById[blockerId].SetBlocking(active);
+                if (blocker.Set)
+                {
+                    m_BlockersById[blocker.BlockerId].SetBlocking(blocker.Active);
+                }
             }
 
             await PostFieldLoadAsync();
@@ -836,6 +809,8 @@ namespace RPGFramework.Field
                 OnRequestInputLock(true);
             }
 
+            RaiseButtonWaits();
+
             await m_ScreenFadeService.FadeInAsync();
 
             m_InputAdapter.Enable();
@@ -852,6 +827,11 @@ namespace RPGFramework.Field
 
             m_InputRouter.Pop(m_ExplorationInputContext);
             m_ExplorationInputContext = null;
+
+            for (int i = 0; i < m_FieldContext.ButtonWaits.Count; i++)
+            {
+                m_InputRouter.Pop(m_FieldContext.ButtonWaits[i]);
+            }
 
             UpdateManager.UnregisterUpdatable(this);
             UpdateManager.UnregisterFixedUpdatable(this);
@@ -1013,26 +993,113 @@ namespace RPGFramework.Field
         /// </summary>
         private void OnRequestSetEntityVisible(int entityId, bool visible)
         {
-            m_FieldContext.SetEntityVisible(entityId, visible);
+            ref FieldEntityState state = ref m_FieldContext.EntityState(entityId);
+
+            state.SetVisible(visible);
 
             if (m_Entities[entityId].InteractionTrigger != null)
             {
-                m_FieldContext.SetInteractionActive(entityId, visible);
+                state.SetInteractionActive(visible);
             }
 
-            ShowOrHideEntity(entityId, visible);
+            ApplyEntityState(entityId, FieldEntityValues.Visible);
         }
 
         private void OnRequestSetEntitySolid(int entityId, bool solid)
         {
-            m_Entities[entityId].Entity.SetSolid(solid);
-            m_FieldContext.SetSolid(entityId, solid);
+            m_FieldContext.EntityState(entityId).SetSolid(solid);
+
+            ApplyEntityState(entityId, FieldEntityValues.Solid);
         }
 
         private void OnRequestSetPushScriptActive(int entityId, bool active)
         {
-            m_Entities[entityId].Entity.SetPushActive(active);
-            m_FieldContext.SetPushScriptActive(entityId, active);
+            m_FieldContext.EntityState(entityId).SetPushActive(active);
+
+            ApplyEntityState(entityId, FieldEntityValues.PushActive);
+        }
+
+        // Where an entity stood and how it was turning as the field was left.
+        private void ApplyEntityPose(int entityId)
+        {
+            FieldEntityState state = m_FieldContext.EntityState(entityId);
+
+            if ((state.Set & FieldEntityValues.Pose) != 0)
+            {
+                OnRequestSetEntityPosition(entityId, state.Position);
+                OnRequestSetEntityRotation(entityId, state.Rotation);
+            }
+
+            if ((state.Set & FieldEntityValues.RotationState) != 0)
+            {
+                GetMovementDriver(entityId).ResumeRotation(state.RotationState);
+            }
+        }
+
+        /// <summary>
+        /// Puts the named values of the entity's record on its components, those it holds. Visibility first, since
+        /// showing and hiding switch interaction too, and the recorded interaction state after it.
+        /// </summary>
+        private void ApplyEntityState(int entityId, FieldEntityValues values)
+        {
+            FieldEntityState      state  = m_FieldContext.EntityState(entityId);
+            FieldEntityComponents entity = m_Entities[entityId];
+            FieldEntityValues     apply  = values & state.Set;
+
+            if ((apply & FieldEntityValues.Visible) != 0)
+            {
+                ShowOrHideEntity(entityId, state.Visible);
+            }
+
+            if ((apply & FieldEntityValues.InteractionActive) != 0)
+            {
+                entity.InteractionTrigger.SetActive(state.InteractionActive);
+            }
+
+            if ((apply & FieldEntityValues.Solid) != 0)
+            {
+                entity.Entity.SetSolid(state.Solid);
+            }
+
+            if ((apply & FieldEntityValues.PushActive) != 0)
+            {
+                entity.Entity.SetPushActive(state.PushActive);
+            }
+
+            if ((apply & FieldEntityValues.InteractionRange) != 0)
+            {
+                entity.InteractionTrigger.SetInteractionRange(state.InteractionRange);
+            }
+
+            if ((apply & FieldEntityValues.MovementSpeed) != 0)
+            {
+                GetMovementDriver(entityId).SetMoveSpeed(state.MovementSpeed);
+            }
+
+            if ((apply & FieldEntityValues.Move) != 0)
+            {
+                OnRequestMoveEntity(entityId, state.Move);
+            }
+
+            if ((apply & FieldEntityValues.BaseAnimation) != 0)
+            {
+                GetAnimationDriver(entityId).SetBaseAnimation(m_AnimationNames[state.BaseAnimation]);
+            }
+
+            if ((apply & FieldEntityValues.AnimationSpeed) != 0)
+            {
+                GetAnimationDriver(entityId).SetSpeedMultiplier(state.AnimationSpeed);
+            }
+
+            if ((apply & FieldEntityValues.PlayedAnimation) != 0)
+            {
+                PlayAnimation(entityId, state.PlayedAnimation);
+            }
+
+            if ((apply & FieldEntityValues.CollisionTriggerActive) != 0)
+            {
+                entity.CollisionTrigger.SetActive(state.CollisionTriggerActive);
+            }
         }
 
         private void RaisePushes()
@@ -1229,27 +1296,32 @@ namespace RPGFramework.Field
 
         private void StoreToTempMemory()
         {
-            m_FieldContext.ClearMovesInProgress();
+            IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
 
-            foreach (KeyValuePair<int, FieldEntityComponents> entity in m_Entities)
+            for (int i = 0; i < entities.Count; i++)
             {
-                if (entity.Value.Entity == null)
+                ref FieldEntityState  state  = ref m_FieldContext.EntityStateAt(i);
+                FieldEntityComponents entity = m_Entities[entities[i].EntityId];
+
+                state.ClearMove();
+
+                if (entity.Entity == null)
                 {
                     continue;
                 }
 
-                m_FieldContext.SetEntityPositionAndRotation(entity.Key, entity.Value.Entity.transform);
+                Transform transform = entity.Entity.transform;
 
-                if (entity.Value.MovementDriver != null)
+                state.SetPose(transform.position, transform.rotation);
+
+                if (entity.MovementDriver != null)
                 {
-                    RotationState rotationState = entity.Value.MovementDriver.GetRotationState();
-
-                    m_FieldContext.SetEntityRotationState(entity.Key, rotationState);
+                    state.SetRotationState(entity.MovementDriver.GetRotationState());
                 }
 
-                if (entity.Value.HasMove && entity.Value.MovementDriver.IsMovingToTarget)
+                if (entity.HasMove && entity.MovementDriver.IsMovingToTarget)
                 {
-                    m_FieldContext.SetMoveInProgress(entity.Key, entity.Value.Move);
+                    state.SetMove(entity.Move);
                 }
             }
 
@@ -1280,8 +1352,9 @@ namespace RPGFramework.Field
 
         private void OnRequestSetBlockerActive(byte blockerId, bool active)
         {
+            m_FieldContext.BlockerState(blockerId).SetActive(active);
+
             m_BlockersById[blockerId].SetBlocking(active);
-            m_FieldContext.SetBlockerActive(blockerId, active);
         }
 
         private void OnGatewayEntered(int entityId, int eventId)
@@ -1296,20 +1369,23 @@ namespace RPGFramework.Field
 
         private void OnRequestSetCollisionTriggerActive(int entityId, bool active)
         {
-            m_Entities[entityId].CollisionTrigger.SetActive(active);
-            m_FieldContext.SetCollisionTriggerActive(entityId, active);
+            m_FieldContext.EntityState(entityId).SetCollisionTriggerActive(active);
+
+            ApplyEntityState(entityId, FieldEntityValues.CollisionTriggerActive);
         }
 
         private void OnRequestSetInteractionTriggerActive(int entityId, bool active)
         {
-            m_Entities[entityId].InteractionTrigger.SetActive(active);
-            m_FieldContext.SetInteractionActive(entityId, active);
+            m_FieldContext.EntityState(entityId).SetInteractionActive(active);
+
+            ApplyEntityState(entityId, FieldEntityValues.InteractionActive);
         }
 
         private void OnRequestSetInteractionRange(int entityId, float range)
         {
-            m_Entities[entityId].InteractionTrigger.SetInteractionRange(range);
-            m_FieldContext.SetInteractionRange(entityId, range);
+            m_FieldContext.EntityState(entityId).SetInteractionRange(range);
+
+            ApplyEntityState(entityId, FieldEntityValues.InteractionRange);
         }
 
         /// <summary>
@@ -1325,6 +1401,12 @@ namespace RPGFramework.Field
 
             m_FieldContext.SetInputLockedByScript(lockInput);
 
+            // An init script's lock is only recorded: the field locks itself as it sets up its input, once.
+            if (m_ExplorationInputContext == null)
+            {
+                return;
+            }
+
             OnRequestInputLock(lockInput);
         }
 
@@ -1335,6 +1417,8 @@ namespace RPGFramework.Field
                 MovePlayer(Vector3.zero);
                 m_ScriptInputLock = new BlockAllInputContext();
                 m_InputRouter.Push(m_ScriptInputLock);
+
+                RaiseButtonWaits();
             }
             else
             {
@@ -1378,26 +1462,36 @@ namespace RPGFramework.Field
 
         private void OnRequestSetEntityMovementSpeed(int entityId, float movementSpeed)
         {
-            GetMovementDriver(entityId).SetMoveSpeed(movementSpeed);
-            m_FieldContext.SetMovementSpeed(entityId, movementSpeed);
+            m_FieldContext.EntityState(entityId).SetMovementSpeed(movementSpeed);
+
+            ApplyEntityState(entityId, FieldEntityValues.MovementSpeed);
         }
 
         private void OnRequestSetBaseAnimation(int entityId, ulong stateNameHash)
         {
-            GetAnimationDriver(entityId).SetBaseAnimation(m_AnimationNames[stateNameHash]);
-            m_FieldContext.SetBaseAnimation(entityId, stateNameHash);
+            m_FieldContext.EntityState(entityId).SetBaseAnimation(stateNameHash);
+
+            ApplyEntityState(entityId, FieldEntityValues.BaseAnimation);
         }
 
         private void OnRequestSetAnimationSpeed(int entityId, float multiplier)
         {
-            GetAnimationDriver(entityId).SetSpeedMultiplier(multiplier);
-            m_FieldContext.SetAnimationSpeed(entityId, multiplier);
+            m_FieldContext.EntityState(entityId).SetAnimationSpeed(multiplier);
+
+            ApplyEntityState(entityId, FieldEntityValues.AnimationSpeed);
         }
 
+        // Played whatever its mode; recorded only if it is still showing when the field is left.
         private void OnRequestPlayAnimation(int entityId, PlayAnimationArgs args)
         {
+            m_FieldContext.EntityState(entityId).SetPlayedAnimation(args);
+
+            PlayAnimation(entityId, args);
+        }
+
+        private void PlayAnimation(int entityId, PlayAnimationArgs args)
+        {
             GetAnimationDriver(entityId).Play(m_AnimationNames[args.NameHash], args.Mode, args.From, args.To);
-            m_FieldContext.SetPlayedAnimation(entityId, args);
         }
 
         private bool IsEntityAnimating(int entityId)
@@ -1426,8 +1520,9 @@ namespace RPGFramework.Field
 
         private void OnRequestStopAnimation(int entityId)
         {
+            m_FieldContext.EntityState(entityId).ClearPlayedAnimation();
+
             GetAnimationDriver(entityId).ReturnToBase();
-            m_FieldContext.ClearPlayedAnimation(entityId);
         }
 
         private IAnimationDriver GetAnimationDriver(int entityId)
@@ -1714,23 +1809,67 @@ namespace RPGFramework.Field
             dialogueChannel.Window = null;
         }
 
-        private void OnRequestSetBattleModeOptions(BattleArgs args)
+        private void OnRequestSetBattleMode(BattleFlags mode)
         {
-            m_BattleArgsStore.Set(args);
+            m_BattleModeStore.SetMode(mode);
         }
 
         /// <summary>
         /// A field change outranks a battle whichever was asked for first, so a battle is refused while one is pending
         /// and dropped when one is asked for.
         /// </summary>
-        private void OnRequestStartBattle()
+        private void OnRequestStartBattle(BattleArgs args)
         {
             if (m_FieldTransitionRequested)
             {
                 return;
             }
 
+            m_BattleArgsStore.Set(args);
+
             m_BattleTransitionRequested = true;
+        }
+
+        private BattleCompleteState GetLastBattleResult()
+        {
+            BattleCompleteState result = m_BattleCompleteStateStore.State;
+
+            return result;
+        }
+
+        private void OnRequestGameOver()
+        {
+            m_GameOverRequested = true;
+        }
+
+        // Above the script's input lock, which would otherwise swallow the press, as it may be locked before or after.
+        private Func<bool> StartWaitingForButton(ControlSlot button)
+        {
+            ButtonWaitInputContext wait = new ButtonWaitInputContext(button, OnButtonWaitPressed);
+
+            m_FieldContext.AddButtonWait(wait);
+            m_InputRouter.Push(wait);
+
+            Func<bool> pressed = () => wait.Pressed;
+
+            return pressed;
+        }
+
+        private void OnButtonWaitPressed(ButtonWaitInputContext wait)
+        {
+            m_InputRouter.Pop(wait);
+            m_FieldContext.RemoveButtonWait(wait);
+        }
+
+        private void RaiseButtonWaits()
+        {
+            for (int i = 0; i < m_FieldContext.ButtonWaits.Count; i++)
+            {
+                ButtonWaitInputContext wait = m_FieldContext.ButtonWaits[i];
+
+                m_InputRouter.Pop(wait);
+                m_InputRouter.Push(wait);
+            }
         }
     }
 }

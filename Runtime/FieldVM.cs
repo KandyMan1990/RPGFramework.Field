@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core;
 using RPGFramework.Core.Dialogue;
+using RPGFramework.Core.Input;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Field.BlockState;
@@ -65,8 +66,11 @@ namespace RPGFramework.Field
         internal event Action<byte, ulong, ulong[], Action<byte>> RequestAskPlayerToMakeAChoice;
         internal event Action<byte, DialogueWindowStyle>          RequestSetDialogueWindowStyle;
         internal event Action<byte, int>                          RequestSetMessageVariable;
-        internal event Action<BattleArgs>                         RequestSetBattleModeOptions;
-        internal event Action                                     RequestStartBattle;
+        internal event Action<BattleFlags>                        RequestSetBattleMode;
+        internal event Action<BattleArgs>                         RequestStartBattle;
+        internal Func<BattleCompleteState>                        GetLastBattleResult;
+        internal event Action                                     RequestGameOver;
+        internal Func<ControlSlot, Func<bool>>                    StartWaitingForButton;
 
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
 
@@ -132,11 +136,11 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
                        // { FieldScriptOpCode.SetFieldExitFade, SetFieldExitFadeOpcodeHandler },
                        // { FieldScriptOpCode.WorldMapJump, WorldMapJumpOpcodeHandler },
-                       { FieldScriptOpCode.SetBattleModeOptions, SetBattleModeOptionsOpcodeHandler },
+                       { FieldScriptOpCode.SetBattleMode, SetBattleModeOpcodeHandler },
                        { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
-                       // { FieldScriptOpCode.LoadResultOfLastBattle, LoadResultOfLastBattleOpcodeHandler },
+                       { FieldScriptOpCode.GetLastBattleResult, GetLastBattleResultOpcodeHandler },
                        // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
-                       // { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
+                       { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
                        { FieldScriptOpCode.SaveAccessibility, SaveAccessibilityOpcodeHandler },
 
                        // Assignment and mathematics
@@ -446,6 +450,7 @@ namespace RPGFramework.Field
 
                        // Input and haptics
                        // { FieldScriptOpCode.SetVibration, SetVibrationOpcodeHandler },
+                       { FieldScriptOpCode.WaitForButton, WaitForButtonOpcodeHandler },
                    };
         }
 
@@ -1433,9 +1438,22 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Set the arena, enemy group, flags and enemy level for the next battle.
+        /// Set the battle mode: the flags every random battle is fought with, and whether losing a battle or a countdown
+        /// running out ends the game.
         /// </summary>
-        private void SetBattleModeOptionsOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetBattleModeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            ushort            mode    = ReadArgumentUshort(ctx, ref sources);
+
+            RequestSetBattleMode?.Invoke((BattleFlags)mode);
+        }
+
+        /// <summary>
+        /// Ask for a battle to begin, with its arena, enemy group, flags and enemy level, and end the frame, so the rest
+        /// of the script runs after the battle rather than before it.
+        /// </summary>
+        private void StartBattleOpcodeHandler(ScriptExecutionContext ctx)
         {
             SequentialSources sources     = default;
             ushort            arena       = ReadArgumentUshort(ctx, ref sources);
@@ -1445,16 +1463,29 @@ namespace RPGFramework.Field
 
             BattleArgs args = new BattleArgs(arena, enemyGroup, (BattleFlags)battleFlags, enemyLevel);
 
-            RequestSetBattleModeOptions?.Invoke(args);
+            RequestStartBattle?.Invoke(args);
+
+            ctx.YieldRequested = true;
         }
 
         /// <summary>
-        /// Ask for the battle set up by SET_BATTLE_MODE_OPTIONS to begin, and end the frame, so the rest of the script
-        /// runs after the battle rather than before it.
+        /// Store how the last battle ended, as its <see cref="BattleCompleteState" />.
         /// </summary>
-        private void StartBattleOpcodeHandler(ScriptExecutionContext ctx)
+        private void GetLastBattleResultOpcodeHandler(ScriptExecutionContext ctx)
         {
-            RequestStartBattle?.Invoke();
+            ReadDestination(ctx, out MemoryBank bank, out ushort address);
+
+            byte result = (byte)GetLastBattleResult();
+
+            WriteVariableByte(ctx, bank, address, result);
+        }
+
+        /// <summary>
+        /// Ask for the game to end, and end the frame, as the field is about to go.
+        /// </summary>
+        private void GameOverOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestGameOver?.Invoke();
 
             ctx.YieldRequested = true;
         }
@@ -2393,6 +2424,19 @@ namespace RPGFramework.Field
         private void WaitForMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsMusicVolumeFading()));
+        }
+
+        /// <summary>
+        /// Wait until the player presses a button, counting only a press made after the wait began.
+        /// </summary>
+        private void WaitForButtonOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            ControlSlot       button  = (ControlSlot)ReadArgumentByte(ctx, ref sources);
+
+            Func<bool> pressed = StartWaitingForButton(button);
+
+            ctx.Block(new WaitUntilBlock(pressed));
         }
     }
 }

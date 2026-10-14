@@ -19,12 +19,13 @@ RPGFramework.DI, RPGFramework.Audio, RPGFramework.Localisation, RPGFramework.Has
    - how wide the player's interaction angle is.
 2. **A scene installer** binding `IFieldPresentation` to `PrefabFieldPresentation`, `IFieldDatabase` to the generated
    `FieldDatabase` (see Export, below) and `IFieldModule` to `FieldModule`.
-3. **In your global installer**, bind `IFieldArgsStore` to `VariableFieldArgsStore` and `IFieldResumeDataStore` to
-   `FieldResumeDataStore`.
+3. **In your global installer**, bind `IFieldArgsStore` to `FieldArgsStore`, `IGameOverFieldStore` to
+   `GameOverFieldStore` and `IFieldResumeDataStore` to `FieldResumeDataStore`.
 4. **Add the scene to your game's module and scene databases** under `FieldConstants.MODULE_ID`.
-5. **Open your variable map.** Field's variables are added to it: the current field and spawn point, and the player's
-   saved position and facing. Pick the field and spawn point a new game starts at as their defaults, and the battle
-   music it starts with, Core's `BattleMusic`, by name.
+5. **Open your variable map.** Field's variables are added to it: the current field and spawn point, the player's
+   saved position and facing, and the game-over field and its spawn point. Pick the field and spawn point a new game
+   starts at as their defaults, the field a game over sends the player to, and the battle music a new game starts with,
+   Core's `BattleMusic`, by name.
 
 ---
 
@@ -135,7 +136,8 @@ RETURN
   - animation;
   - blockers and gateways;
   - music, sounds and reverb;
-  - saving and battles.
+  - waiting for a button;
+  - saving, battles and game over.
 - **The palette only offers opcodes the field can run.** Those that act through an optional package, such as PS1 reverb,
   appear only once it is installed.
 
@@ -164,7 +166,11 @@ RETURN
     stays up until a script closes it.
   - Text types at the player's field message speed.
 - **Leaving a field:** a gateway or a script jumps to another field and spawn point. The menu button opens the party
-  menu when the field allows it, and a script can start a battle.
+  menu when the field allows it, and a script can start a battle or end the game.
+  - A battle carries its own arena, enemies, flags and level. Whether losing it, or a countdown running out, ends the
+    game is the battle mode's, which a script sets and the game saves; after the battle, a script reads how it ended.
+  - A game over sends the player to the game-over field your map names, entered afresh: a field like any other, whose
+    scripts decide what it shows and when the game goes back to the title.
   - Returning from the menu or a battle puts the field back as it was: positions, animations, visibility, blockers and
     more.
   - Arriving in a new field starts it afresh.

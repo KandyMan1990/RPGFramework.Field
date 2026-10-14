@@ -1,4 +1,5 @@
 ﻿using System;
+using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core.Memory;
 
 namespace RPGFramework.Field
@@ -154,13 +155,16 @@ namespace RPGFramework.Field
     /// Marks an opcode as one an author can use, and gives the field editor what it needs to offer it:
     /// the scriptName the compiler accepts and a description for the block.<br /><br />
     /// An opcode without this attribute is a declaration of intent — it has no handler and no encoder,
-    /// and the editor will not show it.
+    /// and the editor will not show it. Left out of a player build: only the editor reads it.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field)]
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
     internal sealed class FieldOpCodeAttribute : Attribute
     {
+#if UNITY_EDITOR
         public string         ScriptName { get; }
         public ArgumentLayout Layout     { get; }
+#endif
 
         /// <summary>
         /// One line describing what the opcode does, shown on its block. Optional where the scriptName and
@@ -201,10 +205,13 @@ namespace RPGFramework.Field
         /// </summary>
         public string Package { get; set; }
 
+        // Its arguments bind in every build; only the editor keeps them.
         public FieldOpCodeAttribute(string scriptName, ArgumentLayout layout)
         {
+#if UNITY_EDITOR
             ScriptName = scriptName;
             Layout     = layout;
+#endif
         }
     }
 
@@ -212,16 +219,19 @@ namespace RPGFramework.Field
     /// One argument of an opcode, in the order it is written.<br /><br />
     /// <see cref="Index" /> is explicit rather than relying on the order attributes come back in:
     /// <c>GetCustomAttributes</c> does not guarantee an order, and argument order is what turns a block's
-    /// inputs into correct bytecode.
+    /// inputs into correct bytecode. Left out of a player build: only the editor reads it.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
     internal sealed class ArgumentAttribute : Attribute
     {
+#if UNITY_EDITOR
         public int           Index    { get; }
         public string        Name     { get; }
         public ArgumentType  Type     { get; }
         public VariableWidth Width    { get; }
         public bool          HasWidth { get; }
+#endif
 
         /// <summary>
         /// What the argument means, where the name alone is not enough — a range, or what a value of zero
@@ -237,6 +247,12 @@ namespace RPGFramework.Field
         public Type EnumType { get; set; }
 
         /// <summary>
+        /// Which of a <see cref="FlagsAttribute" /> enum's values this argument reads, as a mask; zero for all. The editor
+        /// offers only these, and the compiler refuses a written number with any other set.
+        /// </summary>
+        public long EnumMask { get; set; }
+
+        /// <summary>
         /// What a new block starts with, as script text, where the type's own — zero, false — would be a trap, as a
         /// music volume of zero is silence.
         /// </summary>
@@ -244,9 +260,11 @@ namespace RPGFramework.Field
 
         public ArgumentAttribute(int index, string name, ArgumentType type)
         {
+#if UNITY_EDITOR
             Index = index;
             Name  = name;
             Type  = type;
+#endif
         }
 
         /// <summary>
@@ -254,11 +272,13 @@ namespace RPGFramework.Field
         /// </summary>
         public ArgumentAttribute(int index, string name, ArgumentType type, VariableWidth width)
         {
+#if UNITY_EDITOR
             Index    = index;
             Name     = name;
             Type     = type;
             Width    = width;
             HasWidth = true;
+#endif
         }
     }
 
@@ -343,5 +363,26 @@ namespace RPGFramework.Field
             return canRead;
         }
 #endif
+    }
+
+    /// <summary>Which battle flags each battle opcode reads, for the editor to offer and the compiler to check.</summary>
+    internal static class BattleFlagMasks
+    {
+        /// <summary>One battle's own, as <c>START_BATTLE</c> gives them.</summary>
+        internal const long ONE_BATTLE = (long)(BattleFlags.DISABLE_ESCAPE |
+                                                BattleFlags.DISABLE_VICTORY_FANFARE |
+                                                BattleFlags.INHERIT_COUNTDOWN_TIMER |
+                                                BattleFlags.DISABLE_ITEM_AND_EXP_GAIN |
+                                                BattleFlags.USE_CURRENT_MUSIC |
+                                                BattleFlags.FORCE_PREEMPTIVE_ATTACK |
+                                                BattleFlags.FORCE_BACK_ATTACK |
+                                                BattleFlags.DISABLE_PREEMPTIVE_AND_BACK_ATTACK);
+
+        /// <summary>
+        /// The battle mode's: whether losing a battle or a countdown running out ends the game. Random battles' own
+        /// flags join these once random battles are built.
+        /// </summary>
+        internal const long BATTLE_MODE = (long)(BattleFlags.DISABLE_GAME_OVER_ON_TIME_OUT |
+                                                 BattleFlags.DISABLE_GAME_OVER_ON_DEFEAT);
     }
 }

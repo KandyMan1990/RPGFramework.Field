@@ -10,11 +10,15 @@ using UnityEngine.UIElements;
 namespace RPGFramework.Field.Editor
 {
     /// <summary>
-    /// The field a new game begins in, chosen by name; the variable holds the name's hash.
+    /// A field chosen by name for a variable's default; the variable holds the name's hash.
     /// </summary>
-    internal sealed class CurrentFieldDefaultField : IVariableDefaultField
+    internal abstract class FieldNameDefaultField : IVariableDefaultField
     {
-        string IVariableDefaultField.VariableName => FieldVariables.CURRENT_FIELD;
+        protected abstract string VariableName { get; }
+
+        protected abstract string Label { get; }
+
+        string IVariableDefaultField.VariableName => VariableName;
 
         VisualElement IVariableDefaultField.Create(SerializedProperty variable)
         {
@@ -23,14 +27,14 @@ namespace RPGFramework.Field.Editor
 
             if (names.Count == 0)
             {
-                HelpBox none = new HelpBox("No fields in a field database yet, so there is nowhere to begin.", HelpBoxMessageType.Warning);
+                HelpBox none = new HelpBox("No fields in a field database yet, so there is none to choose.", HelpBoxMessageType.Warning);
 
                 return none;
             }
 
             string current = NameForHash(names, defaultValue.ulongValue);
 
-            DropdownField field = new DropdownField("Starts in field", names, Mathf.Max(0, names.IndexOf(current)));
+            DropdownField field = new DropdownField(Label, names, Mathf.Max(0, names.IndexOf(current)));
 
             if (current == null)
             {
@@ -58,18 +62,39 @@ namespace RPGFramework.Field.Editor
         }
     }
 
-    /// <summary>
-    /// Where in that field a new game begins, chosen from the spawn points of the field
-    /// <see cref="FieldVariables.CURRENT_FIELD" /> defaults to, and rebuilt when that changes.
-    /// </summary>
-    internal sealed class CurrentSpawnDefaultField : IVariableDefaultField
+    /// <summary>The field a new game begins in.</summary>
+    internal sealed class CurrentFieldDefaultField : FieldNameDefaultField
     {
-        string IVariableDefaultField.VariableName => FieldVariables.CURRENT_SPAWN;
+        protected override string VariableName => FieldVariables.CURRENT_FIELD;
+
+        protected override string Label => "Starts in field";
+    }
+
+    /// <summary>The field a game over sends the player to.</summary>
+    internal sealed class GameOverFieldDefaultField : FieldNameDefaultField
+    {
+        protected override string VariableName => FieldVariables.GAME_OVER_FIELD;
+
+        protected override string Label => "Game over field";
+    }
+
+    /// <summary>
+    /// A spawn point for a variable's default, chosen from the spawn points of the field another variable defaults to,
+    /// and rebuilt when that changes.
+    /// </summary>
+    internal abstract class SpawnDefaultField : IVariableDefaultField
+    {
+        protected abstract string VariableName { get; }
+
+        // The variable naming the field whose spawn points are offered.
+        protected abstract string FieldVariableName { get; }
+
+        string IVariableDefaultField.VariableName => VariableName;
 
         VisualElement IVariableDefaultField.Create(SerializedProperty variable)
         {
             VisualElement      slot         = new VisualElement();
-            SerializedProperty fieldDefault = FindDefault(variable.serializedObject, FieldVariables.CURRENT_FIELD);
+            SerializedProperty fieldDefault = FindDefault(variable.serializedObject, FieldVariableName);
 
             Build(slot, variable, fieldDefault);
 
@@ -88,7 +113,7 @@ namespace RPGFramework.Field.Editor
             SerializedProperty defaultValue = variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
             int                spawnId      = (int)VariableDefaults.ToInteger(defaultValue.ulongValue, VariableWidth.Int);
 
-            string fieldName = fieldDefault == null ? null : CurrentFieldDefaultField.NameForHash(FieldScriptBlockEditor.GatherFieldNames(), fieldDefault.ulongValue);
+            string fieldName = fieldDefault == null ? null : FieldNameDefaultField.NameForHash(FieldScriptBlockEditor.GatherFieldNames(), fieldDefault.ulongValue);
 
             List<FieldScriptBlockEditor.SpawnChoice> spawns = fieldName == null ? new List<FieldScriptBlockEditor.SpawnChoice>() : FieldScriptBlockEditor.GatherSpawnChoices(fieldName);
 
@@ -143,5 +168,21 @@ namespace RPGFramework.Field.Editor
 
             return null;
         }
+    }
+
+    /// <summary>Where in its field a new game begins.</summary>
+    internal sealed class CurrentSpawnDefaultField : SpawnDefaultField
+    {
+        protected override string VariableName => FieldVariables.CURRENT_SPAWN;
+
+        protected override string FieldVariableName => FieldVariables.CURRENT_FIELD;
+    }
+
+    /// <summary>Where in the game-over field the player arrives.</summary>
+    internal sealed class GameOverSpawnDefaultField : SpawnDefaultField
+    {
+        protected override string VariableName => FieldVariables.GAME_OVER_SPAWN;
+
+        protected override string FieldVariableName => FieldVariables.GAME_OVER_FIELD;
     }
 }

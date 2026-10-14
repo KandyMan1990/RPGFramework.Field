@@ -39,6 +39,16 @@ namespace RPGFramework.Field
         /// </summary>
         public const string PLAYER_FACING = "PlayerFacing";
 
+        /// <summary>
+        /// The field a game over sends the player to, as its name's hash. Only its default is used: the game's choice.
+        /// </summary>
+        public const string GAME_OVER_FIELD = "GameOverField";
+
+        /// <summary>
+        /// The spawn point the player arrives at in the game-over field. Only its default is used: the game's choice.
+        /// </summary>
+        public const string GAME_OVER_SPAWN = "GameOverSpawn";
+
 #if UNITY_EDITOR
         private static readonly RequiredVariable[] m_Variables =
         {
@@ -47,7 +57,9 @@ namespace RPGFramework.Field
             new RequiredVariable(PLAYER_POSITION_X, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
             new RequiredVariable(PLAYER_POSITION_Y, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
             new RequiredVariable(PLAYER_POSITION_Z, MemoryBank.Persistent, VariableWidth.Float, "Where the player stood when the game was saved. Its default is not used"),
-            new RequiredVariable(PLAYER_FACING,     MemoryBank.Persistent, VariableWidth.Float, "Which way the player faced when the game was saved, in degrees around the field's up axis. Its default is not used")
+            new RequiredVariable(PLAYER_FACING,     MemoryBank.Persistent, VariableWidth.Float, "Which way the player faced when the game was saved, in degrees around the field's up axis. Its default is not used"),
+            new RequiredVariable(GAME_OVER_FIELD,   MemoryBank.Session,    VariableWidth.ULong, "The field a game over sends the player to. Only its default is used"),
+            new RequiredVariable(GAME_OVER_SPAWN,   MemoryBank.Session,    VariableWidth.Int,   "The spawn point the player arrives at in the game-over field. Only its default is used")
         };
 
         IReadOnlyList<RequiredVariable> IRequiredVariables.Variables => m_Variables;

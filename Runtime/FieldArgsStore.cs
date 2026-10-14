@@ -11,13 +11,13 @@ namespace RPGFramework.Field
     /// so it is saved with persistent memory: a new game begins at their defaults, and a load resumes at the
     /// spawn point the player last entered by.
     /// </summary>
-    public sealed class VariableFieldArgsStore : IFieldArgsStore
+    public sealed class FieldArgsStore : IFieldArgsStore
     {
         private readonly IMemoryService m_MemoryService;
         private readonly ushort         m_FieldAddress;
         private readonly ushort         m_SpawnAddress;
 
-        internal VariableFieldArgsStore(IMemoryService memoryService, IVariableMap variableMap)
+        internal FieldArgsStore(IMemoryService memoryService, IVariableMap variableMap)
         {
             variableMap.TryGetVariable(FieldVariables.CURRENT_FIELD, out VariableDefinition field);
             variableMap.TryGetVariable(FieldVariables.CURRENT_SPAWN, out VariableDefinition spawn);

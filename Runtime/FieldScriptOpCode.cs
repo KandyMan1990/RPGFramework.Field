@@ -1,5 +1,6 @@
 ﻿using RPGFramework.Audio.Music;
 using RPGFramework.Battle.SharedTypes;
+using RPGFramework.Core.Input;
 using RPGFramework.Core.Memory;
 using RPGFramework.Field.FieldVmArgs;
 
@@ -135,19 +136,25 @@ namespace RPGFramework.Field
         SetFieldExitFade = 0x0103, // bool faded - whether leaving by a gateway fades the screen
         WorldMapJump     = 0x0104, // int spawnIndex
 
-        [FieldOpCode("SET_BATTLE_MODE_OPTIONS", ArgumentLayout.Sequential, Summary = "Choose the arena, enemies and rules for the next battle")]
+        [FieldOpCode("SET_BATTLE_MODE", ArgumentLayout.Sequential, Summary = "Set whether losing a battle or a countdown running out ends the game, for every battle from now on, kept in the save until set again")]
+        [Argument(0, "mode", ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.BATTLE_MODE, Description = "whether losing ends the game; a battle's own flags are START_BATTLE's")]
+        SetBattleMode = 0x0105,
+
+        [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin a battle. The script carries on after it. Ignored if the field is already changing", StopsInit = true)]
         [Argument(0, "arena",      ArgumentType.UShort)]
         [Argument(1, "enemyGroup", ArgumentType.UShort)]
-        [Argument(2, "flags",      ArgumentType.UShort, EnumType = typeof(BattleFlags))]
+        [Argument(2, "flags",      ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.ONE_BATTLE, Description = "this battle's own; whether losing ends the game is SET_BATTLE_MODE's")]
         [Argument(3, "enemyLevel", ArgumentType.Byte)]
-        SetBattleModeOptions = 0x0105,
-
-        [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin the battle set up by SET_BATTLE_MODE_OPTIONS. The script carries on after it. Ignored if the field is already changing", StopsInit = true)]
         StartBattle = 0x0106,
 
-        LoadResultOfLastBattle = 0x0107,
-        RandomEncounters       = 0x0108,
-        GameOver               = 0x0109,
+        [FieldOpCode("GET_LAST_BATTLE_RESULT", ArgumentLayout.BankUnary, Summary = "Store how the last battle ended: 1 defeat, 2 escape, 3 out of time, 4 victory")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
+        GetLastBattleResult = 0x0107,
+
+        RandomEncounters = 0x0108,
+
+        [FieldOpCode("GAME_OVER", ArgumentLayout.Sequential, Summary = "End the game and go back to the title", StopsInit = true)]
+        GameOver = 0x0109,
 
         [FieldOpCode("SAVE_ACCESSIBILITY", ArgumentLayout.Sequential, Summary = "Allow or block saving from the party menu. Every field starts at the game's default, from the variable map")]
         [Argument(0, "enabled", ArgumentType.Bool)]
@@ -1247,6 +1254,10 @@ namespace RPGFramework.Field
 
         // Input and haptics (0x0B00)
         SetVibration = 0x0B00, // float lowFrequency, float highFrequency, float duration
+
+        [FieldOpCode("WAIT_FOR_BUTTON", ArgumentLayout.Sequential, Summary = "Wait until the player presses a button", StopsInit = true)]
+        [Argument(0, "button", ArgumentType.Byte, EnumType = typeof(ControlSlot))]
+        WaitForButton = 0x0B01,
     }
 
     /// <summary>

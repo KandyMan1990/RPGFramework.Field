@@ -15,6 +15,7 @@ namespace RPGFramework.Field.Editor
         public VariableWidth Width       { get; }
         public string        Description { get; }
         public Type          EnumType    { get; }
+        public long          EnumMask    { get; }
         public string        Default     { get; }
 
         internal FieldArgumentInfo(ArgumentAttribute attribute)
@@ -24,6 +25,7 @@ namespace RPGFramework.Field.Editor
             Width       = attribute.Width;
             Description = attribute.Description;
             EnumType    = attribute.EnumType;
+            EnumMask    = attribute.EnumMask;
             Default     = attribute.Default;
         }
     }
@@ -157,6 +159,11 @@ namespace RPGFramework.Field.Editor
                     if (argument.EnumType != null && (!argument.EnumType.IsEnum || argument.Type != ArgumentType.Byte && argument.Type != ArgumentType.UShort))
                     {
                         problems.Add($"'{field.Name}' argument '{argument.Name}' names {argument.EnumType.Name}, which must be an enum on a {nameof(ArgumentType.Byte)} or {nameof(ArgumentType.UShort)} argument");
+                    }
+
+                    if (argument.EnumMask != 0 && (argument.EnumType == null || !argument.EnumType.IsDefined(typeof(FlagsAttribute), false)))
+                    {
+                        problems.Add($"'{field.Name}' argument '{argument.Name}' has an {nameof(ArgumentAttribute.EnumMask)}, which only a {nameof(FlagsAttribute)} enum's argument can have");
                     }
 
                     if (argument.Index < 0 || argument.Index >= arguments.Length)

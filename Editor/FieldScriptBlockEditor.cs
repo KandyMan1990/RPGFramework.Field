@@ -513,6 +513,69 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
+        /// A flags argument that reads only some of its enum's values, offering just those. Anything else already
+        /// written is kept, and named, until the choice is changed, which writes only what is offered.
+        /// </summary>
+        private VisualElement MaskedFlagsChoice(FieldScriptBlock block, int argumentIndex, FieldArgumentInfo argument, string label, string current)
+        {
+            long.TryParse(current, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out long number);
+
+            Array        values = Enum.GetValues(argument.EnumType);
+            List<string> names  = new List<string>(values.Length);
+            List<long>   bits   = new List<long>(values.Length);
+            int          shown  = 0;
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                long bit = Convert.ToInt64(values.GetValue(i));
+
+                // One flag each: none, and anything combining several, are not choices.
+                if (bit == 0 || (bit & (bit - 1)) != 0 || (bit & argument.EnumMask) == 0)
+                {
+                    continue;
+                }
+
+                if ((number & bit) != 0)
+                {
+                    shown |= 1 << names.Count;
+                }
+
+                names.Add(values.GetValue(i).ToString());
+                bits.Add(bit);
+            }
+
+            MaskField field = new MaskField(label, names, shown);
+
+            field.RegisterValueChangedCallback(e =>
+            {
+                long value = 0;
+
+                for (int i = 0; i < bits.Count; i++)
+                {
+                    if ((e.newValue & (1 << i)) != 0)
+                    {
+                        value |= bits[i];
+                    }
+                }
+
+                Set(block, argumentIndex, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            });
+
+            long unread = number & ~argument.EnumMask;
+
+            if (unread == 0)
+            {
+                return field;
+            }
+
+            VisualElement withWarning = new VisualElement();
+            withWarning.Add(field);
+            withWarning.Add(new HelpBox($"Also written: {Enum.ToObject(argument.EnumType, unread)}, which this does not read, so the script will not compile. Changing the choice above drops it.", HelpBoxMessageType.Warning));
+
+            return withWarning;
+        }
+
+        /// <summary>
         /// The field's entities by name, writing the id. Choosing one rebuilds the block, since which scripts it offers
         /// for an event beside it depends on which entity is named.
         /// </summary>
@@ -664,7 +727,9 @@ namespace RPGFramework.Field.Editor
 
             if (argument.EnumType != null)
             {
-                return EnumChoice(block, argumentIndex, argument.EnumType, label, current);
+                return argument.EnumMask != 0
+                           ? MaskedFlagsChoice(block, argumentIndex, argument, label, current)
+                           : EnumChoice(block, argumentIndex, argument.EnumType, label, current);
             }
 
             switch (argument.Type)

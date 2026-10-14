@@ -370,6 +370,11 @@ namespace RPGFramework.Field.Editor
                 FieldArgumentInfo argument = opCode.Arguments[i];
                 int               part     = i + 1;
 
+                if (argument.EnumMask != 0)
+                {
+                    CheckEnumMask(argument, parts[part], parts[0], lineNumber);
+                }
+
                 if (ArgumentTypes.TakesSource(argument.Type))
                 {
                     WriteSourcedArgument(bw, ms, argument.Type, parts[part], parts[0], lineNumber, ref sourcesPosition, ref variableMap);
@@ -379,6 +384,27 @@ namespace RPGFramework.Field.Editor
                     WriteUnsourcedArgument(bw, argument.Type, parts, part, lineNumber);
                 }
             }
+        }
+
+        // A value read from a variable is known only in play; one written here must name only what the opcode reads.
+        private static void CheckEnumMask(FieldArgumentInfo argument, string token, string scriptName, int lineNumber)
+        {
+            if (IsVariableToken(token) || !long.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out long value))
+            {
+                return;
+            }
+
+            long unread = value & ~argument.EnumMask;
+
+            if (unread == 0)
+            {
+                return;
+            }
+
+            string names = Enum.ToObject(argument.EnumType, unread).ToString();
+            string hint  = string.IsNullOrEmpty(argument.Description) ? string.Empty : $": {argument.Description}";
+
+            throw new Exception($"line {lineNumber}: {scriptName} {argument.Name} [{value}] includes {names}, which {scriptName} does not read{hint}");
         }
 
         private static void WriteSourcedArgument(BinaryWriter bw, MemoryStream ms, ArgumentType type, string token, string scriptName, int lineNumber, ref int sourcesPosition, ref IVariableMap variableMap)
