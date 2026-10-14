@@ -101,7 +101,7 @@ namespace RPGFramework.Field.Editor
 
             sb.AppendLine();
 
-            sb.AppendLine("\t\tFieldDatabaseAsset IFieldDatabase.Get(ulong fieldNameHash)");
+            sb.AppendLine("\t\tFieldDefinition IFieldDatabase.Get(ulong fieldNameHash)");
             sb.AppendLine("\t\t{");
             sb.AppendLine("\t\t\treturn m_FieldsByNameHash[fieldNameHash];");
             sb.AppendLine("\t\t}");
