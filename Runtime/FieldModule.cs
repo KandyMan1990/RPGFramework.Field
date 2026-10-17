@@ -14,11 +14,11 @@ using RPGFramework.Core.Dialogue.Flows;
 using RPGFramework.Core.Input;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.PlayerLoop;
-using RPGFramework.Core.Rendering;
 using RPGFramework.Core.SaveData;
 using RPGFramework.Core.Settings;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Core.Store;
+using RPGFramework.Core.Transitions;
 using RPGFramework.DI;
 using RPGFramework.Field.FieldVmArgs;
 using RPGFramework.Field.SharedTypes;
@@ -50,7 +50,7 @@ namespace RPGFramework.Field
         private readonly int[]                     m_MessageVariables;
         private readonly IMemoryService            m_MemoryService;
         private readonly ITempMemoryArgs           m_TempMemoryArgs;
-        private readonly IScreenFadeService        m_ScreenFadeService;
+        private readonly ITransitionService        m_Transitions;
         private readonly IBattleArgsStore          m_BattleArgsStore;
         private readonly IFieldArgsStore           m_FieldArgsStore;
         private readonly IMenuArgsStore            m_MenuArgsStore;
@@ -103,7 +103,7 @@ namespace RPGFramework.Field
                              ILocalisationService      localisationService,
                              IMemoryService            memoryService,
                              ITempMemoryArgs           tempMemoryArgs,
-                             IScreenFadeService        screenFadeService,
+                             ITransitionService        transitions,
                              IBattleArgsStore          battleArgsStore,
                              IFieldArgsStore           fieldArgsStore,
                              IMenuArgsStore            menuArgsStore,
@@ -130,7 +130,7 @@ namespace RPGFramework.Field
             m_LocalisationService      = localisationService;
             m_MemoryService            = memoryService;
             m_TempMemoryArgs           = tempMemoryArgs;
-            m_ScreenFadeService        = screenFadeService;
+            m_Transitions              = transitions;
             m_BattleArgsStore          = battleArgsStore;
             m_FieldArgsStore           = fieldArgsStore;
             m_MenuArgsStore            = menuArgsStore;
@@ -160,8 +160,6 @@ namespace RPGFramework.Field
 
         async Task IModule.OnEnterAsync(byte entry)
         {
-            await m_ScreenFadeService.FadeOutAsync(true);
-
             m_FieldModuleMonoBehaviour = m_ModuleScene.Find<FieldModuleMonoBehaviour>();
 
             m_InputAdapter = m_FieldModuleMonoBehaviour.InputAdapter;
@@ -206,7 +204,7 @@ namespace RPGFramework.Field
         // The field stays loaded under the module opened over it, frozen by the time scale, so it carries on exactly as
         // it was. Its world is left on: an Animator reset by being disabled, or a game's component told OnDisable, would
         // lose what this keeps.
-        async Task IModule.OnSuspendAsync()
+        Task IModule.OnSuspendAsync()
         {
             m_InputAdapter.Disable();
             m_InputRouter.Push(m_SuspendedInputBlock);
@@ -216,14 +214,14 @@ namespace RPGFramework.Field
 
             Freeze();
 
-            await m_ScreenFadeService.FadeOutAsync();
-
             // One set of sheets resident at a time: what opens over the field loads its own, which may share some.
             m_LocalisationService.UnloadLocalisationData(m_FieldDefinition.LocalisationSheets);
 
             m_FieldModuleMonoBehaviour.UIDocument.rootVisualElement.style.display = DisplayStyle.None;
 
             m_FieldModuleMonoBehaviour.Camera.enabled = m_FieldModuleMonoBehaviour.VisibleWhileSuspended;
+
+            return Task.CompletedTask;
         }
 
         async Task IModule.OnResumeAsync()
@@ -234,14 +232,16 @@ namespace RPGFramework.Field
             m_FieldModuleMonoBehaviour.UIDocument.rootVisualElement.style.display = DisplayStyle.Flex;
 
             Unfreeze();
+            SetAnimationsPaused(false);
 
             m_InputRouter.Pop(m_SuspendedInputBlock);
 
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
+        }
 
-            await m_ScreenFadeService.FadeInAsync();
-
+        void IModule.OnRevealed()
+        {
             m_InputAdapter.Enable();
         }
 
@@ -462,13 +462,21 @@ namespace RPGFramework.Field
         {
             m_FieldTransitionRequested = false;
 
+            StopRunning();
+
+            await m_Transitions.CoverAsync();
             await UnloadCurrentFieldAsync();
             await LoadNewFieldAsync();
+            await m_Transitions.RevealAsync();
+
+            m_InputAdapter.Enable();
         }
 
         private Task TriggerMenuTransitionAsync()
         {
             m_MenuTransitionRequested = false;
+
+            StopRunning();
 
             // The menu is where a save is made, so this is the pose a save holds.
             if (m_PlayerEntityId != FieldEntity.NO_ENTITY)
@@ -483,8 +491,7 @@ namespace RPGFramework.Field
         {
             m_BattleTransitionRequested = false;
 
-            m_ScreenFadeService.SetFadeToBattleStart();
-
+            StopRunning();
             StoreToTempMemory();
 
             return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.START_BATTLE);
@@ -494,7 +501,29 @@ namespace RPGFramework.Field
         {
             m_GameOverRequested = false;
 
+            StopRunning();
+
             return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.GAME_OVER);
+        }
+
+        // The screen is covered over the field before a change reaches it, so the field stops where it is as it asks
+        // for one: nothing moves on, no walk cycle plays in place, and no script runs past the one that asked.
+        private void StopRunning()
+        {
+            m_InputAdapter.Disable();
+
+            UpdateManager.UnregisterUpdatable(this);
+            UpdateManager.UnregisterFixedUpdatable(this);
+
+            SetAnimationsPaused(true);
+        }
+
+        private void SetAnimationsPaused(bool paused)
+        {
+            foreach (FieldEntityComponents entity in m_Entities.Values)
+            {
+                entity.AnimationDriver?.SetPaused(paused);
+            }
         }
 
         private async Task<FieldEntities> PreLoadFieldAsync()
@@ -639,7 +668,7 @@ namespace RPGFramework.Field
             StartDefaultScripts(fieldEntities);
             InitialisePlayer();
 
-            await PostFieldLoadAsync();
+            PostFieldLoad();
         }
 
         /// <summary>
@@ -793,10 +822,10 @@ namespace RPGFramework.Field
                 }
             }
 
-            await PostFieldLoadAsync();
+            PostFieldLoad();
         }
 
-        private async Task PostFieldLoadAsync()
+        private void PostFieldLoad()
         {
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
@@ -810,10 +839,6 @@ namespace RPGFramework.Field
             }
 
             RaiseButtonWaits();
-
-            await m_ScreenFadeService.FadeInAsync();
-
-            m_InputAdapter.Enable();
         }
 
         private async Task UnloadCurrentFieldAsync()
@@ -836,10 +861,7 @@ namespace RPGFramework.Field
             UpdateManager.UnregisterUpdatable(this);
             UpdateManager.UnregisterFixedUpdatable(this);
 
-            foreach (FieldEntityComponents entity in m_Entities.Values)
-            {
-                entity.AnimationDriver?.SetPaused(true);
-            }
+            SetAnimationsPaused(true);
 
             UnsubscribeVm();
 
@@ -864,8 +886,6 @@ namespace RPGFramework.Field
             }
 
             m_FieldContext = null;
-
-            await m_ScreenFadeService.FadeOutAsync();
 
             await m_FieldPresentation.Unload();
 
