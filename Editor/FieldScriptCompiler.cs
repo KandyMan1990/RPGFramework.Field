@@ -504,6 +504,11 @@ namespace RPGFramework.Field.Editor
                     bw.Write(Fnv1a64.Hash(parts[part]));
                     break;
 
+                // Left off by a line written before the argument existed, it is the same as left empty.
+                case ArgumentType.TransitionName:
+                    bw.Write(part < parts.Length && parts[part].Length > 0 ? Fnv1a64.Hash(parts[part]) : 0UL);
+                    break;
+
                 // Named so the editor can offer the right states; the opcode applies to whatever is playing.
                 case ArgumentType.MusicNameHint:
                     break;

@@ -145,6 +145,7 @@ namespace RPGFramework.Field
         [Argument(1, "enemyGroup", ArgumentType.UShort)]
         [Argument(2, "flags",      ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.ONE_BATTLE, Description = "this battle's own; whether losing ends the game is SET_BATTLE_MODE's")]
         [Argument(3, "enemyLevel", ArgumentType.Byte)]
+        [Argument(4, "transition", ArgumentType.TransitionName, Description = "what covers the screen as it starts; empty for the router's battle transition")]
         StartBattle = 0x0106,
 
         [FieldOpCode("GET_LAST_BATTLE_RESULT", ArgumentLayout.BankUnary, Summary = "Store how the last battle ended: 1 defeat, 2 escape, 3 out of time, 4 victory")]

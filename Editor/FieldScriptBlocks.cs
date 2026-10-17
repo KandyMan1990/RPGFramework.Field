@@ -128,6 +128,7 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.LocalisationKeyList:
                 case ArgumentType.Label:
+                case ArgumentType.TransitionName:
                     return string.Empty;
 
                 case ArgumentType.Comparison:

@@ -1450,8 +1450,8 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Ask for a battle to begin, with its arena, enemy group, flags and enemy level, and end the frame, so the rest
-        /// of the script runs after the battle rather than before it.
+        /// Ask for a battle to begin, with its arena, enemy group, flags, enemy level and the transition that starts it,
+        /// and end the frame, so the rest of the script runs after the battle rather than before it.
         /// </summary>
         private void StartBattleOpcodeHandler(ScriptExecutionContext ctx)
         {
@@ -1460,8 +1460,9 @@ namespace RPGFramework.Field
             ushort            enemyGroup  = ReadArgumentUshort(ctx, ref sources);
             ushort            battleFlags = ReadArgumentUshort(ctx, ref sources);
             byte              enemyLevel  = ReadArgumentByte(ctx, ref sources);
+            ulong             transition  = ReadUlong(ctx);
 
-            BattleArgs args = new BattleArgs(arena, enemyGroup, (BattleFlags)battleFlags, enemyLevel);
+            BattleArgs args = new BattleArgs(arena, enemyGroup, (BattleFlags)battleFlags, enemyLevel, transition);
 
             RequestStartBattle?.Invoke(args);
 

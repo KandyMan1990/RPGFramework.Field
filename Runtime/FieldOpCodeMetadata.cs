@@ -93,6 +93,12 @@ namespace RPGFramework.Field
         MusicStateName,
 
         /// <summary>
+        /// A transition in the game's transition database, authored by asset name and encoded as that name's 64-bit
+        /// hash. Left empty, or left off the end of a line, it is <c>0</c>: whatever the router chooses.
+        /// </summary>
+        TransitionName,
+
+        /// <summary>
         /// An animation on this entity, authored by name and encoded as that name's 64-bit hash. Export keeps the
         /// names alongside the compiled field, because an Animator is addressed by the name and not by a hash.
         /// </summary>

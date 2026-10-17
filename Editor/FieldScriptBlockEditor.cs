@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
+using RPGFramework.Core.Transitions;
 using RPGFramework.Audio.Music;
 using RPGFramework.Audio.Sfx;
 using RPGFramework.Localisation.Editor;
@@ -39,6 +40,7 @@ namespace RPGFramework.Field.Editor
         private List<string>     m_MusicNames;
         private List<string>     m_SoundNames;
         private List<string>     m_MusicStateNames;
+        private List<string>     m_TransitionNames;
 
         public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, IReadOnlyList<LocalisationSheetAsset> sheets, Action<string> onChanged)
         {
@@ -814,6 +816,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.SoundName:
                 case ArgumentType.MusicNameHint:
                 case ArgumentType.MusicStateName:
+                case ArgumentType.TransitionName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.LocalisationKey:
                 {
@@ -837,6 +840,12 @@ namespace RPGFramework.Field.Editor
                     // Whatever is already written stays shown, even when nothing answers to it any more.
                     // Opening a script must not quietly repoint it at the first name in the list.
                     field.SetValueWithoutNotify(current);
+
+                    if (argument.Type == ArgumentType.TransitionName)
+                    {
+                        field.formatSelectedValueCallback = DescribeTransition;
+                        field.formatListItemCallback      = DescribeTransition;
+                    }
 
                     // Naming a field decides which spawn points exist, and naming a track decides which
                     // stem states exist, so changing either rebuilds the block to refresh the list beside
@@ -1043,6 +1052,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.MusicStateName:
                     return GetMusicStateChoices(block);
+
+                case ArgumentType.TransitionName:
+                    return m_TransitionNames ??= GatherTransitionNames();
 
                 case ArgumentType.AnimationName:
                     return m_AnimationNames ??= GatherAnimationNames();
@@ -1436,6 +1448,39 @@ namespace RPGFramework.Field.Editor
             names.Sort(StringComparer.Ordinal);
 
             return names;
+        }
+
+        // Empty first: whatever the router chooses for the change.
+        private static List<string> GatherTransitionNames()
+        {
+            List<string> names = GatherProviderNames<TransitionDatabase>(TransitionNamesOf);
+
+            names.Insert(0, string.Empty);
+
+            return names;
+        }
+
+        private static IEnumerable<string> TransitionNamesOf(TransitionDatabase database)
+        {
+            IReadOnlyList<TransitionAsset> transitions = database.Transitions;
+            List<string>                   names       = new List<string>(transitions.Count);
+
+            for (int i = 0; i < transitions.Count; i++)
+            {
+                if (transitions[i] != null)
+                {
+                    names.Add(transitions[i].name);
+                }
+            }
+
+            return names;
+        }
+
+        private static string DescribeTransition(string name)
+        {
+            string described = name.Length == 0 ? "the router's" : name;
+
+            return described;
         }
 
         private static List<string> GatherProviderNames<T>(Func<T, IEnumerable<string>> namesOf) where T : ScriptableObject
