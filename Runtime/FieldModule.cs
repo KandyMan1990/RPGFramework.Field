@@ -57,6 +57,7 @@ namespace RPGFramework.Field
         private readonly ICurrentModuleStore       m_CurrentModuleStore;
         private readonly IFieldResumeDataStore     m_FieldResumeDataStore;
         private readonly SavedPlayerPose           m_SavedPlayerPose;
+        private readonly FieldScreen               m_Screen;
         private readonly IMusicVolumeStore         m_MusicVolumeStore;
         private readonly ISettingsService          m_SettingsService;
         private readonly ISaveEnabledStore         m_SaveEnabledStore;
@@ -92,6 +93,7 @@ namespace RPGFramework.Field
         private IMovementDriver                        m_PlayerMovementDriver;
         private bool                                   m_Suspended;
         private float                                  m_TimeScaleBeforeSuspend;
+        private bool                                   m_ExitFades;
 
         internal FieldModule(ICoreModule               coreModule,
                              IDIResolver               diResolver,
@@ -104,6 +106,8 @@ namespace RPGFramework.Field
                              IMemoryService            memoryService,
                              ITempMemoryArgs           tempMemoryArgs,
                              ITransitionService        transitions,
+                             ITransitionConfig         transitionConfig,
+                             ITransitionDatabase       transitionDatabase,
                              IBattleArgsStore          battleArgsStore,
                              IFieldArgsStore           fieldArgsStore,
                              IMenuArgsStore            menuArgsStore,
@@ -137,6 +141,7 @@ namespace RPGFramework.Field
             m_CurrentModuleStore       = currentModuleStore;
             m_FieldResumeDataStore     = fieldResumeDataStore;
             m_SavedPlayerPose          = new SavedPlayerPose(memoryService, variableMap);
+            m_Screen                   = new FieldScreen(transitionConfig, transitionDatabase, sfxPlayer, memoryService, variableMap);
             m_MusicVolumeStore         = musicVolumeStore;
             m_SettingsService          = settingsService;
             m_SaveEnabledStore         = saveEnabledStore;
@@ -151,6 +156,7 @@ namespace RPGFramework.Field
             m_DialogueInputContext     = new DialogueInputContext();
             m_ModuleScene              = moduleScene;
             m_SuspendedInputBlock      = new BlockAllInputContext();
+            m_ExitFades                = true;
 
             for (int i = 0; i < m_DialogueChannels.Length; i++)
             {
@@ -167,6 +173,8 @@ namespace RPGFramework.Field
 
             UIDocument uiDoc = m_FieldModuleMonoBehaviour.UIDocument;
             m_RootElement = uiDoc.rootVisualElement.Q("Root");
+
+            m_Screen.Enter(m_RootElement);
 
             m_CameraTransformHandle = m_FieldModuleMonoBehaviour.CameraTransformHandle;
 
@@ -198,6 +206,7 @@ namespace RPGFramework.Field
 
             await UnloadCurrentFieldAsync();
 
+            m_Screen.Exit();
             m_InputRouter.Clear();
         }
 
@@ -354,6 +363,11 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetInteractionTriggerActive += OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetCollisionTriggerActive   += OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetBlockerActive            += OnRequestSetBlockerActive;
+            m_FieldContext.VM.RequestFieldExitFade               += OnRequestFieldExitFade;
+            m_FieldContext.VM.RequestScreenFade                  += OnRequestScreenFade;
+            m_FieldContext.VM.IsScreenFading                     =  IsScreenFading;
+            m_FieldContext.VM.RequestScreenColour                += OnRequestScreenColour;
+            m_FieldContext.VM.IsScreenColourFading               =  IsScreenColourFading;
             m_FieldContext.VM.RequestSetInteractionRange         += OnRequestSetInteractionRange;
             m_FieldContext.VM.RequestInputLock                   += OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetEntityPosition           += OnRequestSetEntityPosition;
@@ -430,6 +444,11 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityPosition           -= OnRequestSetEntityPosition;
             m_FieldContext.VM.RequestInputLock                   -= OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= OnRequestSetInteractionRange;
+            m_FieldContext.VM.IsScreenColourFading               =  null;
+            m_FieldContext.VM.RequestScreenColour                -= OnRequestScreenColour;
+            m_FieldContext.VM.IsScreenFading                     =  null;
+            m_FieldContext.VM.RequestScreenFade                  -= OnRequestScreenFade;
+            m_FieldContext.VM.RequestFieldExitFade               -= OnRequestFieldExitFade;
             m_FieldContext.VM.RequestSetBlockerActive            -= OnRequestSetBlockerActive;
             m_FieldContext.VM.RequestSetCollisionTriggerActive   -= OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= OnRequestSetInteractionTriggerActive;
@@ -464,10 +483,14 @@ namespace RPGFramework.Field
 
             StopRunning();
 
-            await m_Transitions.CoverAsync();
+            if (m_ExitFades)
+            {
+                await m_Transitions.CoverAsync(m_FieldDefinition.ExitTransition);
+            }
+
             await UnloadCurrentFieldAsync();
             await LoadNewFieldAsync();
-            await m_Transitions.RevealAsync();
+            await m_Transitions.RevealAsync(m_FieldDefinition.EntryTransition);
 
             m_InputAdapter.Enable();
         }
@@ -1375,6 +1398,38 @@ namespace RPGFramework.Field
             m_FieldContext.BlockerState(blockerId).SetActive(active);
 
             m_BlockersById[blockerId].SetBlocking(active);
+        }
+
+        private void OnRequestFieldExitFade(bool fades)
+        {
+            m_ExitFades = fades;
+        }
+
+        // A fade naming no transition is the field's own: its exit transition fading out, its entry transition in.
+        private void OnRequestScreenFade(bool fadeOut, bool atOnce, ulong transition)
+        {
+            ulong own = fadeOut ? m_FieldDefinition.ExitTransition : m_FieldDefinition.EntryTransition;
+
+            m_Screen.Fade(fadeOut, transition != 0 ? transition : own, atOnce);
+        }
+
+        private bool IsScreenFading()
+        {
+            bool fading = m_Screen.IsFading;
+
+            return fading;
+        }
+
+        private void OnRequestScreenColour(Color colour, bool add, float seconds)
+        {
+            m_Screen.FadeColour(colour, add, seconds);
+        }
+
+        private bool IsScreenColourFading()
+        {
+            bool fading = m_Screen.IsColourFading;
+
+            return fading;
         }
 
         private void OnGatewayEntered(int entityId, int eventId)

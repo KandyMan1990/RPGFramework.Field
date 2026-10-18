@@ -10,5 +10,7 @@ namespace RPGFramework.Field.Editor
         public GameObject               Prefab;
         public LocalisationSheetAsset[] LocalisationSheets;
         public string                   LocationName;
+        public string                   ExitTransition;
+        public string                   EntryTransition;
     }
 }

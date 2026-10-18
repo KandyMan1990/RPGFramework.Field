@@ -133,8 +133,11 @@ namespace RPGFramework.Field
         [Argument(0, "active", ArgumentType.Bool)]
         GatewayTriggerActivation = 0x0102,
 
-        SetFieldExitFade = 0x0103, // bool faded - whether leaving by a gateway fades the screen
-        WorldMapJump     = 0x0104, // int spawnIndex
+        [FieldOpCode("SET_FIELD_EXIT_FADE", ArgumentLayout.Sequential, Summary = "Set whether leaving for another field covers the screen with this field's exit transition, kept until set again")]
+        [Argument(0, "fades", ArgumentType.Bool, Description = "false changes field with nothing covering it, for a script that has faded the screen itself", Default = "true")]
+        SetFieldExitFade = 0x0103,
+
+        WorldMapJump = 0x0104, // int spawnIndex
 
         [FieldOpCode("SET_BATTLE_MODE", ArgumentLayout.Sequential, Summary = "Set whether losing a battle or a countdown running out ends the game, for every battle from now on, kept in the save until set again")]
         [Argument(0, "mode", ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.BATTLE_MODE, Description = "whether losing ends the game; a battle's own flags are START_BATTLE's")]
@@ -1157,10 +1160,24 @@ namespace RPGFramework.Field
         CollisionTriggerActivation = 0x0549,
 
         // Screen and field effects (0x0600)
-        SubtractiveScreenFade = 0x0600, // float r, float g, float b, float duration
-        AdditiveScreenFade    = 0x0601, // float r, float g, float b, float duration
-        WaitForScreenColour   = 0x0602, // wait for a screen colour fade to finish
-        ParticleActivation    = 0x0603, // ushort effectId, bool active - a named effect placed in the field
+        [FieldOpCode("SUBTRACT_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Take a colour from the screen beneath the message windows, fading to it from the colour there now, kept until a fade or another colour")]
+        [Argument(0, "red",     ArgumentType.Float, Description = "0 to 1, taken from each pixel's red: 1 takes it all")]
+        [Argument(1, "green",   ArgumentType.Float, Description = "0 to 1, taken from each pixel's green")]
+        [Argument(2, "blue",    ArgumentType.Float, Description = "0 to 1, taken from each pixel's blue")]
+        [Argument(3, "seconds", ArgumentType.Float, Description = "how long the fade takes; 0 changes at once")]
+        SubtractiveScreenFade = 0x0600,
+
+        [FieldOpCode("ADD_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Add a colour to the screen beneath the message windows, fading to it from the colour there now, kept until a fade or another colour")]
+        [Argument(0, "red",     ArgumentType.Float, Description = "0 to 1, added to each pixel's red: 1 makes it full")]
+        [Argument(1, "green",   ArgumentType.Float, Description = "0 to 1, added to each pixel's green")]
+        [Argument(2, "blue",    ArgumentType.Float, Description = "0 to 1, added to each pixel's blue")]
+        [Argument(3, "seconds", ArgumentType.Float, Description = "how long the fade takes; 0 changes at once")]
+        AdditiveScreenFade = 0x0601,
+
+        [FieldOpCode("WAIT_FOR_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Wait until the screen's colour has reached the colour it was sent to", StopsInit = true)]
+        WaitForScreenColour = 0x0602,
+
+        ParticleActivation = 0x0603, // ushort effectId, bool active - a named effect placed in the field
 
         [FieldOpCode("BLOCKER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Close part of this field with one of its blockers, or open it again")]
         [Argument(0, "blocker",    ArgumentType.BlockerId, Description = "the id on a FieldBlocker in this field")]
@@ -1168,9 +1185,21 @@ namespace RPGFramework.Field
         BlockerActivation = 0x0604,
 
         // Camera and screen movement (0x0700)
-        FadeScreen             = 0x0700,
-        FadeScreenWait         = 0x0701,
-        WaitForFade            = 0x0702,
+        [FieldOpCode("FADE_SCREEN", ArgumentLayout.Sequential, Summary = "Fade the screen beneath the message windows out or back in, kept until another fade or a colour")]
+        [Argument(0, "fadeOut",    ArgumentType.Bool, Description = "true covers the screen, false uncovers it", Default = "true")]
+        [Argument(1, "atOnce",     ArgumentType.Bool, Description = "true covers or clears it in this frame, with no transition playing")]
+        [Argument(2, "transition", ArgumentType.TransitionName, Description = "what covers or uncovers it; empty for this field's exit transition fading out, its entry transition fading in")]
+        FadeScreen = 0x0700,
+
+        [FieldOpCode("FADE_SCREEN_AND_WAIT", ArgumentLayout.Sequential, Summary = "Fade the screen beneath the message windows out or back in, and wait until it has", StopsInit = true)]
+        [Argument(0, "fadeOut",    ArgumentType.Bool, Description = "true covers the screen, false uncovers it", Default = "true")]
+        [Argument(1, "atOnce",     ArgumentType.Bool, Description = "true covers or clears it in this frame, with no transition playing")]
+        [Argument(2, "transition", ArgumentType.TransitionName, Description = "what covers or uncovers it; empty for this field's exit transition fading out, its entry transition fading in")]
+        FadeScreenWait = 0x0701,
+
+        [FieldOpCode("WAIT_FOR_FADE", ArgumentLayout.Sequential, Summary = "Wait until the screen has faded out or back in", StopsInit = true)]
+        WaitForFade = 0x0702,
+
         ShakeScreen            = 0x0703,
         ScrollScreenToPosition = 0x0704,
         ScrollScreenToEntity   = 0x0705,

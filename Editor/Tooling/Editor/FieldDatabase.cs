@@ -7,6 +7,7 @@ using RPGFramework.Core.Memory;
 using RPGFramework.Hashing;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -88,10 +89,10 @@ namespace RPGFramework.Field.Editor
                     sb.AppendLine($"\t\t\t\t\t\t\"{m_Fields[i].LocalisationSheets[j].SheetName}\",");
                 }
 
-                string locationName = string.IsNullOrEmpty(m_Fields[i].LocationName) ? "0UL" : $"Fnv1a64.Hash(\"{m_Fields[i].LocationName}\")";
-
                 sb.AppendLine("\t\t\t\t\t},");
-                sb.AppendLine($"\t\t\t\t\t{locationName}");
+                sb.AppendLine($"\t\t\t\t\t{HashOrZero(m_Fields[i].LocationName)},");
+                sb.AppendLine($"\t\t\t\t\t{HashOrZero(m_Fields[i].ExitTransition)},");
+                sb.AppendLine($"\t\t\t\t\t{HashOrZero(m_Fields[i].EntryTransition)}");
                 sb.AppendLine($"\t\t\t\t),");
             }
 
@@ -115,6 +116,14 @@ namespace RPGFramework.Field.Editor
             File.WriteAllText(filePath, file);
 
             AssetDatabase.Refresh();
+        }
+
+        // A name's hash as the generated code writes it, or zero for none.
+        private static string HashOrZero(string name)
+        {
+            string hash = string.IsNullOrEmpty(name) ? "0UL" : $"Fnv1a64.Hash(\"{name}\")";
+
+            return hash;
         }
 
         /// <summary>
@@ -1343,6 +1352,10 @@ namespace RPGFramework.Field.Editor
             }
 
             AssetDatabase.Refresh();
+
+            // Building the bundles leaves the editor's compile of the database script written before them undone, so the
+            // old database would stay loaded until something else compiled.
+            CompilationPipeline.RequestScriptCompilation();
         }
     }
 }

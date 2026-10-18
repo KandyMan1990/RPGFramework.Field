@@ -58,7 +58,8 @@ A body's visuals are your own prefab, placed as its visible object.
 
 **RPG Framework > Field Designer Window** lists your game's fields. For each one you set:
 
-- **Prefab:** which prefab the field is.
+- **Prefab:** which prefab the field is, and its **exit and entry transitions** — what covers the screen as the player
+  leaves for another field, and what reveals this one as they arrive — or the game's defaults.
 - **Text:** the localisation sheets it loads, and its location name, chosen from those sheets' keys.
 - **Scripts:** every entity and its scripts, opened from the prefab.
   - Add and delete entities, scripts and blockers, and give an entity a body built from a preset.
@@ -165,8 +166,17 @@ RETURN
   - A window can hold the player while it waits for confirm, or leave the player free to walk away. A background one
     stays up until a script closes it.
   - Text types at the player's field message speed.
-- **Leaving a field:** a gateway or a script jumps to another field and spawn point. The menu button opens the party
-  menu when the field allows it, and a script can start a battle or end the game.
+- **The screen:**
+  - Scripts fade the screen out and back in beneath the message windows, so a message can show over a black screen,
+    through any transition or the field's own exit and entry transitions, or at once.
+  - They take a colour from the screen or add one, at once or over seconds, as a tint or a flash.
+  - A fade and a colour are one state, each replacing the other, and where a script leaves it is saved: a field left
+    faded or tinted is still so after the menu, a battle or a load.
+  - The colours, and the default subtractive fade, need URP (Core's README).
+- **Leaving a field:** a gateway or a script jumps to another field and spawn point, the screen covered by the field's
+  exit transition and revealed by the next field's entry transition, unless a script has turned the exit's cover off
+  because it faded the screen itself. The menu button opens the party menu when the field allows it, and a script can
+  start a battle or end the game.
   - A battle carries its own arena, enemies, flags and level. Whether losing it, or a countdown running out, ends the
     game is the battle mode's, which a script sets and the game saves; after the battle, a script reads how it ended.
   - A game over sends the player to the game-over field your map names, entered afresh: a field like any other, whose

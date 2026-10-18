@@ -37,6 +37,8 @@ namespace RPGFramework.Field.Editor
         private Label         m_CurrentFieldLabel;
         private ListView      m_TextViewerListView;
         private DropdownField m_LocationNameField;
+        private DropdownField m_ExitTransitionField;
+        private DropdownField m_EntryTransitionField;
         private ListView      m_EntityListView;
         private ListView      m_EntityScriptListView;
         private Button        m_AddEntityButton;
@@ -210,6 +212,8 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
+            RefreshTransitionFields();
+
             SetElementVisible(m_PrefabViewer,     true);
             SetElementVisible(m_TextViewer,       false);
             SetElementVisible(m_ScriptsViewer,    false);
@@ -380,6 +384,38 @@ namespace RPGFramework.Field.Editor
 
             m_PrefabObjectField = rootVisualElement.Q<ObjectField>("PrefabObjectField");
             m_PrefabObjectField.RegisterValueChangedCallback(OnPrefabObjectFieldChanged);
+
+            m_ExitTransitionField  = CreateTransitionField("Exit transition",  "Covers the screen as the player leaves for another field, unless a script has turned the exit fade off; a script's fade out that names none uses it too");
+            m_EntryTransitionField = CreateTransitionField("Entry transition", "Reveals this field as the player arrives from another; a script's fade in that names none uses it too");
+
+            m_ExitTransitionField.RegisterValueChangedCallback(e => m_CurrentFieldAsset.ExitTransition = e.newValue);
+            m_EntryTransitionField.RegisterValueChangedCallback(e => m_CurrentFieldAsset.EntryTransition = e.newValue);
+
+            m_PrefabViewer.Add(m_ExitTransitionField);
+            m_PrefabViewer.Add(m_EntryTransitionField);
+        }
+
+        private static DropdownField CreateTransitionField(string label, string tooltip)
+        {
+            DropdownField field = new DropdownField(label)
+                                  {
+                                      tooltip                     = tooltip,
+                                      formatSelectedValueCallback = FieldScriptBlockEditor.DescribeTransition,
+                                      formatListItemCallback      = FieldScriptBlockEditor.DescribeTransition
+                                  };
+
+            return field;
+        }
+
+        private void RefreshTransitionFields()
+        {
+            List<string> names = FieldScriptBlockEditor.GatherTransitionNames();
+
+            m_ExitTransitionField.choices  = names;
+            m_EntryTransitionField.choices = names;
+
+            m_ExitTransitionField.SetValueWithoutNotify(m_CurrentFieldAsset.ExitTransition ?? string.Empty);
+            m_EntryTransitionField.SetValueWithoutNotify(m_CurrentFieldAsset.EntryTransition ?? string.Empty);
         }
 
         private void InitTextTab()

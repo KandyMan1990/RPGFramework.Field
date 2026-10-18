@@ -1450,8 +1450,8 @@ namespace RPGFramework.Field.Editor
             return names;
         }
 
-        // Empty first: whatever the router chooses for the change.
-        private static List<string> GatherTransitionNames()
+        /// <summary>Every transition in the project's databases, after an empty name for the default.</summary>
+        internal static List<string> GatherTransitionNames()
         {
             List<string> names = GatherProviderNames<TransitionDatabase>(TransitionNamesOf);
 
@@ -1476,9 +1476,10 @@ namespace RPGFramework.Field.Editor
             return names;
         }
 
-        private static string DescribeTransition(string name)
+        /// <summary>A transition's name for a dropdown, the empty one standing for the default.</summary>
+        internal static string DescribeTransition(string name)
         {
-            string described = name.Length == 0 ? "the router's" : name;
+            string described = string.IsNullOrEmpty(name) ? "(default)" : name;
 
             return described;
         }

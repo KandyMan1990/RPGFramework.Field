@@ -37,6 +37,11 @@ namespace RPGFramework.Field
         internal event Action<int, bool>                          RequestSetInteractionTriggerActive;
         internal event Action<int, bool>                          RequestSetCollisionTriggerActive;
         internal event Action<byte, bool>                         RequestSetBlockerActive;
+        internal event Action<bool>                               RequestFieldExitFade;
+        internal event Action<bool, bool, ulong>                  RequestScreenFade;
+        internal Func<bool>                                       IsScreenFading;
+        internal event Action<Color, bool, float>                 RequestScreenColour;
+        internal Func<bool>                                       IsScreenColourFading;
         internal event Action<int, float>                         RequestSetInteractionRange;
         internal event Action<bool>                               RequestInputLock;
         internal event Action<int, Vector3>                       RequestSetEntityPosition;
@@ -134,7 +139,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.JumpToAnotherMap, JumpToAnotherMapOpcodeHandler },
                        // { FieldScriptOpCode.SetJumpFieldID, SetJumpFieldIDOpcodeHandler },
                        { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
-                       // { FieldScriptOpCode.SetFieldExitFade, SetFieldExitFadeOpcodeHandler },
+                       { FieldScriptOpCode.SetFieldExitFade, SetFieldExitFadeOpcodeHandler },
                        // { FieldScriptOpCode.WorldMapJump, WorldMapJumpOpcodeHandler },
                        { FieldScriptOpCode.SetBattleMode, SetBattleModeOpcodeHandler },
                        { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
@@ -403,16 +408,16 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.CollisionTriggerActivation, CollisionTriggerActivationOpcodeHandler },
 
                        // Screen and field effects
-                       // { FieldScriptOpCode.SubtractiveScreenFade, SubtractiveScreenFadeOpcodeHandler },
-                       // { FieldScriptOpCode.AdditiveScreenFade, AdditiveScreenFadeOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForScreenColour, WaitForScreenColourOpcodeHandler },
+                       { FieldScriptOpCode.SubtractiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx, false) },
+                       { FieldScriptOpCode.AdditiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx,    true) },
+                       { FieldScriptOpCode.WaitForScreenColour, WaitForScreenColourOpcodeHandler },
                        // { FieldScriptOpCode.ParticleActivation, ParticleActivationOpcodeHandler },
                        { FieldScriptOpCode.BlockerActivation, BlockerActivationOpcodeHandler },
 
                        // Camera and screen movement
-                       // { FieldScriptOpCode.FadeScreen, FadeScreenOpcodeHandler },
-                       // { FieldScriptOpCode.FadeScreenWait, FadeScreenWaitOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForFade, WaitForFadeOpcodeHandler },
+                       { FieldScriptOpCode.FadeScreen, FadeScreenOpcodeHandler },
+                       { FieldScriptOpCode.FadeScreenWait, FadeScreenAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.WaitForFade, WaitForFadeOpcodeHandler },
                        // { FieldScriptOpCode.ShakeScreen, ShakeScreenOpcodeHandler },
                        // { FieldScriptOpCode.ScrollScreenToPosition, ScrollScreenToPositionOpcodeHandler },
                        // { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
@@ -1438,6 +1443,18 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Set whether leaving for another field covers the screen with this field's exit transition, kept until set
+        /// again: a script that has faded the screen itself turns it off.
+        /// </summary>
+        private void SetFieldExitFadeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            bool              fades   = ReadArgumentBool(ctx, ref sources);
+
+            RequestFieldExitFade?.Invoke(fades);
+        }
+
+        /// <summary>
         /// Set the battle mode: the flags every random battle is fought with, and whether losing a battle or a countdown
         /// running out ends the game.
         /// </summary>
@@ -2274,6 +2291,28 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Take a colour from the screen beneath the message windows, or add one, fading to it over the given seconds.
+        /// </summary>
+        private void ScreenColourOpcodeHandler(ScriptExecutionContext ctx, bool add)
+        {
+            SequentialSources sources = default;
+            float             red     = ReadArgumentFloat(ctx, ref sources);
+            float             green   = ReadArgumentFloat(ctx, ref sources);
+            float             blue    = ReadArgumentFloat(ctx, ref sources);
+            float             seconds = ReadArgumentFloat(ctx, ref sources);
+
+            RequestScreenColour?.Invoke(new Color(red, green, blue), add, seconds);
+        }
+
+        /// <summary>
+        /// Wait until the screen's colour has reached the colour it was sent to.
+        /// </summary>
+        private void WaitForScreenColourOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsScreenColourFading()));
+        }
+
+        /// <summary>
         /// Close part of the field with one of its blockers, or open it again.
         /// </summary>
         private void BlockerActivationOpcodeHandler(ScriptExecutionContext ctx)
@@ -2282,6 +2321,36 @@ namespace RPGFramework.Field
             byte              blocker    = ReadArgumentByte(ctx, ref sources);
             bool              isBlocking = ReadArgumentBool(ctx, ref sources);
             RequestSetBlockerActive?.Invoke(blocker, isBlocking);
+        }
+
+        /// <summary>
+        /// Fade the screen beneath the message windows out or back in, and carry on.
+        /// </summary>
+        private void FadeScreenOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources    = default;
+            bool              fadeOut    = ReadArgumentBool(ctx, ref sources);
+            bool              atOnce     = ReadArgumentBool(ctx, ref sources);
+            ulong             transition = ReadUlong(ctx);
+
+            RequestScreenFade?.Invoke(fadeOut, atOnce, transition);
+        }
+
+        /// <summary>
+        /// Fade the screen beneath the message windows out or back in, and wait until it has.
+        /// </summary>
+        private void FadeScreenAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            FadeScreenOpcodeHandler(ctx);
+            WaitForFadeOpcodeHandler(ctx);
+        }
+
+        /// <summary>
+        /// Wait until the screen has faded out or back in.
+        /// </summary>
+        private void WaitForFadeOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsScreenFading()));
         }
 
         /// <summary>
