@@ -11,7 +11,7 @@
     "com.rpgframework.di": "4.0.3",
     "com.rpgframework.field.sharedtypes": "0.3.0",
     "com.rpgframework.hashing": "2.0.2",
-    "com.rpgframework.localisation": "2.1.0",
+    "com.rpgframework.localisation": "2.1.1",
     "com.rpgframework.menu.sharedtypes": "0.3.0",
     "com.unity.mathematics": "1.4.0"
   },
