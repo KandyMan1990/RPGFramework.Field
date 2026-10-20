@@ -15,7 +15,7 @@ using UnityEngine.Tilemaps;
 namespace RPGFramework.Field.Editor
 {
     [Serializable]
-    internal class FieldDatabase
+    internal sealed class FieldDatabase
     {
         private readonly string m_AssetBundlesPath;
 

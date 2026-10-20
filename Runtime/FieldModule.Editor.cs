@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    public partial class FieldModule
+    public sealed partial class FieldModule
     {
         private FieldDebugOverlay m_DebugOverlay;
 

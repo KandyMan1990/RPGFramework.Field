@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Field
 {
-    internal class FieldModuleMonoBehaviour : MonoBehaviour
+    internal sealed class FieldModuleMonoBehaviour : MonoBehaviour
     {
         public Vector3         Up                     => m_Up.normalized;
         public float           PlayerInteractionAngle => m_PlayerInteractionAngle;

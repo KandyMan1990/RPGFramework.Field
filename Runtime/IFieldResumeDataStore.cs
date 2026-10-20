@@ -12,7 +12,7 @@ namespace RPGFramework.Field
         void Set<T>(T data);
     }
 
-    public class FieldResumeDataStore : IFieldResumeDataStore
+    public sealed class FieldResumeDataStore : IFieldResumeDataStore
     {
         private object m_Data;
 

@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 
 namespace RPGFramework.Field.Editor
 {
-    internal class FieldDesignerWindow : EditorWindow
+    internal sealed class FieldDesignerWindow : EditorWindow
     {
         /// <summary>A new script returns at once, so it compiles before anything has been written in it.</summary>
         private const string NEW_SCRIPT_TEXT = FieldEntityBodyBuilder.NEW_SCRIPT_TEXT;

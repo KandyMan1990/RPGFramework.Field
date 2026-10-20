@@ -1,6 +1,6 @@
 ﻿namespace RPGFramework.Field
 {
-    public class FieldDefinition
+    public sealed class FieldDefinition
     {
         internal string   AssetName          { get; }
         internal string   AssetPath          { get; }

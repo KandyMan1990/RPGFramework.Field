@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RPGFramework.Field.Editor
 {
     [Serializable]
-    internal class FieldDefinitionAuthoring
+    internal sealed class FieldDefinitionAuthoring
     {
         public GameObject               Prefab;
         public LocalisationSheetAsset[] LocalisationSheets;
