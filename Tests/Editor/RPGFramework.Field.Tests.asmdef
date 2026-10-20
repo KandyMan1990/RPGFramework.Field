@@ -1,0 +1,29 @@
+{
+    "name": "RPGFramework.Field.Tests",
+    "rootNamespace": "RPGFramework.Field.Tests",
+    "references": [
+        "RPGFramework.Battle.SharedTypes",
+        "RPGFramework.Core",
+        "RPGFramework.Core.SharedTypes",
+        "RPGFramework.Field",
+        "RPGFramework.Field.Editor",
+        "RPGFramework.Field.SharedTypes",
+        "RPGFramework.Hashing",
+        "UnityEngine.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
