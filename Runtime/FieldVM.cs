@@ -79,7 +79,7 @@ namespace RPGFramework.Field
 
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
 
-        private readonly Dictionary<(int entityId, byte priority), ScriptExecutionContext> m_Contexts;
+        private readonly Dictionary<SlotKey, ScriptExecutionContext> m_Contexts;
         private readonly Dictionary<int, FieldEntityRuntime>                               m_Entities;
         private readonly Dictionary<FieldScriptOpCode, OpcodeHandler>                      m_OpcodeHandlers;
         private readonly Dictionary<int, byte[]>                                           m_Scripts;
@@ -91,7 +91,7 @@ namespace RPGFramework.Field
 
         internal FieldVM(IMemoryService memoryService, int tempBytes)
         {
-            m_Contexts       = new Dictionary<(int entityId, byte priority), ScriptExecutionContext>();
+            m_Contexts       = new Dictionary<SlotKey, ScriptExecutionContext>();
             m_Entities       = new Dictionary<int, FieldEntityRuntime>();
             m_OpcodeHandlers = BuildOpcodeHandlersArray();
             m_Scripts        = new Dictionary<int, byte[]>();
@@ -518,7 +518,7 @@ namespace RPGFramework.Field
         {
             FieldEntityRuntime entity = m_Entities[entityId];
 
-            m_Contexts.Remove((entityId, (byte)FieldScriptPriority.Main));
+            m_Contexts.Remove(new SlotKey(entityId, (byte)FieldScriptPriority.Main));
 
             if (entity.TryGetScriptId(defaultEventId, out int scriptId))
             {
@@ -531,7 +531,7 @@ namespace RPGFramework.Field
 
         internal ScriptRunOutcome Execute(int entityId, byte priority, int scriptId, FieldEntityRuntime entity, ref int instructionBudget)
         {
-            (int entityId, byte priority) key = (entityId, priority);
+            SlotKey key = new SlotKey(entityId, priority);
 
             // A slot outlives the scripts that pass through it, so a context is reused only while it is
             // still running the script the slot currently holds.
@@ -1316,7 +1316,7 @@ namespace RPGFramework.Field
                 return;
             }
 
-            m_Contexts.Remove((ctx.EntityId, ctx.Priority));
+            m_Contexts.Remove(new SlotKey(ctx.EntityId, ctx.Priority));
 
             entity.ReplaceScriptInSlot(targetScriptId, ctx.Priority);
         }
@@ -2507,6 +2507,34 @@ namespace RPGFramework.Field
             Func<bool> pressed = StartWaitingForButton(button);
 
             ctx.Block(new WaitUntilBlock(pressed));
+        }
+
+        /// <summary>An entity's priority slot, which holds one running script's context at a time.</summary>
+        private readonly struct SlotKey : IEquatable<SlotKey>
+        {
+            private readonly int  m_EntityId;
+            private readonly byte m_Priority;
+
+            internal SlotKey(int entityId, byte priority)
+            {
+                m_EntityId = entityId;
+                m_Priority = priority;
+            }
+
+            bool IEquatable<SlotKey>.Equals(SlotKey other)
+            {
+                return m_EntityId == other.m_EntityId && m_Priority == other.m_Priority;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is SlotKey other && m_EntityId == other.m_EntityId && m_Priority == other.m_Priority;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(m_EntityId, m_Priority);
+            }
         }
     }
 }

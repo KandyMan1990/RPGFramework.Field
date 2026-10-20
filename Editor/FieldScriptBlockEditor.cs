@@ -1564,7 +1564,10 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            (owner[index], owner[target]) = (owner[target], owner[index]);
+            FieldScriptBlock moved = owner[index];
+
+            owner[index]  = owner[target];
+            owner[target] = moved;
 
             RebuildBlockList();
             NotifyChanged();
