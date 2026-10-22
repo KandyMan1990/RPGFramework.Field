@@ -59,6 +59,7 @@ namespace RPGFramework.Field.Editor
             sb.AppendLine($"// Last generated at {DateTime.UtcNow}\n");
 
             sb.AppendLine("using RPGFramework.Field;");
+            sb.AppendLine("using RPGFramework.Field.SharedTypes;");
             sb.AppendLine("using RPGFramework.Hashing;");
             sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using System.IO;");
@@ -67,7 +68,10 @@ namespace RPGFramework.Field.Editor
             sb.AppendLine($"namespace {namespaceForScript}");
             sb.AppendLine("{");
 
-            sb.AppendLine($"\tinternal class {scriptFileName.Replace(" ", "")} : IFieldDatabase");
+            sb.AppendLine($"\tinternal sealed class {scriptFileName.Replace(" ", "")} : IFieldDatabase");
+            sb.AppendLine("#if ENABLE_RPG_FRAMEWORK_DEBUG");
+            sb.AppendLine("\t\t, IDebugFieldDatabase");
+            sb.AppendLine("#endif");
             sb.AppendLine("\t{");
             sb.AppendLine("\t\tprivate readonly Dictionary<ulong, FieldDefinition> m_FieldsByNameHash;");
             sb.AppendLine();
@@ -106,6 +110,18 @@ namespace RPGFramework.Field.Editor
             sb.AppendLine("\t\t{");
             sb.AppendLine("\t\t\treturn m_FieldsByNameHash[fieldNameHash];");
             sb.AppendLine("\t\t}");
+
+            sb.AppendLine();
+            sb.AppendLine("#if ENABLE_RPG_FRAMEWORK_DEBUG");
+            sb.AppendLine("\t\tIReadOnlyList<string> IDebugFieldDatabase.FieldNames => new string[]");
+            sb.AppendLine("\t\t{");
+            for (int i = 0; i < count; i++)
+            {
+                sb.AppendLine($"\t\t\t\"{m_Fields[i].Prefab.name}\",");
+            }
+
+            sb.AppendLine("\t\t};");
+            sb.AppendLine("#endif");
 
             sb.AppendLine("\t}");
 
