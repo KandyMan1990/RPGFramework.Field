@@ -306,6 +306,14 @@ namespace RPGFramework.Field
             DrawInteractionDebug();
 #endif
 
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+            if (DebugRoomShortcut.IsHeld(m_InputAdapter))
+            {
+                LeaveForDebugRoomAsync().FireAndForget();
+                return;
+            }
+#endif
+
             if (m_GameOverRequested)
             {
                 TriggerGameOverAsync().FireAndForget();
@@ -528,6 +536,16 @@ namespace RPGFramework.Field
 
             return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.GAME_OVER);
         }
+
+#if ENABLE_RPG_FRAMEWORK_DEBUG
+        // Whatever the field was doing, as a cheat's forced jump would leave it.
+        private Task LeaveForDebugRoomAsync()
+        {
+            StopRunning();
+
+            return m_CoreModule.RequestModuleChangeAsync(DebugFieldOutcomes.DEBUG_ROOM);
+        }
+#endif
 
         // The screen is covered over the field before a change reaches it, so the field stops where it is as it asks
         // for one: nothing moves on, no walk cycle plays in place, and no script runs past the one that asked.
