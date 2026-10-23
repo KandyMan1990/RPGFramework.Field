@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Editor.Dialogue;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
@@ -14,13 +13,13 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class FieldDialogueTextValidator : ILocalisationTextValidator
     {
-        private readonly HashSet<string>     m_DialogueSheets;
-        private readonly IDialogueTextStyles m_Styles;
+        private readonly HashSet<string>          m_DialogueSheets;
+        private readonly IDialogueMarkupValidator m_Markup;
 
         public FieldDialogueTextValidator()
         {
             m_DialogueSheets = new HashSet<string>();
-            m_Styles         = DialogueEditorUtility.FindProjectTextStyles();
+            m_Markup         = new DialogueMarkupValidator();
 
             string[] guids = AssetDatabase.FindAssets($"t:{nameof(FieldDesignerData)}");
 
@@ -61,7 +60,7 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            string[] markupProblems = DialogueMarkup.Validate(text, m_Styles);
+            string[] markupProblems = m_Markup.Validate(text);
 
             for (int i = 0; i < markupProblems.Length; i++)
             {

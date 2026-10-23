@@ -107,7 +107,7 @@ namespace RPGFramework.Field.Editor
         {
             slot.Clear();
 
-            int   spawnId   = (int)VariableDefaults.ToInteger(value, VariableWidth.Int);
+            int   spawnId   = (int)new VariableBits(value).ToInteger(VariableWidth.Int);
             ulong fieldHash = context.ValueOf(FieldVariableName);
 
             string fieldName = fieldHash == 0 ? null : FieldNameDefaultField.NameForHash(FieldScriptBlockEditor.GatherFieldNames(), fieldHash);
@@ -118,7 +118,7 @@ namespace RPGFramework.Field.Editor
             {
                 // No field chosen yet, or it has no spawn points: a number beats an empty list.
                 IntegerField typed = new IntegerField("Arrives at spawn") { value = spawnId };
-                typed.RegisterValueChangedCallback(e => write(VariableDefaults.FromInteger(e.newValue, VariableWidth.Int)));
+                typed.RegisterValueChangedCallback(e => write(new VariableBits(e.newValue, VariableWidth.Int).Bits));
 
                 slot.Add(typed);
                 return;
@@ -144,7 +144,7 @@ namespace RPGFramework.Field.Editor
                 field.SetValueWithoutNotify(spawnId.ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
 
-            field.RegisterValueChangedCallback(e => write(VariableDefaults.FromInteger(spawns[labels.IndexOf(e.newValue)].Id, VariableWidth.Int)));
+            field.RegisterValueChangedCallback(e => write(new VariableBits(spawns[labels.IndexOf(e.newValue)].Id, VariableWidth.Int).Bits));
 
             slot.Add(field);
         }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using RPGFramework.Core.Editor;
 using RPGFramework.Core.Memory;
 using RPGFramework.Hashing;
 using RPGFramework.Localisation.Editor;
@@ -271,13 +272,15 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
+            IVariableMapValidator validator = new VariableMapValidator();
+
             for (int i = 0; i < guids.Length; i++)
             {
                 string guid = guids[i];
 
                 VariableMapAsset map = AssetDatabase.LoadAssetAtPath<VariableMapAsset>(AssetDatabase.GUIDToAssetPath(guid));
 
-                string[] mapProblems = map.Validate();
+                string[] mapProblems = validator.Validate(map);
 
                 for (int j = 0; j < mapProblems.Length; j++)
                 {
@@ -302,7 +305,7 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                int spawnId = (int)VariableDefaults.ToInteger(spawn.DefaultValue, VariableWidth.Int);
+                int spawnId = (int)new VariableBits(spawn.DefaultValue).ToInteger(VariableWidth.Int);
 
                 if (Array.Find(start.GetComponentsInChildren<SpawnPoint>(true), spawnPoint => spawnPoint.Id == spawnId) == null)
                 {
