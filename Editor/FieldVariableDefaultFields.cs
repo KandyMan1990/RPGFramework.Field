@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RPGFramework.Core.Editor;
 using RPGFramework.Core.Memory;
@@ -20,10 +21,9 @@ namespace RPGFramework.Field.Editor
 
         string IVariableDefaultField.VariableName => VariableName;
 
-        VisualElement IVariableDefaultField.Create(SerializedProperty variable)
+        VisualElement IVariableDefaultField.Create(ulong value, Action<ulong> write, IVariableValueContext context)
         {
-            SerializedProperty defaultValue = variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
-            List<string>       names        = FieldScriptBlockEditor.GatherFieldNames();
+            List<string> names = FieldScriptBlockEditor.GatherFieldNames();
 
             if (names.Count == 0)
             {
@@ -32,7 +32,7 @@ namespace RPGFramework.Field.Editor
                 return none;
             }
 
-            string current = NameForHash(names, defaultValue.ulongValue);
+            string current = NameForHash(names, value);
 
             DropdownField field = new DropdownField(Label, names, Mathf.Max(0, names.IndexOf(current)));
 
@@ -41,7 +41,7 @@ namespace RPGFramework.Field.Editor
                 field.SetValueWithoutNotify(string.Empty);
             }
 
-            field.RegisterValueChangedCallback(e => VariableDefinitionDrawer.Write(defaultValue, Fnv1a64.Hash(e.newValue)));
+            field.RegisterValueChangedCallback(e => write(Fnv1a64.Hash(e.newValue)));
 
             return field;
         }
@@ -91,29 +91,26 @@ namespace RPGFramework.Field.Editor
 
         string IVariableDefaultField.VariableName => VariableName;
 
-        VisualElement IVariableDefaultField.Create(SerializedProperty variable)
+        // Rebuilt as the field changes, the spawn point read afresh each time from where it is set.
+        VisualElement IVariableDefaultField.Create(ulong value, Action<ulong> write, IVariableValueContext context)
         {
-            VisualElement      slot         = new VisualElement();
-            SerializedProperty fieldDefault = FindDefault(variable.serializedObject, FieldVariableName);
+            VisualElement slot = new VisualElement();
 
-            Build(slot, variable, fieldDefault);
+            Build(slot, value, write, context);
 
-            if (fieldDefault != null)
-            {
-                slot.TrackPropertyValue(fieldDefault, _ => Build(slot, variable, fieldDefault));
-            }
+            context.Watch(slot, FieldVariableName, () => Build(slot, context.ValueOf(VariableName), write, context));
 
             return slot;
         }
 
-        private static void Build(VisualElement slot, SerializedProperty variable, SerializedProperty fieldDefault)
+        private void Build(VisualElement slot, ulong value, Action<ulong> write, IVariableValueContext context)
         {
             slot.Clear();
 
-            SerializedProperty defaultValue = variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
-            int                spawnId      = (int)VariableDefaults.ToInteger(defaultValue.ulongValue, VariableWidth.Int);
+            int   spawnId   = (int)VariableDefaults.ToInteger(value, VariableWidth.Int);
+            ulong fieldHash = context.ValueOf(FieldVariableName);
 
-            string fieldName = fieldDefault == null ? null : FieldNameDefaultField.NameForHash(FieldScriptBlockEditor.GatherFieldNames(), fieldDefault.ulongValue);
+            string fieldName = fieldHash == 0 ? null : FieldNameDefaultField.NameForHash(FieldScriptBlockEditor.GatherFieldNames(), fieldHash);
 
             List<FieldScriptBlockEditor.SpawnChoice> spawns = fieldName == null ? new List<FieldScriptBlockEditor.SpawnChoice>() : FieldScriptBlockEditor.GatherSpawnChoices(fieldName);
 
@@ -121,7 +118,7 @@ namespace RPGFramework.Field.Editor
             {
                 // No field chosen yet, or it has no spawn points: a number beats an empty list.
                 IntegerField typed = new IntegerField("Arrives at spawn") { value = spawnId };
-                typed.RegisterValueChangedCallback(e => VariableDefinitionDrawer.Write(defaultValue, VariableDefaults.FromInteger(e.newValue, VariableWidth.Int)));
+                typed.RegisterValueChangedCallback(e => write(VariableDefaults.FromInteger(e.newValue, VariableWidth.Int)));
 
                 slot.Add(typed);
                 return;
@@ -147,26 +144,9 @@ namespace RPGFramework.Field.Editor
                 field.SetValueWithoutNotify(spawnId.ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
 
-            field.RegisterValueChangedCallback(e => VariableDefinitionDrawer.Write(defaultValue, VariableDefaults.FromInteger(spawns[labels.IndexOf(e.newValue)].Id, VariableWidth.Int)));
+            field.RegisterValueChangedCallback(e => write(VariableDefaults.FromInteger(spawns[labels.IndexOf(e.newValue)].Id, VariableWidth.Int)));
 
             slot.Add(field);
-        }
-
-        private static SerializedProperty FindDefault(SerializedObject map, string variableName)
-        {
-            SerializedProperty variables = map.FindProperty("m_Variables");
-
-            for (int i = 0; i < variables.arraySize; i++)
-            {
-                SerializedProperty variable = variables.GetArrayElementAtIndex(i);
-
-                if (variable.FindPropertyRelative("m_Name").stringValue == variableName)
-                {
-                    return variable.FindPropertyRelative(VariableDefinitionDrawer.DEFAULT_VALUE);
-                }
-            }
-
-            return null;
         }
     }
 
