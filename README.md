@@ -187,7 +187,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
     walking and running blend.
   - Scripts play other states over the base one, once or looping, and can wait for them.
 - **Dialogue:**
-  - Windows are addressed by channel, 0 to 7, each keeping its position and style.
+  - Windows are addressed by channel, 0 to 7, each keeping its position and style until the field changes, when
+    every window closes.
   - A window can hold the player while it waits for confirm, or leave the player free to walk away. A background one
     stays up until a script closes it.
   - Text types at the player's field message speed.

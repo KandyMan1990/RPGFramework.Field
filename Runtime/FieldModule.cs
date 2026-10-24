@@ -94,6 +94,7 @@ namespace RPGFramework.Field
         private bool                                   m_Suspended;
         private float                                  m_TimeScaleBeforeSuspend;
         private bool                                   m_ExitFades;
+        private bool                                   m_ClosingAllDialogueWindows;
 
         internal FieldModule(ICoreModule               coreModule,
                              IDIResolver               diResolver,
@@ -884,6 +885,8 @@ namespace RPGFramework.Field
 
         private async Task UnloadCurrentFieldAsync()
         {
+            await CloseAllDialogueWindowsAsync();
+
             m_InputAdapter.Disable();
 
             if (m_FieldContext.IsInputLockedByScript)
@@ -1746,8 +1749,10 @@ namespace RPGFramework.Field
             }
 
             string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
+            Task     running   = RunDialogueAsync(channel, window, new TextDialogueFlow(), dialogues, blockMovement, null);
 
-            RunDialogueAsync(channel, window, new TextDialogueFlow(), dialogues, blockMovement, null).FireAndForget();
+            m_DialogueChannels[channel].Running = running;
+            running.FireAndForget();
         }
 
         /// <summary>
@@ -1762,8 +1767,10 @@ namespace RPGFramework.Field
             }
 
             string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
+            Task     running   = RunUnansweredDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues);
 
-            RunUnansweredDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues).FireAndForget();
+            m_DialogueChannels[channel].Running = running;
+            running.FireAndForget();
         }
 
         private void OnRequestCloseDialogueWindow(byte channel)
@@ -1786,7 +1793,10 @@ namespace RPGFramework.Field
                 dialogues[i] = m_LocalisationService.Get(answerIds[i - 1]);
             }
 
-            RunDialogueAsync(channel, window, new ChoiceDialogueFlow(), dialogues, true, storeChoice).FireAndForget();
+            Task running = RunDialogueAsync(channel, window, new ChoiceDialogueFlow(), dialogues, true, storeChoice);
+
+            m_DialogueChannels[channel].Running = running;
+            running.FireAndForget();
         }
 
         /// <summary>
@@ -1891,7 +1901,11 @@ namespace RPGFramework.Field
         /// </summary>
         private async Task CloseDialogueWindowAsync(byte channel, IDialogueWindow window)
         {
-            await window.AnimateWindowClosedAsync();
+            // Closing them all is for a field unloading, behind a covered screen.
+            if (!m_ClosingAllDialogueWindows)
+            {
+                await window.AnimateWindowClosedAsync();
+            }
 
             window.Destroy();
 
@@ -1900,6 +1914,34 @@ namespace RPGFramework.Field
             dialogueChannel.Close.Dispose();
             dialogueChannel.Close  = null;
             dialogueChannel.Window = null;
+        }
+
+        /// <summary>
+        /// Close every window as <c>CLOSE_DIALOGUE_WINDOW</c> would, wait for each to finish, and give every channel back
+        /// its defaults, so the next field starts with none open and sets its own rectangles and styles.
+        /// </summary>
+        private async Task CloseAllDialogueWindowsAsync()
+        {
+            m_ClosingAllDialogueWindows = true;
+
+            for (int i = 0; i < m_DialogueChannels.Length; i++)
+            {
+                m_DialogueChannels[i].Close?.Cancel();
+            }
+
+            for (int i = 0; i < m_DialogueChannels.Length; i++)
+            {
+                Task running = m_DialogueChannels[i].Running;
+
+                if (running != null)
+                {
+                    await running;
+                }
+
+                m_DialogueChannels[i] = new FieldDialogueChannel();
+            }
+
+            m_ClosingAllDialogueWindows = false;
         }
 
         private void OnRequestSetBattleMode(BattleFlags mode)

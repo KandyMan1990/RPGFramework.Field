@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Threading.Tasks;
 using RPGFramework.Core.Dialogue;
 using UnityEngine;
 
@@ -23,5 +24,10 @@ namespace RPGFramework.Field
         /// Cancelled to close <see cref="Window" /> early, by <c>CLOSE_DIALOGUE_WINDOW</c>.
         /// </summary>
         internal CancellationTokenSource Close;
+
+        /// <summary>
+        /// The last window's run, from opening to closed, so a field unloading waits for it.
+        /// </summary>
+        internal Task Running;
     }
 }
