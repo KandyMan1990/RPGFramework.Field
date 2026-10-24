@@ -8,6 +8,7 @@ using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Battle.SharedTypes.Constants;
 using RPGFramework.Battle.SharedTypes.Stores;
 using RPGFramework.Core;
+using RPGFramework.Core.Audio;
 using RPGFramework.Core.Data;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Dialogue.Flows;
@@ -43,6 +44,7 @@ namespace RPGFramework.Field
         private readonly IInputRouter              m_InputRouter;
         private readonly IMusicPlayer              m_MusicPlayer;
         private readonly ISfxPlayer                m_SfxPlayer;
+        private readonly IAudioIntentPlayer        m_AudioIntentPlayer;
         private readonly IFieldDatabase            m_FieldDatabase;
         private readonly IFieldPresentation        m_FieldPresentation;
         private readonly ILocalisationService      m_LocalisationService;
@@ -101,6 +103,7 @@ namespace RPGFramework.Field
                              IInputRouter              inputRouter,
                              IMusicPlayer              musicPlayer,
                              ISfxPlayer                sfxPlayer,
+                             IAudioIntentPlayer        audioIntentPlayer,
                              IFieldDatabase            fieldDatabase,
                              IFieldPresentation        fieldPresentation,
                              ILocalisationService      localisationService,
@@ -130,6 +133,7 @@ namespace RPGFramework.Field
             m_InputRouter              = inputRouter;
             m_MusicPlayer              = musicPlayer;
             m_SfxPlayer                = sfxPlayer;
+            m_AudioIntentPlayer        = audioIntentPlayer;
             m_FieldDatabase            = fieldDatabase;
             m_FieldPresentation        = fieldPresentation;
             m_LocalisationService      = localisationService;
@@ -1793,7 +1797,7 @@ namespace RPGFramework.Field
                 dialogues[i] = m_LocalisationService.Get(answerIds[i - 1]);
             }
 
-            Task running = RunDialogueAsync(channel, window, new ChoiceDialogueFlow(), dialogues, true, storeChoice);
+            Task running = RunDialogueAsync(channel, window, new ChoiceDialogueFlow(m_AudioIntentPlayer, AudioContext.Field), dialogues, true, storeChoice);
 
             m_DialogueChannels[channel].Running = running;
             running.FireAndForget();
@@ -1866,7 +1870,7 @@ namespace RPGFramework.Field
             CancellationToken close = m_DialogueChannels[channel].Close.Token;
 
             await window.AnimateWindowOpenAsync();
-            await window.RunAsync(dialogueFlow, dialogues, m_DialogueInputContext, close);
+            await dialogueFlow.RunAsync(window, dialogues, m_DialogueInputContext, close);
 
             // A question closed by a script was never answered, so its destination keeps what it held.
             if (storeChoice != null && !close.IsCancellationRequested)
@@ -1892,7 +1896,7 @@ namespace RPGFramework.Field
             CancellationToken close = m_DialogueChannels[channel].Close.Token;
 
             await window.AnimateWindowOpenAsync();
-            await window.RunAsync(dialogueFlow, dialogues, null, close);
+            await dialogueFlow.RunAsync(window, dialogues, null, close);
             await CloseDialogueWindowAsync(channel, window);
         }
 

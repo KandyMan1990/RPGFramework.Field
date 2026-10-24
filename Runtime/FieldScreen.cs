@@ -32,6 +32,7 @@ namespace RPGFramework.Field
         private readonly Shader          m_ScreenColourShader;
         private readonly VisualElement   m_Host;
         private readonly TransitionLayer m_Layer;
+        private readonly ISfxPlayer      m_SfxPlayer;
         private readonly ushort          m_FadeAddress;
         private readonly ushort          m_TransitionAddress;
         private readonly ushort          m_ColourAddress;
@@ -48,7 +49,8 @@ namespace RPGFramework.Field
             m_MemoryService      = memoryService;
             m_ScreenColourShader = config.ScreenColourShader;
             m_Host               = new VisualElement { name = "ScreenFade" };
-            m_Layer              = new TransitionLayer(m_Host, config, database, sfxPlayer);
+            m_Layer              = new TransitionLayer(m_Host, config, database);
+            m_SfxPlayer          = sfxPlayer;
             m_FadeAddress        = AddressOf(variableMap, FieldVariables.SCREEN_FADE);
             m_TransitionAddress  = AddressOf(variableMap, FieldVariables.SCREEN_FADE_TRANSITION);
             m_ColourAddress      = AddressOf(variableMap, FieldVariables.SCREEN_COLOUR);
@@ -115,6 +117,13 @@ namespace RPGFramework.Field
                 m_Fade = Task.CompletedTask;
 
                 return;
+            }
+
+            TransitionAsset played = fadeOut ? m_Layer.FindCover(transition) : m_Layer.FindReveal(transition);
+
+            if (played.Sound != 0)
+            {
+                m_SfxPlayer.PlayAsync(played.Sound).FireAndForget();
             }
 
             m_Fade = fadeOut ? m_Layer.CoverAsync(transition) : m_Layer.RevealAsync(transition);
