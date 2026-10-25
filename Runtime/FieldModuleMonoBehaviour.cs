@@ -17,6 +17,20 @@ namespace RPGFramework.Field
         public Camera          Camera                 => m_Camera;
         public bool            VisibleWhileSuspended  => m_VisibleWhileSuspended;
 
+        /// <summary>
+        /// Which way is up the screen for a camera looking the usual way over the field, along the ground: forward in a
+        /// 3D field, up in a 2D one. A facing is measured from it.
+        /// </summary>
+        public Vector3 North
+        {
+            get
+            {
+                Vector3 north = Vector3.ProjectOnPlane(Vector3.forward, Up);
+
+                return north.sqrMagnitude > 0.0001f ? north.normalized : Vector3.ProjectOnPlane(Vector3.up, Up).normalized;
+            }
+        }
+
         [Tooltip("Used to determine the up direction in the game.  3D games should use 0,1,0 (XZ plane).  2D games should use 0,0,1 (XY plane).")]
         [SerializeField]
         private Vector3 m_Up = Vector3.up;

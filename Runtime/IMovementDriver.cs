@@ -25,8 +25,23 @@ namespace RPGFramework.Field
         /// <summary>Puts the entity at a position at once.</summary>
         void SetPosition(Vector3 position);
 
-        /// <summary>Turns the entity to a rotation at once.</summary>
+        /// <summary>
+        /// Turns the entity to a rotation at once. A 2D entity takes only the turn on the screen, and faces that way
+        /// rather than rotating its sprite.
+        /// </summary>
         void SetRotation(Quaternion rotation);
+
+        /// <summary>The rotation <see cref="SetRotation" /> would put back, for the field to keep as it is left.</summary>
+        Quaternion Rotation { get; }
+
+        /// <summary>
+        /// Which way the entity faces, along the ground: its body's forward in 3D, and in 2D a direction it keeps, since
+        /// a sprite is never rotated.
+        /// </summary>
+        Vector3 Facing { get; }
+
+        /// <summary>Faces the entity along a direction at once, as facing another does.</summary>
+        void Face(Vector3 direction);
 
         /// <summary>Starts a turn over time, as a script asks.</summary>
         void StartRotation(SetEntityRotationAsyncArgs args);

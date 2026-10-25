@@ -42,10 +42,10 @@ namespace RPGFramework.Field
         internal IReadOnlyList<CompiledFieldEntity> Compiled       => m_Compiled;
         internal uint                               FormatVersion  => m_FormatVersion;
         internal IReadOnlyList<string>              AnimationNames => m_AnimationNames;
+        internal FieldDimension                     Dimension      => m_Dimension;
 
 #if UNITY_EDITOR
-        internal FieldDimension          Dimension => m_Dimension;
-        internal List<FieldEntityRecord> Entities  => m_Entities;
+        internal List<FieldEntityRecord> Entities => m_Entities;
 
         /// <summary>
         /// Export only: replace the authored records with what they compiled to.

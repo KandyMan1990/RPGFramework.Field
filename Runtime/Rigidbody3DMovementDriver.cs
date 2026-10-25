@@ -70,6 +70,25 @@ namespace RPGFramework.Field
             m_Rigidbody.transform.rotation = rotation;
         }
 
+        Quaternion IMovementDriver.Rotation => m_Rigidbody.rotation;
+
+        Vector3 IMovementDriver.Facing => Vector3.ProjectOnPlane(m_Rigidbody.rotation * Vector3.forward, Vector3.up).normalized;
+
+        void IMovementDriver.Face(Vector3 direction)
+        {
+            Vector3 flat = Vector3.ProjectOnPlane(direction, Vector3.up);
+
+            if (flat.sqrMagnitude < MIN_MOTION_SQR)
+            {
+                return;
+            }
+
+            Quaternion rotation = Quaternion.LookRotation(flat);
+
+            m_Rigidbody.rotation           = rotation;
+            m_Rigidbody.transform.rotation = rotation;
+        }
+
         void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
             m_RotationState = new RotationState

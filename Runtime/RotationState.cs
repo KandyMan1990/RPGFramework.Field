@@ -8,6 +8,8 @@ namespace RPGFramework.Field
         internal bool                  Active;
         internal Quaternion            Start;
         internal Quaternion            Target;
+        internal float                 StartAngle;
+        internal float                 TargetAngle;
         internal float                 Elapsed;
         internal float                 Duration;
         internal RotationInterpolation Interpolation;

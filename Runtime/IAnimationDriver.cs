@@ -50,9 +50,12 @@ namespace RPGFramework.Field
         void SetPaused(bool paused);
 
         /// <summary>
-        /// <paramref name="velocity" /> is how the entity is actually moving this frame, zero when it is still. The
-        /// driver takes both how fast it is going and which way it faces from it.
+        /// The entity's movement and facing this frame, for the animation to follow: how fast it goes from
+        /// <paramref name="velocity" />, zero when it is still, and which way it faces from <paramref name="facing" />,
+        /// along the ground with up the screen as positive y — which a standing entity turned by a script keeps too.
         /// </summary>
-        void Tick(Vector3 velocity);
+        /// <param name="velocity">How the entity is actually moving this frame.</param>
+        /// <param name="facing">Which way it faces, a normalised direction on the ground.</param>
+        void Tick(Vector3 velocity, Vector2 facing);
     }
 }

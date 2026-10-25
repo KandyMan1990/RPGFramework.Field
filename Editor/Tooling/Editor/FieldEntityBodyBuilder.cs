@@ -149,9 +149,10 @@ namespace RPGFramework.Field.Editor
                 Rigidbody2D body2D = bodyObject.AddComponent<Rigidbody2D>();
                 body2D.bodyType = RigidbodyType2D.Kinematic;
 
+                // The footprint of a character seen from above, at its feet, so it blocks only where it stands.
                 CapsuleCollider2D capsule2D = bodyObject.AddComponent<CapsuleCollider2D>();
-                capsule2D.size   = new Vector2(1f, 2f);
-                capsule2D.offset = new Vector2(0f, 1f);
+                capsule2D.direction = CapsuleDirection2D.Horizontal;
+                capsule2D.size      = new Vector2(1f, 0.5f);
 
                 return;
             }

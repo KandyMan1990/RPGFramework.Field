@@ -6,7 +6,7 @@ namespace RPGFramework.Field
 {
     internal static class MovementDriverFactory
     {
-        internal static IMovementDriver Create(GameObject gameObject, float speed, IReadOnlyList<FieldBlocker> blockers)
+        internal static IMovementDriver Create(GameObject gameObject, float speed, IReadOnlyList<FieldBlocker> blockers, FieldDimension dimension)
         {
             if (gameObject.TryGetComponent(out Rigidbody rb))
             {
@@ -28,13 +28,13 @@ namespace RPGFramework.Field
             if (tilemap != null)
             {
                 TilemapMovementDriver driver = gameObject.AddComponent<TilemapMovementDriver>();
-                driver.Init(gameObject.transform, tilemap, blockers, speed);
+                driver.Init(gameObject.transform, tilemap, blockers, speed, dimension);
 
                 return driver;
             }
 
             TransformMovementDriver transformMovementDriver = gameObject.AddComponent<TransformMovementDriver>();
-            transformMovementDriver.Init(gameObject.transform, speed);
+            transformMovementDriver.Init(gameObject.transform, speed, dimension);
 
             return transformMovementDriver;
         }

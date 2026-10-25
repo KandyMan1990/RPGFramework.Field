@@ -24,8 +24,6 @@ namespace RPGFramework.Field
 
         private const float CROSS_FADE_SECONDS = 0.15f;
 
-        private const float FACING_EPSILON = 0.0001f;
-
         /// <summary>Animation is driven on the base layer; the layers above it are the game's to use.</summary>
         private const int BASE_LAYER = 0;
 
@@ -33,7 +31,6 @@ namespace RPGFramework.Field
         private string   m_BaseStateName;
         private bool     m_BaseStatePending;
         private bool     m_ParametersPending;
-        private Vector3  m_Facing;
         private float    m_SpeedMultiplier;
         private bool     m_Paused;
 
@@ -61,7 +58,6 @@ namespace RPGFramework.Field
             m_BaseStateName     = null;
             m_BaseStatePending  = false;
             m_ParametersPending = true;
-            m_Facing            = Vector3.zero;
             m_SpeedMultiplier   = 1f;
             m_Paused            = false;
 
@@ -216,7 +212,7 @@ namespace RPGFramework.Field
             m_BaseStatePending = false;
         }
 
-        void IAnimationDriver.Tick(Vector3 velocity)
+        void IAnimationDriver.Tick(Vector3 velocity, Vector2 facing)
         {
             if (!m_Animator.isActiveAndEnabled)
             {
@@ -247,14 +243,8 @@ namespace RPGFramework.Field
                 return;
             }
 
-            // A standing entity still faces somewhere, so the last direction it moved in is kept.
-            if (speed > FACING_EPSILON)
-            {
-                m_Facing = velocity / speed;
-            }
-
-            m_Animator.SetFloat(m_FacingXParameter, m_Facing.x);
-            m_Animator.SetFloat(m_FacingYParameter, m_Facing.y);
+            m_Animator.SetFloat(m_FacingXParameter, facing.x);
+            m_Animator.SetFloat(m_FacingYParameter, facing.y);
         }
 
         /// <summary>

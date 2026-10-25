@@ -86,6 +86,7 @@ namespace RPGFramework.Field
         private Dictionary<ulong, string>              m_AnimationNames;
         private FieldBlocker[]                         m_Blockers;
         private Dictionary<byte, FieldBlocker>         m_BlockersById;
+        private FieldDimension                         m_Dimension;
         private int                                    m_PlayerEntityId;
         private bool                                   m_FieldTransitionRequested;
         private FieldDefinition                        m_FieldDefinition;
@@ -296,7 +297,9 @@ namespace RPGFramework.Field
 
             ReadPlayerMove();
 
-            float deltaTime = Time.deltaTime;
+            float   deltaTime = Time.deltaTime;
+            Vector3 north     = m_FieldModuleMonoBehaviour.North;
+            Vector3 east      = Vector3.ProjectOnPlane(Vector3.right, m_FieldModuleMonoBehaviour.Up).normalized;
 
             foreach (FieldEntityComponents entity in m_Entities.Values)
             {
@@ -306,7 +309,12 @@ namespace RPGFramework.Field
 
                 Vector3 velocity = IsMovingWithoutWalking(entity) ? Vector3.zero : entity.MovementDriver?.CurrentVelocity ?? Vector3.zero;
 
-                entity.AnimationDriver?.Tick(velocity);
+                if (entity.AnimationDriver != null)
+                {
+                    Vector3 facing = FacingOf(entity);
+
+                    entity.AnimationDriver.Tick(velocity, new Vector2(Vector3.Dot(facing, east), Vector3.Dot(facing, north)));
+                }
             }
 
 #if UNITY_EDITOR
@@ -519,7 +527,9 @@ namespace RPGFramework.Field
             // The menu is where a save is made, so this is the pose a save holds.
             if (m_PlayerEntityId != FieldEntity.NO_ENTITY)
             {
-                m_SavedPlayerPose.Write(m_Entities[m_PlayerEntityId].Entity.transform, m_FieldModuleMonoBehaviour.Up);
+                FieldEntityComponents player = m_Entities[m_PlayerEntityId];
+
+                m_SavedPlayerPose.Write(player.Entity.transform.position, FacingOf(player), m_FieldModuleMonoBehaviour.Up, m_FieldModuleMonoBehaviour.North);
             }
 
             return m_CoreModule.RequestModuleChangeAsync(FieldOutcomes.OPEN_MENU);
@@ -597,6 +607,7 @@ namespace RPGFramework.Field
             }
 
             FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
+            m_Dimension      = fieldEntities.Dimension;
             m_Entities       = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
             m_AnimationNames = BuildAnimationNames(fieldEntities);
 
@@ -806,9 +817,12 @@ namespace RPGFramework.Field
 
             FieldEntity playerFieldEntity = m_Entities[m_PlayerEntityId].Entity;
 
+            m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
+
             if (loaded)
             {
-                playerFieldEntity.transform.SetPositionAndRotation(savedPosition, savedRotation);
+                playerFieldEntity.transform.position = savedPosition;
+                m_PlayerMovementDriver.SetRotation(savedRotation);
             }
             else if (m_InitialPlayerSpawn == null)
             {
@@ -817,10 +831,9 @@ namespace RPGFramework.Field
             }
             else
             {
-                playerFieldEntity.transform.SetPositionAndRotation(m_InitialPlayerSpawn.Position, m_InitialPlayerSpawn.Rotation);
+                playerFieldEntity.transform.position = m_InitialPlayerSpawn.Position;
+                m_PlayerMovementDriver.SetRotation(m_InitialPlayerSpawn.Rotation);
             }
-
-            m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
 
             SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
         }
@@ -1226,15 +1239,13 @@ namespace RPGFramework.Field
 
         private bool IsPlayerFacingEntity(int entityId)
         {
-            FieldEntity player = m_Entities[m_FieldContext.PlayerEntity.EntityId].Entity;
-            FieldEntity entity = m_Entities[entityId].Entity;
+            FieldEntityComponents player = m_Entities[m_FieldContext.PlayerEntity.EntityId];
+            FieldEntity           entity = m_Entities[entityId].Entity;
 
-            Transform playerTransform = player.transform;
-
-            Vector3 playerPos = playerTransform.position;
+            Vector3 playerPos = player.Entity.transform.position;
             Vector3 entityPos = entity.transform.position;
 
-            return IsFacing(playerPos, playerTransform.forward, entityPos, m_FieldModuleMonoBehaviour.PlayerInteractionAngle);
+            return IsFacing(playerPos, FacingOf(player), entityPos, m_FieldModuleMonoBehaviour.PlayerInteractionAngle);
         }
 
         private bool IsEntityFacingPlayer(int entityId)
@@ -1253,7 +1264,7 @@ namespace RPGFramework.Field
                 return false;
             }
 
-            return IsFacing(entityPos, entityTransform.forward, playerPos, entity.InteractionTrigger.InteractionAngle);
+            return IsFacing(entityPos, FacingOf(entity), playerPos, entity.InteractionTrigger.InteractionAngle);
         }
 
         private bool IsFacing(Vector3 fromPosition, Vector3 fromForward, Vector3 toPosition, float maxAngle)
@@ -1286,12 +1297,10 @@ namespace RPGFramework.Field
                 return null;
             }
 
-            FieldEntity player          = m_Entities[m_FieldContext.PlayerEntity.EntityId].Entity;
-            Transform   playerTransform = player.transform;
+            FieldEntityComponents player = m_Entities[m_FieldContext.PlayerEntity.EntityId];
 
-            Vector3 playerPos     = playerTransform.position;
-            Vector3 playerForward = Vector3.ProjectOnPlane(playerTransform.forward, m_FieldModuleMonoBehaviour.Up);
-            playerForward = playerForward.normalized;
+            Vector3 playerPos     = player.Entity.transform.position;
+            Vector3 playerForward = Vector3.ProjectOnPlane(FacingOf(player), m_FieldModuleMonoBehaviour.Up).normalized;
 
             FieldInteractionTrigger best      = null;
             float                   bestScore = float.MinValue;
@@ -1382,7 +1391,7 @@ namespace RPGFramework.Field
 
                 Transform transform = entity.Entity.transform;
 
-                state.SetPose(transform.position, transform.rotation);
+                state.SetPose(transform.position, RotationOf(entity));
 
                 if (entity.MovementDriver != null)
                 {
@@ -1562,14 +1571,7 @@ namespace RPGFramework.Field
             Vector3 direction = targetFieldEntity.transform.position - fieldEntity.transform.position;
             direction = Vector3.ProjectOnPlane(direction, m_FieldModuleMonoBehaviour.Up);
 
-            if (direction.sqrMagnitude < 0.0001f)
-            {
-                return;
-            }
-
-            Quaternion rotation = Quaternion.LookRotation(direction, m_FieldModuleMonoBehaviour.Up);
-
-            OnRequestSetEntityRotation(entityId, rotation);
+            GetMovementDriver(entityId).Face(direction);
         }
 
         private void OnRequestSetEntityMovementSpeed(int entityId, float movementSpeed)
@@ -1717,11 +1719,31 @@ namespace RPGFramework.Field
 
             if (entity.MovementDriver == null)
             {
-                movementDriver = MovementDriverFactory.Create(entity.Entity.gameObject, 3f, m_Blockers);
+                movementDriver = MovementDriverFactory.Create(entity.Entity.gameObject, 3f, m_Blockers, m_Dimension);
                 entity.SetMovementDriver(movementDriver);
             }
 
             return movementDriver;
+        }
+
+        private Vector3 FacingOf(FieldEntityComponents entity)
+        {
+            if (entity.MovementDriver != null)
+            {
+                return entity.MovementDriver.Facing;
+            }
+
+            return m_Dimension == FieldDimension.TwoD ? SpriteFacing.Default : Vector3.ProjectOnPlane(entity.Entity.transform.forward, m_FieldModuleMonoBehaviour.Up).normalized;
+        }
+
+        private Quaternion RotationOf(FieldEntityComponents entity)
+        {
+            if (entity.MovementDriver != null)
+            {
+                return entity.MovementDriver.Rotation;
+            }
+
+            return m_Dimension == FieldDimension.TwoD ? SpriteFacing.RotationFacing(SpriteFacing.Default) : entity.Entity.transform.rotation;
         }
 
         private void OnRequestSetMainMenuAccessibility(bool enabled)

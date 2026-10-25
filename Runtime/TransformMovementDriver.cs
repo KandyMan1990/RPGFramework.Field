@@ -10,17 +10,19 @@ namespace RPGFramework.Field
     {
         private const float MIN_MOVE_INPUT_SQR = 0.0001f;
 
-        private Transform       m_Transform;
-        private float           m_Speed;
-        private Vector3         m_MoveInput;
-        private RotationState   m_RotationState;
-        private ScriptedMove    m_ScriptedMove;
+        private Transform     m_Transform;
+        private float         m_Speed;
+        private Vector3       m_MoveInput;
+        private RotationState m_RotationState;
+        private ScriptedMove  m_ScriptedMove;
+        private SpriteFacing  m_SpriteFacing;
 
-        public void Init(Transform entityTransform, float speed)
+        public void Init(Transform entityTransform, float speed, FieldDimension dimension)
         {
             m_Transform     = entityTransform;
             m_Speed         = speed;
             m_RotationState = default;
+            m_SpriteFacing  = dimension == FieldDimension.TwoD ? new SpriteFacing() : null;
         }
 
         void IMovementDriver.SetMoveInput(Vector3 worldMove)
@@ -36,7 +38,15 @@ namespace RPGFramework.Field
         void IMovementDriver.Tick(float deltaTime)
         {
             HandleMovement(deltaTime);
-            HandleRotation(deltaTime);
+
+            if (m_SpriteFacing != null)
+            {
+                m_SpriteFacing.Tick(deltaTime);
+            }
+            else
+            {
+                HandleRotation(deltaTime);
+            }
         }
 
         void IMovementDriver.PhysicsTick(float fixedDeltaTime)
@@ -51,11 +61,32 @@ namespace RPGFramework.Field
 
         void IMovementDriver.SetRotation(Quaternion rotation)
         {
-            transform.rotation = rotation;
+            if (m_SpriteFacing != null)
+            {
+                m_SpriteFacing.SetRotation(rotation);
+                return;
+            }
+
+            m_Transform.rotation = rotation;
+        }
+
+        Quaternion IMovementDriver.Rotation => m_SpriteFacing != null ? m_SpriteFacing.Rotation : m_Transform.rotation;
+
+        Vector3 IMovementDriver.Facing => m_SpriteFacing != null ? m_SpriteFacing.Facing : Vector3.ProjectOnPlane(m_Transform.forward, Vector3.up).normalized;
+
+        void IMovementDriver.Face(Vector3 direction)
+        {
+            FaceAlong(direction);
         }
 
         void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
+            if (m_SpriteFacing != null)
+            {
+                m_SpriteFacing.StartTurn(args);
+                return;
+            }
+
             m_RotationState = new RotationState
                               {
                                       Active        = true,
@@ -69,12 +100,18 @@ namespace RPGFramework.Field
 
         void IMovementDriver.ResumeRotation(RotationState rotationState)
         {
+            if (m_SpriteFacing != null)
+            {
+                m_SpriteFacing.ResumeTurn(rotationState);
+                return;
+            }
+
             m_RotationState = rotationState;
         }
 
         RotationState IMovementDriver.GetRotationState()
         {
-            return m_RotationState;
+            return m_SpriteFacing != null ? m_SpriteFacing.Turn : m_RotationState;
         }
 
         Vector3 IMovementDriver.CurrentVelocity
@@ -128,7 +165,8 @@ namespace RPGFramework.Field
             Vector3 direction = m_MoveInput.normalized;
 
             m_Transform.position += direction * (m_Speed * deltaTime);
-            m_Transform.forward  =  direction;
+
+            FaceAlong(direction);
         }
 
         private void HandleScriptedMove(float deltaTime)
@@ -137,16 +175,30 @@ namespace RPGFramework.Field
 
             m_Transform.position += motion;
 
-            Vector3 facing = Vector3.ProjectOnPlane(motion, Vector3.up);
-
-            if (m_ScriptedMove.FaceTravel && facing.sqrMagnitude > MIN_MOVE_INPUT_SQR)
+            if (m_ScriptedMove.FaceTravel)
             {
-                m_Transform.forward = facing.normalized;
+                FaceAlong(motion);
             }
 
             if (m_ScriptedMove.HasArrived(m_Transform.position))
             {
                 m_ScriptedMove.Active = false;
+            }
+        }
+
+        private void FaceAlong(Vector3 direction)
+        {
+            if (m_SpriteFacing != null)
+            {
+                m_SpriteFacing.Face(direction);
+                return;
+            }
+
+            Vector3 flat = Vector3.ProjectOnPlane(direction, Vector3.up);
+
+            if (flat.sqrMagnitude > MIN_MOVE_INPUT_SQR)
+            {
+                m_Transform.forward = flat.normalized;
             }
         }
 

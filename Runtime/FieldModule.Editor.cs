@@ -8,8 +8,9 @@ namespace RPGFramework.Field
         private FieldDebugOverlay m_DebugOverlay;
 
         /// <summary>
-        /// White: the player's facing cone. Circles: each interactable entity's range, green if active and grey if
-        /// not, with its facing arc. Lines to entities in range: green for the one an interaction would pick,
+        /// White: the player's facing cone, and a line the way each interactable entity faces. Circles: each
+        /// interactable entity's range, green if active and grey if not, with the edges of the arc it must face the
+        /// player within, unless that is all the way round. Lines to entities in range: green for the one an interaction would pick,
         /// yellow when the player is not facing it, red when it is not facing the player. Boxes: each area's trigger in
         /// cyan and each gateway's in magenta, grey while it is switched off or its entity hidden, and each blocker's
         /// colliders in red while it blocks and grey while it is open.
@@ -37,11 +38,11 @@ namespace RPGFramework.Field
 
             m_DebugOverlay.Begin(m_FieldModuleMonoBehaviour.Camera);
 
-            Transform player    = m_Entities[m_FieldContext.PlayerEntity.EntityId].Entity.transform;
-            Vector3   up        = m_FieldModuleMonoBehaviour.Up;
-            Vector3   playerPos = player.position;
-            Vector3   forward   = Vector3.ProjectOnPlane(player.forward, up).normalized;
-            float     halfCone  = m_FieldModuleMonoBehaviour.PlayerInteractionAngle / 2f;
+            FieldEntityComponents player    = m_Entities[m_FieldContext.PlayerEntity.EntityId];
+            Vector3               up        = m_FieldModuleMonoBehaviour.Up;
+            Vector3               playerPos = player.Entity.transform.position;
+            Vector3               forward   = Vector3.ProjectOnPlane(FacingOf(player), up).normalized;
+            float                 halfCone  = m_FieldModuleMonoBehaviour.PlayerInteractionAngle / 2f;
 
             m_DebugOverlay.Line(playerPos, playerPos + Quaternion.AngleAxis(-halfCone, up) * forward * 2f, Color.white);
             m_DebugOverlay.Line(playerPos, playerPos + Quaternion.AngleAxis(halfCone,  up) * forward * 2f, Color.white);
@@ -57,15 +58,20 @@ namespace RPGFramework.Field
                     continue;
                 }
 
-                Transform entityTransform = entity.Entity.transform;
-                Vector3   entityPos       = entityTransform.position;
-                Vector3   entityForward   = Vector3.ProjectOnPlane(entityTransform.forward, up).normalized;
-                Color     rangeColour     = trigger.IsActive ? Color.green : Color.gray;
-                Vector3   arcStart        = Quaternion.AngleAxis(-trigger.InteractionAngle / 2f, up) * entityForward;
+                Vector3 entityPos     = entity.Entity.transform.position;
+                Vector3 entityForward = Vector3.ProjectOnPlane(FacingOf(entity), up).normalized;
+                Color   rangeColour   = trigger.IsActive ? Color.green : Color.gray;
+                Vector3 arcStart      = Quaternion.AngleAxis(-trigger.InteractionAngle / 2f, up) * entityForward;
 
                 m_DebugOverlay.Arc(entityPos, up, entityForward, 360f, trigger.InteractionRange, rangeColour);
-                m_DebugOverlay.Line(entityPos, entityPos + arcStart                                           * trigger.InteractionRange,            rangeColour);
-                m_DebugOverlay.Line(entityPos, entityPos + Quaternion.AngleAxis(trigger.InteractionAngle, up) * arcStart * trigger.InteractionRange, rangeColour);
+                m_DebugOverlay.Line(entityPos, entityPos + entityForward * trigger.InteractionRange, Color.white);
+
+                // All the way round, both edges would meet behind the entity and read as its facing.
+                if (trigger.InteractionAngle < 360f)
+                {
+                    m_DebugOverlay.Line(entityPos, entityPos + arcStart                                           * trigger.InteractionRange,            rangeColour);
+                    m_DebugOverlay.Line(entityPos, entityPos + Quaternion.AngleAxis(trigger.InteractionAngle, up) * arcStart * trigger.InteractionRange, rangeColour);
+                }
 
                 if (!trigger.IsActive || !IsInInteractionRange(playerPos, entity))
                 {

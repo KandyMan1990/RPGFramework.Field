@@ -62,7 +62,7 @@ Bodies are built from **presets** named for what they are for:
 | Preset | Built | Scripts it starts with |
 | --- | --- | --- |
 | Gateway | an unseen trigger area | a gateway script to write the jump in |
-| Character | a kinematic rigidbody, a capsule and an interaction trigger | shows itself |
+| Character | a kinematic rigidbody, a capsule — standing in 3D, in 2D a footprint at its feet a cell wide — and an interaction trigger | shows itself |
 | Player character | the same, without the interaction trigger | makes itself the player |
 | Interactable object | a solid box and an interaction trigger | — |
 | Examine point | an interaction trigger only, so it doesn't block | — |
@@ -101,8 +101,8 @@ It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, shee
 don't edit it. It builds each field's asset bundle and records the variable map's layout. **A player build is refused if
 the variable map has changed since the last export**, because compiled scripts address variables where they were.
 
-**RPG Framework > Field > Draw Interaction and Trigger Debug** draws interaction ranges, triggers, gateways and blockers
-in the Game view.
+**RPG Framework > Field > Draw Interaction and Trigger Debug** draws interaction ranges and which way each entity faces,
+triggers, gateways and blockers in the Game view.
 
 ---
 
@@ -181,6 +181,13 @@ What a script can do, by what it acts on. Each block in the palette says what it
     transform.
   - Bodies are kinematic. The rigidbody drivers sweep and slide along what they hit, rather than pushing or being pushed.
   - Scripts walk entities to a point, glide or slide them there, or have one follow another.
+- **Facing:** every entity with a body faces one way, which walking turns it to at once, scripts set or turn over time,
+  and interaction, the saved game and its animation read.
+  - A 3D entity faces by turning its body.
+  - A 2D entity never turns its sprite: it keeps the way it faces and its animation shows it through `FacingX` and
+    `FacingY`. A rotation a script gives is read as Unity's 2D rotations are — none faces up the screen, and `0 0 90`
+    a quarter turn anticlockwise, to the left. It stands facing down the screen, towards the camera, until something
+    turns it; the player arrives facing the way its spawn point is turned.
 - **Blockers** are objects in the field with an id that a script switches on and off. Switching one switches its
   colliders, its tilemap of closed cells and its visuals together, to close off part of a field.
 - **Interaction:**
@@ -188,8 +195,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - Which entity is the player is a script's choice, and may be none, for a field that is all cutscene.
 - **Animation:**
   - An entity's base animation is one Animator state.
-  - The field writes a `Speed` parameter, and `FacingX` and `FacingY` for 2D, so your controller decides how idle,
-    walking and running blend.
+  - The field writes a `Speed` parameter, and `FacingX` and `FacingY` — which way the entity faces, with up the screen
+    positive — so your controller decides how idle, walking and running blend, and which way a sprite looks.
   - Scripts play other states over the base one, once or looping, and can wait for them.
 - **Dialogue:**
   - Windows are addressed by channel, 0 to 7, each keeping its position and style until the field changes, when
@@ -231,8 +238,10 @@ What a script can do, by what it acts on. Each block in the palette says what it
 
 ## Sample
 
-**2D Field Sample**: a field module scene for a 2D game, `FieldModule`, and a bare field to walk in, `SampleField` — a
-tilemap of ground, a player character and a spawn point, drawn with Unity's built-in sprites. Its scene installer binds
+**2D Field Sample**: a field module scene for a 2D game, `FieldModule`, and a field to walk in, `SampleField` — a
+tilemap of ground, a player character, a villager who turns to face whoever talks to them, a save point and a spawn
+point, drawn with Unity's built-in sprites. The characters share an Animator controller whose blend tree reads `FacingX`
+and `FacingY` and moves a marker to the side they face, as a sprite sheet's frames would. Its scene installer binds
 the `FieldDatabase` the Field Designer's export wrote, and its input adapter uses the RPG Framework Starter sample's
 actions: it runs as the field of the Starter's game, whose README says how to set it up, exporting the field among the
 steps.

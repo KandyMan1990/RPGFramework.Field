@@ -28,18 +28,17 @@ namespace RPGFramework.Field
             m_LoadedFromSaveAddress = AddressOf(variableMap, CoreVariables.LOADED_FROM_SAVE);
         }
 
-        internal void Write(Transform player, Vector3 up)
+        /// <summary>
+        /// Keeps where the player stands and which way they face, as degrees about <paramref name="up" /> from
+        /// <paramref name="north" />, so a 3D player's is the turn of their body and a 2D player's the way their sprite
+        /// faces.
+        /// </summary>
+        internal void Write(Vector3 position, Vector3 facing, Vector3 up, Vector3 north)
         {
-            Vector3 position = player.position;
-
-            player.rotation.ToAngleAxis(out float angle, out Vector3 axis);
-
-            float facing = Vector3.Dot(axis, up) < 0f ? -angle : angle;
-
             m_MemoryService.WriteFloat(MemoryBank.Persistent, m_PositionXAddress, position.x);
             m_MemoryService.WriteFloat(MemoryBank.Persistent, m_PositionYAddress, position.y);
             m_MemoryService.WriteFloat(MemoryBank.Persistent, m_PositionZAddress, position.z);
-            m_MemoryService.WriteFloat(MemoryBank.Persistent, m_FacingAddress,    facing);
+            m_MemoryService.WriteFloat(MemoryBank.Persistent, m_FacingAddress,    Vector3.SignedAngle(north, facing, up));
         }
 
         /// <summary>
