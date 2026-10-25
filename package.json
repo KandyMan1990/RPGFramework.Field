@@ -16,6 +16,13 @@
     "com.unity.mathematics": "1.4.0"
   },
   "unity": "6000.6",
+  "samples": [
+    {
+      "displayName": "2D Field Sample",
+      "description": "A field module scene and a bare 2D tilemap field for the Starter sample's game to walk in. Read the Starter's README first.",
+      "path": "Samples~/2D Field Sample"
+    }
+  ],
   "keywords": [
     "RPG Framework",
     "Field"

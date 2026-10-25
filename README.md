@@ -229,6 +229,16 @@ What a script can do, by what it acts on. Each block in the palette says what it
 
 ---
 
+## Sample
+
+**2D Field Sample**: a field module scene for a 2D game, `FieldModule`, and a bare field to walk in, `SampleField` — a
+tilemap of ground, a player character and a spawn point, drawn with Unity's built-in sprites. Its scene installer binds
+the `FieldDatabase` the Field Designer's export wrote, and its input adapter uses the RPG Framework Starter sample's
+actions: it runs as the field of the Starter's game, whose README says how to set it up, exporting the field among the
+steps.
+
+---
+
 ## Tests
 
 The tests are in `Tests/Editor`, on Unity's Test Framework. They compile only in a project that lists the package as
