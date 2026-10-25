@@ -1,6 +1,5 @@
 using System;
 using RPGFramework.Core.Input;
-using UnityEngine;
 
 namespace RPGFramework.Field
 {
@@ -37,6 +36,6 @@ namespace RPGFramework.Field
             return true;
         }
 
-        bool IInputContext.HandleMove(Vector2 move) => false;
+        bool IInputContext.TakesMovement => false;
     }
 }

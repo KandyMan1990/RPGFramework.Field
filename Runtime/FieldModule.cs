@@ -294,6 +294,8 @@ namespace RPGFramework.Field
                 runtimes[i].Update(m_FieldContext.VM);
             }
 
+            ReadPlayerMove();
+
             float deltaTime = Time.deltaTime;
 
             foreach (FieldEntityComponents entity in m_Entities.Values)
@@ -876,7 +878,7 @@ namespace RPGFramework.Field
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
 
-            m_ExplorationInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenPartyMenu, OnMove);
+            m_ExplorationInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenPartyMenu);
             m_InputRouter.Push(m_ExplorationInputContext);
 
             if (m_FieldContext.IsInputLockedByScript)
@@ -1396,9 +1398,13 @@ namespace RPGFramework.Field
             m_FieldResumeDataStore.Set(m_FieldContext);
         }
 
-        private void OnMove(Vector2 move)
+        // Read each tick, after the scripts, rather than as it changes, so whatever is held counts the moment movement
+        // reaches the field again — back from another module, a conversation closed, a script giving control back — and a
+        // script taking control this tick stops the player this tick.
+        private void ReadPlayerMove()
         {
-            Vector3 up = m_FieldModuleMonoBehaviour.Up;
+            Vector2 move = m_InputRouter.MovementReaches(m_ExplorationInputContext) ? m_InputAdapter.Movement : Vector2.zero;
+            Vector3 up   = m_FieldModuleMonoBehaviour.Up;
 
             Vector3 forward = Vector3.ProjectOnPlane(m_CameraTransformHandle.forward, up).normalized;
             Vector3 right   = Vector3.ProjectOnPlane(m_CameraTransformHandle.right,   up).normalized;
@@ -1514,7 +1520,6 @@ namespace RPGFramework.Field
         {
             if (lockInput)
             {
-                MovePlayer(Vector3.zero);
                 m_ScriptInputLock = new BlockAllInputContext();
                 m_InputRouter.Push(m_ScriptInputLock);
 
@@ -1861,9 +1866,6 @@ namespace RPGFramework.Field
 
             if (blockOtherInput)
             {
-                // Movement stops reaching the player from here, so it stops where it is rather than walking on under
-                // the last input it was given.
-                MovePlayer(Vector3.zero);
                 m_DialogueInputContext.BlockOtherInput();
             }
 
