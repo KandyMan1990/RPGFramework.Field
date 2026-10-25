@@ -1406,8 +1406,15 @@ namespace RPGFramework.Field
             Vector2 move = m_InputRouter.MovementReaches(m_ExplorationInputContext) ? m_InputAdapter.Movement : Vector2.zero;
             Vector3 up   = m_FieldModuleMonoBehaviour.Up;
 
-            Vector3 forward = Vector3.ProjectOnPlane(m_CameraTransformHandle.forward, up).normalized;
+            Vector3 forward = Vector3.ProjectOnPlane(m_CameraTransformHandle.forward, up);
             Vector3 right   = Vector3.ProjectOnPlane(m_CameraTransformHandle.right,   up).normalized;
+
+            if (forward.sqrMagnitude < 1e-6f)
+            {
+                forward = Vector3.ProjectOnPlane(m_CameraTransformHandle.up, up);
+            }
+
+            forward = forward.normalized;
 
             Vector3 worldMove = forward * move.y + right * move.x;
 
