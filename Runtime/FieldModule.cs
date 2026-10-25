@@ -35,7 +35,7 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Field
 {
-    public sealed partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
+    internal sealed partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
     {
         private const float MUSIC_RESUME_SECONDS = 1f;
 

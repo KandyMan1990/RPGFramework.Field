@@ -1,10 +1,13 @@
+using RPGFramework.Core;
 using RPGFramework.Core.Input;
+using RPGFramework.DI;
+using RPGFramework.Field.SharedTypes;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace RPGFramework.Field
 {
-    internal sealed class FieldModuleMonoBehaviour : MonoBehaviour
+    internal sealed class FieldModuleMonoBehaviour : MonoBehaviour, IModuleBindings
     {
         public Vector3         Up                     => m_Up.normalized;
         public float           PlayerInteractionAngle => m_PlayerInteractionAngle;
@@ -35,5 +38,11 @@ namespace RPGFramework.Field
         [Tooltip("Keep the field on screen, frozen, under a module opened over it, such as the menu. Off, its camera is switched off until the field resumes.")]
         [SerializeField]
         private bool m_VisibleWhileSuspended;
+
+        void IModuleBindings.Bind(IDIContainer sceneContainer)
+        {
+            sceneContainer.BindSingletonIfNotRegistered<IFieldPresentation, PrefabFieldPresentation>();
+            sceneContainer.BindSingletonIfNotRegistered<IFieldModule, FieldModule>();
+        }
     }
 }

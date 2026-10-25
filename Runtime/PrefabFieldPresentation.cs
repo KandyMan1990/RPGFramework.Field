@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace RPGFramework.Field
 {
-    public sealed class PrefabFieldPresentation : IFieldPresentation
+    internal sealed class PrefabFieldPresentation : IFieldPresentation
     {
         private GameObject  m_Instance;
         private AssetBundle m_AssetBundle;

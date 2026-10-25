@@ -24,8 +24,10 @@ on.
    - the scene's `InputAdapter`;
    - the game's up direction, `0,1,0` for a 3D field and `0,0,1` for a 2D one;
    - how wide the player's interaction angle is.
-2. **A scene installer** binding `IFieldPresentation` to `PrefabFieldPresentation`, `IFieldDatabase` to the generated
-   `FieldDatabase` (see Export, below) and `IFieldModule` to `FieldModule`.
+
+   It also binds the field module, and its default presentation, loading fields from prefabs.
+2. **A scene installer** binding `IFieldDatabase` to the generated `FieldDatabase` (see Export, below). To show fields
+   your own way, bind `IFieldPresentation` there too, and the default is not used.
 3. **In your global installer**, bind `IFieldArgsStore` to `FieldArgsStore`, `IGameOverFieldStore` to
    `GameOverFieldStore` and `IFieldResumeDataStore` to `FieldResumeDataStore`.
 4. **Add the scene to your game's module and scene databases** under `FieldConstants.MODULE_ID`.
@@ -124,6 +126,9 @@ in the Game view.
   it.
 - **Each entity runs up to 16 instructions a frame**, so a loop can't stall the game. A long script simply carries on
   next frame.
+- **Scratch values are Session or Temp variables.** A Temp variable is one script's own, zeroed as it starts. For a
+  value two entities share — a roll one makes and another reads — declare a few Session variables as your game's shared
+  scratch, and have each field set one before reading it: Session isn't saved, and nothing clears it as a field loads.
 
 ### Writing them
 
