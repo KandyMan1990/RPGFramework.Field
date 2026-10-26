@@ -6,8 +6,20 @@ namespace RPGFramework.Field
 {
     internal static class MovementDriverFactory
     {
-        internal static IMovementDriver Create(GameObject gameObject, float speed, IReadOnlyList<FieldBlocker> blockers, FieldDimension dimension)
+        /// <summary>
+        /// A 2D tile field moves every body a tile at a time on its <paramref name="walkableTilemap" />, a rigidbody kept
+        /// for its triggers; any other field moves a body by what it has: a 3D rigidbody, a 2D one, or a plain transform.
+        /// </summary>
+        internal static IMovementDriver Create(GameObject gameObject, float speed, IReadOnlyList<FieldBlocker> blockers, FieldDimension dimension, Tilemap walkableTilemap)
         {
+            if (walkableTilemap != null)
+            {
+                TilemapMovementDriver tilemapMovementDriver = gameObject.AddComponent<TilemapMovementDriver>();
+                tilemapMovementDriver.Init(gameObject.transform, walkableTilemap, blockers, speed);
+
+                return tilemapMovementDriver;
+            }
+
             if (gameObject.TryGetComponent(out Rigidbody rb))
             {
                 Rigidbody3DMovementDriver rigidbody3DMovementDriver = gameObject.AddComponent<Rigidbody3DMovementDriver>();
@@ -24,43 +36,10 @@ namespace RPGFramework.Field
                 return rigidbody2DMovementDriver;
             }
 
-            Tilemap tilemap = FindWalkableTilemap();
-            if (tilemap != null)
-            {
-                TilemapMovementDriver driver = gameObject.AddComponent<TilemapMovementDriver>();
-                driver.Init(gameObject.transform, tilemap, blockers, speed, dimension);
-
-                return driver;
-            }
-
             TransformMovementDriver transformMovementDriver = gameObject.AddComponent<TransformMovementDriver>();
             transformMovementDriver.Init(gameObject.transform, speed, dimension);
 
             return transformMovementDriver;
-        }
-
-        /// <summary>
-        /// The tilemap whose tiles say where an entity may walk. A blocker's tilemap says where it may not, so it is
-        /// never the one.
-        /// </summary>
-        private static Tilemap FindWalkableTilemap()
-        {
-            Tilemap walkable = null;
-
-            Tilemap[] tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsInactive.Include);
-
-            for (int i = 0; i < tilemaps.Length; i++)
-            {
-                Tilemap tilemap = tilemaps[i];
-
-                if (tilemap.GetComponentInParent<FieldBlocker>(true) == null)
-                {
-                    walkable = tilemap;
-                    break;
-                }
-            }
-
-            return walkable;
         }
     }
 }

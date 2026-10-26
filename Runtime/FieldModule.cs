@@ -31,6 +31,7 @@ using RPGFramework.Menu.SharedTypes;
 using RPGFramework.Menu.SharedTypes.Constants;
 using RPGFramework.Menu.SharedTypes.Stores;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 using UnityEngine.UIElements;
 
 namespace RPGFramework.Field
@@ -87,6 +88,7 @@ namespace RPGFramework.Field
         private FieldBlocker[]                         m_Blockers;
         private Dictionary<byte, FieldBlocker>         m_BlockersById;
         private FieldDimension                         m_Dimension;
+        private Tilemap                                m_WalkableTilemap;
         private int                                    m_PlayerEntityId;
         private bool                                   m_FieldTransitionRequested;
         private FieldDefinition                        m_FieldDefinition;
@@ -607,9 +609,10 @@ namespace RPGFramework.Field
             }
 
             FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
-            m_Dimension      = fieldEntities.Dimension;
-            m_Entities       = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
-            m_AnimationNames = BuildAnimationNames(fieldEntities);
+            m_Dimension       = fieldEntities.Dimension;
+            m_WalkableTilemap = FindWalkableTilemap(fieldGameObject);
+            m_Entities        = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
+            m_AnimationNames  = BuildAnimationNames(fieldEntities);
 
             for (int i = 0; i < fieldEntities.Compiled.Count; i++)
             {
@@ -1719,11 +1722,18 @@ namespace RPGFramework.Field
 
             if (entity.MovementDriver == null)
             {
-                movementDriver = MovementDriverFactory.Create(entity.Entity.gameObject, 3f, m_Blockers, m_Dimension);
+                movementDriver = MovementDriverFactory.Create(entity.Entity.gameObject, 3f, m_Blockers, m_Dimension, m_WalkableTilemap);
                 entity.SetMovementDriver(movementDriver);
             }
 
             return movementDriver;
+        }
+
+        private static Tilemap FindWalkableTilemap(GameObject field)
+        {
+            WalkableTilemap walkable = field.GetComponentInChildren<WalkableTilemap>(true);
+
+            return walkable != null ? walkable.Tilemap : null;
         }
 
         private Vector3 FacingOf(FieldEntityComponents entity)

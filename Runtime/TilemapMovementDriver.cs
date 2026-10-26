@@ -6,62 +6,54 @@ using UnityEngine.Tilemaps;
 
 namespace RPGFramework.Field
 {
+    /// <summary>
+    /// Moves a body a tile at a time on a 2D tile field's walkable tilemap, in the four directions of the tilemap's own
+    /// grid. A tile is entered only where the tilemap has one, no blocker closes it and nothing solid stands on it —
+    /// another character, or a wall of colliders — and walking at one that cannot be entered still faces it. A step under
+    /// way is finished; holding the input on starts the next as it ends. The body may keep a rigidbody, for its triggers.
+    /// </summary>
     internal sealed class TilemapMovementDriver : MonoBehaviour, IMovementDriver
     {
-        private const float MIN_FACING_SQR = 0.0001f;
+        private const float MIN_MOVE_INPUT_SQR = 0.0001f;
+
+        // Narrower than a tile, so what stands on the tiles beside the one asked about is not counted, and anything
+        // stepping onto it is.
+        private const float OCCUPIED_FRACTION = 0.9f;
+
+        private static readonly ContactFilter2D m_SolidOnly = new ContactFilter2D { useTriggers = false };
+
+        private readonly List<Collider2D>  m_Overlaps = new List<Collider2D>(8);
+        private readonly List<FieldEntity> m_Pushed   = new List<FieldEntity>();
 
         private Transform                   m_Transform;
         private Tilemap                     m_Tilemap;
         private IReadOnlyList<FieldBlocker> m_Blockers;
+        private Collider2D[]                m_OwnColliders;
         private float                       m_Speed;
+        private Vector3                     m_MoveInput;
         private Vector3                     m_Target;
         private bool                        m_Moving;
-        private RotationState               m_RotationState;
         private ScriptedMove                m_ScriptedMove;
-        private SpriteFacing                m_SpriteFacing;
+        private SpriteFacing                m_Facing;
 
-        public void Init(Transform entityTransform, Tilemap tilemap, IReadOnlyList<FieldBlocker> blockers, float speed, FieldDimension dimension)
+        public void Init(Transform entityTransform, Tilemap tilemap, IReadOnlyList<FieldBlocker> blockers, float speed)
         {
-            m_Transform     = entityTransform;
-            m_Tilemap       = tilemap;
-            m_Blockers      = blockers;
-            m_Speed         = speed;
-            m_RotationState = default;
-            m_SpriteFacing  = dimension == FieldDimension.TwoD ? new SpriteFacing() : null;
+            m_Transform    = entityTransform;
+            m_Tilemap      = tilemap;
+            m_Blockers     = blockers;
+            m_OwnColliders = entityTransform.GetComponentsInChildren<Collider2D>(true);
+            m_Speed        = speed;
+            m_Facing       = new SpriteFacing();
         }
 
         void IMovementDriver.SetMoveInput(Vector3 move)
         {
-            if (m_Moving || m_ScriptedMove.Active)
+            m_MoveInput = move;
+
+            if (!m_Moving && !m_ScriptedMove.Active)
             {
-                return;
+                TryStep();
             }
-
-            Vector3Int cell = m_Tilemap.WorldToCell(m_Transform.position);
-
-            Vector3Int dir = Quantize(move);
-
-            if (dir == Vector3Int.zero)
-            {
-                return;
-            }
-
-            Vector3Int next = cell + dir;
-
-            if (!m_Tilemap.HasTile(next))
-            {
-                return;
-            }
-
-            Vector3 target = m_Tilemap.GetCellCenterWorld(next);
-
-            if (IsBlocked(target))
-            {
-                return;
-            }
-
-            m_Target = target;
-            m_Moving = true;
         }
 
         void IMovementDriver.SetMoveSpeed(float speed)
@@ -72,15 +64,7 @@ namespace RPGFramework.Field
         void IMovementDriver.Tick(float deltaTime)
         {
             HandleMovement(deltaTime);
-
-            if (m_SpriteFacing != null)
-            {
-                m_SpriteFacing.Tick(deltaTime);
-            }
-            else
-            {
-                HandleRotation(deltaTime);
-            }
+            m_Facing.Tick(deltaTime);
         }
 
         void IMovementDriver.PhysicsTick(float fixedDeltaTime)
@@ -95,57 +79,31 @@ namespace RPGFramework.Field
 
         void IMovementDriver.SetRotation(Quaternion rotation)
         {
-            if (m_SpriteFacing != null)
-            {
-                m_SpriteFacing.SetRotation(rotation);
-                return;
-            }
-
-            m_Transform.rotation = rotation;
+            m_Facing.SetRotation(rotation);
         }
 
-        Quaternion IMovementDriver.Rotation => m_SpriteFacing != null ? m_SpriteFacing.Rotation : m_Transform.rotation;
+        Quaternion IMovementDriver.Rotation => m_Facing.Rotation;
 
-        Vector3 IMovementDriver.Facing => m_SpriteFacing != null ? m_SpriteFacing.Facing : Vector3.ProjectOnPlane(m_Transform.forward, Vector3.up).normalized;
+        Vector3 IMovementDriver.Facing => m_Facing.Facing;
 
         void IMovementDriver.Face(Vector3 direction)
         {
-            FaceAlong(direction);
+            m_Facing.Face(direction);
         }
 
         void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
-            if (m_SpriteFacing != null)
-            {
-                m_SpriteFacing.StartTurn(args);
-                return;
-            }
-
-            m_RotationState = new RotationState
-                              {
-                                      Active        = true,
-                                      Start         = m_Transform.rotation,
-                                      Target        = ResolveDirection(m_Transform.rotation, args.Rotation, args.RotationDirection),
-                                      Elapsed       = 0f,
-                                      Duration      = args.Duration,
-                                      Interpolation = args.RotationType
-                              };
+            m_Facing.StartTurn(args);
         }
 
         void IMovementDriver.ResumeRotation(RotationState rotationState)
         {
-            if (m_SpriteFacing != null)
-            {
-                m_SpriteFacing.ResumeTurn(rotationState);
-                return;
-            }
-
-            m_RotationState = rotationState;
+            m_Facing.ResumeTurn(rotationState);
         }
 
         RotationState IMovementDriver.GetRotationState()
         {
-            return m_SpriteFacing != null ? m_SpriteFacing.Turn : m_RotationState;
+            return m_Facing.Turn;
         }
 
         Vector3 IMovementDriver.CurrentVelocity
@@ -160,12 +118,13 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// A scripted move goes straight to its point rather than cell by cell, so it can finish between cells; the
-        /// next step the player takes starts from the cell it ended in. A cell step already under way gives way to it.
+        /// A scripted move goes straight to its point rather than tile by tile, so it can finish between tiles; the
+        /// next step the player takes starts from the tile it ended in. A step already under way gives way to it.
         /// </summary>
         void IMovementDriver.MoveTo(Vector3 target, float stopDistance, bool faceTravel)
         {
             m_Moving = false;
+            m_Pushed.Clear();
 
             m_ScriptedMove = new ScriptedMove
                              {
@@ -183,68 +142,104 @@ namespace RPGFramework.Field
 
         bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
 
-        IReadOnlyList<FieldEntity> IMovementDriver.Pushed => System.Array.Empty<FieldEntity>();
+        /// <summary>What stands on the tile last walked at, solid or not, for as long as it is walked at.</summary>
+        IReadOnlyList<FieldEntity> IMovementDriver.Pushed => m_Pushed;
 
-        private bool IsBlocked(Vector3 cellCentre)
+        private void TryStep()
         {
-            bool blocked = false;
+            m_Pushed.Clear();
 
-            for (int i = 0; i < m_Blockers.Count && !blocked; i++)
+            Vector3Int step = Quantize(m_MoveInput);
+
+            if (step == Vector3Int.zero)
             {
-                blocked = m_Blockers[i].BlocksCell(cellCentre);
+                return;
             }
 
-            return blocked;
+            Vector3Int cell   = m_Tilemap.WorldToCell(m_Transform.position);
+            Vector3Int next   = cell + step;
+            Vector3    target = m_Tilemap.GetCellCenterWorld(next);
+
+            m_Facing.Face(target - m_Tilemap.GetCellCenterWorld(cell));
+
+            if (!CanEnter(next, target))
+            {
+                return;
+            }
+
+            m_Target = target;
+            m_Moving = true;
         }
 
-        private static Vector3Int Quantize(Vector3 move)
+        private bool CanEnter(Vector3Int cell, Vector3 centre)
         {
-            if (move.sqrMagnitude < 0.0001f)
+            if (!m_Tilemap.HasTile(cell))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < m_Blockers.Count; i++)
+            {
+                if (m_Blockers[i].BlocksCell(centre))
+                {
+                    return false;
+                }
+            }
+
+            return !IsOccupied(centre);
+        }
+
+        // Notes everything on the tile as pushed, as a free field's drivers note what they walk into, solid or not.
+        private bool IsOccupied(Vector3 centre)
+        {
+            Vector3 across = GridAxis(Vector3Int.right);
+            Vector3 along  = GridAxis(Vector3Int.up);
+            Vector2 size   = new Vector2(across.magnitude, along.magnitude) * OCCUPIED_FRACTION;
+            float   angle  = Vector2.SignedAngle(Vector2.right, across);
+
+            int  count    = Physics2D.OverlapBox(centre, size, angle, m_SolidOnly, m_Overlaps);
+            bool occupied = false;
+
+            for (int i = 0; i < count; i++)
+            {
+                Collider2D other = m_Overlaps[i];
+
+                if (other.gameObject == m_Tilemap.gameObject || System.Array.IndexOf(m_OwnColliders, other) >= 0)
+                {
+                    continue;
+                }
+
+                FieldEntity.AddOwnerOf(other, m_Pushed);
+
+                occupied |= FieldEntity.Blocks(other);
+            }
+
+            return occupied;
+        }
+
+        /// <summary>The nearest of the grid's four directions to the input, along the tilemap's own axes.</summary>
+        private Vector3Int Quantize(Vector3 move)
+        {
+            float x = Vector3.Dot(move, GridAxis(Vector3Int.right).normalized);
+            float y = Vector3.Dot(move, GridAxis(Vector3Int.up).normalized);
+
+            if (x * x + y * y < MIN_MOVE_INPUT_SQR)
             {
                 return Vector3Int.zero;
             }
 
-            move.Normalize();
-
-            if (Mathf.Abs(move.x) > Mathf.Abs(move.z))
+            if (math.abs(x) > math.abs(y))
             {
-                return move.x > 0 ? Vector3Int.right : Vector3Int.left;
+                return x > 0f ? Vector3Int.right : Vector3Int.left;
             }
 
-            return move.z > 0 ? Vector3Int.up : Vector3Int.down;
+            return y > 0f ? Vector3Int.up : Vector3Int.down;
         }
 
-        private static Quaternion ResolveDirection(Quaternion start, Quaternion target, RotationDirection direction)
+        /// <summary>One tile's step along a grid direction, in the world.</summary>
+        private Vector3 GridAxis(Vector3Int direction)
         {
-            if (direction == RotationDirection.Closest)
-            {
-                return target;
-            }
-
-            float angle = Quaternion.Angle(start, target);
-
-            if (angle < 0.001f)
-            {
-                return target;
-            }
-
-            Quaternion delta = target * Quaternion.Inverse(start);
-            delta.ToAngleAxis(out float deltaAngle, out Vector3 axis);
-
-            float signedAngle = Vector3.Dot(axis, Vector3.up) < 0 ? -deltaAngle : deltaAngle;
-
-            bool clockwise = signedAngle < 0;
-
-            if (direction == RotationDirection.Clockwise && !clockwise)
-            {
-                target = Quaternion.AngleAxis(-(360 - deltaAngle), Vector3.up) * start;
-            }
-            else if (direction == RotationDirection.CounterClockwise && clockwise)
-            {
-                target = Quaternion.AngleAxis(360 - deltaAngle, Vector3.up) * start;
-            }
-
-            return target;
+            return m_Tilemap.CellToWorld(direction) - m_Tilemap.CellToWorld(Vector3Int.zero);
         }
 
         private void HandleMovement(float deltaTime)
@@ -263,12 +258,12 @@ namespace RPGFramework.Field
 
             m_Transform.position = Vector3.MoveTowards(m_Transform.position, m_Target, m_Speed * deltaTime);
 
-            FaceAlong(m_Target - m_Transform.position);
-
             if (Vector3.Distance(m_Transform.position, m_Target) < 0.001f)
             {
                 m_Transform.position = m_Target;
                 m_Moving             = false;
+
+                TryStep();
             }
         }
 
@@ -280,53 +275,12 @@ namespace RPGFramework.Field
 
             if (m_ScriptedMove.FaceTravel)
             {
-                FaceAlong(motion);
+                m_Facing.Face(motion);
             }
 
             if (m_ScriptedMove.HasArrived(m_Transform.position))
             {
                 m_ScriptedMove.Active = false;
-            }
-        }
-
-        private void FaceAlong(Vector3 direction)
-        {
-            if (m_SpriteFacing != null)
-            {
-                m_SpriteFacing.Face(direction);
-                return;
-            }
-
-            Vector3 flat = Vector3.ProjectOnPlane(direction, Vector3.up);
-
-            if (flat.sqrMagnitude > MIN_FACING_SQR)
-            {
-                m_Transform.forward = flat.normalized;
-            }
-        }
-
-        private void HandleRotation(float deltaTime)
-        {
-            if (!m_RotationState.Active)
-            {
-                return;
-            }
-
-            m_RotationState.Elapsed += deltaTime;
-
-            float t = math.clamp(m_RotationState.Elapsed / m_RotationState.Duration, 0f, 1f);
-            if (m_RotationState.Interpolation == RotationInterpolation.Smooth)
-            {
-                t = math.smoothstep(0f, 1f, t);
-            }
-
-            m_Transform.rotation = Quaternion.Slerp(m_RotationState.Start, m_RotationState.Target, t);
-
-            if (m_RotationState.Elapsed >= m_RotationState.Duration)
-            {
-                m_Transform.rotation = m_RotationState.Target;
-
-                m_RotationState.Active = false;
             }
         }
     }

@@ -52,6 +52,14 @@ Field's variables:
 A field is a prefab whose root has **`FieldEntities`**: whether the field is 2D or 3D, and every entity in it. Under the
 root sit the entities' bodies, spawn points, blockers and scenery.
 
+**A tile field** is a 2D field with a **Walkable Tilemap** component on one of its tilemaps (GameObject > RPG Framework
+> Field > Walkable Tilemap makes one): every character in it walks a tile at a time on that tilemap's tiles, in the four
+directions of its grid, as the SNES-era games do. A 2D field without one is walked freely, sliding along what it meets.
+A tile can be entered only where the tilemap has one, no blocker closes it and nothing solid stands on it — another
+character, or a wall of colliders — and walking at one that cannot be entered turns the walker to face it; walking at a
+character pushes it, as in a free field. Characters keep their rigidbodies, so triggers still notice them. Scripted
+moves still go straight to their point.
+
 ### Entities
 
 An entity is an id, a name, its scripts and, if it is something in the world, a **body**. An entity with no body is
@@ -95,7 +103,9 @@ prefab.
 - a body of the wrong dimension, or a dynamic rigidbody;
 - an animation state the entity's Animator lacks;
 - a dialogue key none of the field's sheets has;
-- a jump to a spawn point its destination lacks.
+- a jump to a spawn point its destination lacks;
+- a Walkable Tilemap in a 3D field, or two in one field, and in a tile field a spawn point or character off a tile's
+  centre.
 
 It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated, so
 don't edit it. It builds each field's asset bundle and records the variable map's layout. **A player build is refused if
@@ -177,8 +187,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
 ## At run time
 
 - **Movement:**
-  - A body moves with a driver chosen from what it has: a 3D rigidbody, a 2D rigidbody, a walkable tilemap, or a plain
-    transform.
+  - In a tile field every body moves a tile at a time on its walkable tilemap. Elsewhere a body moves with a driver
+    chosen from what it has: a 3D rigidbody, a 2D rigidbody, or a plain transform.
   - Bodies are kinematic. The rigidbody drivers sweep and slide along what they hit, rather than pushing or being pushed.
   - Scripts walk entities to a point, glide or slide them there, or have one follow another.
 - **Facing:** every entity with a body faces one way, which walking turns it to at once, scripts set or turn over time,
@@ -238,13 +248,18 @@ What a script can do, by what it acts on. Each block in the palette says what it
 
 ## Sample
 
-**2D Field Sample**: a field module scene for a 2D game, `FieldModule`, and a field to walk in, `SampleField` — a
-tilemap of ground, a player character, a villager who turns to face whoever talks to them, a save point and a spawn
-point, drawn with Unity's built-in sprites. The characters share an Animator controller whose blend tree reads `FacingX`
-and `FacingY` and moves a marker to the side they face, as a sprite sheet's frames would. Its scene installer binds
-the `FieldDatabase` the Field Designer's export wrote, and its input adapter uses the RPG Framework Starter sample's
-actions: it runs as the field of the Starter's game, whose README says how to set it up, exporting the field among the
-steps.
+**2D Field Sample**: a field module scene for a 2D game, `FieldModule`, and two fields joined by a gateway each way,
+drawn with Unity's built-in sprites:
+
+- `SampleField`, walked freely: a tilemap of ground, a player character, a villager who turns to face whoever talks to
+  them, and a save point;
+- `SampleTileField`, a tile field walked a tile at a time: its ground the Walkable Tilemap, a wall across it, and a
+  villager standing in the way.
+
+The characters share an Animator controller whose blend tree reads `FacingX` and `FacingY` and moves a marker to the side
+they face, as a sprite sheet's frames would. Its scene installer binds the `FieldDatabase` the Field Designer's export
+wrote, and its input adapter uses the RPG Framework Starter sample's actions: it runs as the field of the Starter's
+game, whose README says how to set it up, exporting the fields among the steps.
 
 ---
 

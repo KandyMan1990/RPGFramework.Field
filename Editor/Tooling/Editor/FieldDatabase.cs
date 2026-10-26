@@ -210,6 +210,8 @@ namespace RPGFramework.Field.Editor
                     ValidateBlocker(fieldEntities.Dimension, blocker, prefab.name, blockerIds, problems);
                 }
 
+                ValidateTileField(prefab, fieldEntities, problems);
+
                 List<FieldEntityRecord> records = fieldEntities.Entities;
 
                 for (int j = 0; j < records.Count; j++)
@@ -622,6 +624,86 @@ namespace RPGFramework.Field.Editor
             if (!blocks)
             {
                 problems.Add($"{blockerName} has nothing to block with. Give it a solid collider, or in a tilemap field a {nameof(Tilemap)} of the cells it closes");
+            }
+        }
+
+        /// <summary>
+        /// Only a 2D field is walked tile by tile, on one tilemap. Its characters step from tile centre to tile centre,
+        /// so one placed, or arriving, anywhere else would step from between tiles. A tilemap knows where its tiles are
+        /// only once the prefab is loaded, so a tile field is checked opened.
+        /// </summary>
+        private static void ValidateTileField(GameObject prefab, FieldEntities fieldEntities, List<string> problems)
+        {
+            WalkableTilemap[] walkables = prefab.GetComponentsInChildren<WalkableTilemap>(true);
+
+            if (walkables.Length == 0)
+            {
+                return;
+            }
+
+            if (fieldEntities.Dimension == FieldDimension.ThreeD)
+            {
+                problems.Add($"{prefab.name} has a {nameof(WalkableTilemap)} on '{walkables[0].name}', but only a 2D field is walked tile by tile. Remove it, or set the field to 2D on its {nameof(FieldEntities)}");
+                return;
+            }
+
+            if (walkables.Length > 1)
+            {
+                problems.Add($"{prefab.name} has a {nameof(WalkableTilemap)} on '{walkables[0].name}' and on '{walkables[1].name}', but a tile field is walked on one tilemap. Keep one");
+                return;
+            }
+
+            GameObject field = PrefabUtility.LoadPrefabContents(AssetDatabase.GetAssetPath(prefab));
+
+            try
+            {
+                Tilemap walkable = field.GetComponentInChildren<WalkableTilemap>(true).Tilemap;
+
+                SpawnPoint[] spawnPoints = field.GetComponentsInChildren<SpawnPoint>(true);
+
+                for (int i = 0; i < spawnPoints.Length; i++)
+                {
+                    SpawnPoint spawnPoint = spawnPoints[i];
+
+                    ValidateOnTile(walkable, spawnPoint.transform.position, $"{prefab.name} / spawn point '{spawnPoint.name}'", problems);
+                }
+
+                FieldEntity[] bodies = field.GetComponentsInChildren<FieldEntity>(true);
+
+                for (int i = 0; i < bodies.Length; i++)
+                {
+                    FieldEntity body = bodies[i];
+
+                    // A character is a body that moves itself, which is what has a rigidbody.
+                    if (body.GetComponent<Rigidbody2D>() != null)
+                    {
+                        ValidateOnTile(walkable, body.transform.position, $"{prefab.name} / '{body.name}'", problems);
+                    }
+                }
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(field);
+            }
+        }
+
+        private static void ValidateOnTile(Tilemap walkable, Vector3 position, string name, List<string> problems)
+        {
+            Vector3Int cell = walkable.WorldToCell(position);
+
+            if (!walkable.HasTile(cell))
+            {
+                problems.Add($"{name} stands where '{walkable.name}' has no tile, so it could never step from there. Move it onto a tile");
+                return;
+            }
+
+            Vector3 origin = walkable.CellToWorld(Vector3Int.zero);
+            Vector3 normal = Vector3.Cross(walkable.CellToWorld(Vector3Int.up) - origin, walkable.CellToWorld(Vector3Int.right) - origin);
+            Vector3 centre = walkable.GetCellCenterWorld(cell);
+
+            if (Vector3.ProjectOnPlane(position - centre, normal).sqrMagnitude > 0.0001f)
+            {
+                problems.Add($"{name} stands off the centre of its tile, so it would step from between tiles. Move it to the tile's centre, {centre}");
             }
         }
 

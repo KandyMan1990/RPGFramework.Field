@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 namespace RPGFramework.Field.Editor
 {
@@ -344,6 +345,30 @@ namespace RPGFramework.Field.Editor
             spawnObject.AddComponent<SpawnPoint>().SetId(id);
 
             Place(spawnObject, context, field, "Create Spawn Point");
+        }
+
+        [MenuItem(MENU + "Walkable Tilemap", false, MENU_PRIORITY)]
+        private static void CreateWalkableTilemap(MenuCommand command)
+        {
+            GameObject    context = command.context as GameObject;
+            FieldEntities field   = FindField(context);
+
+            GameObject grid   = new GameObject("Grid", typeof(Grid));
+            GameObject ground = new GameObject("Walkable Tilemap", typeof(Tilemap), typeof(TilemapRenderer), typeof(WalkableTilemap));
+            ground.transform.SetParent(grid.transform, false);
+
+            Place(grid, context, field, "Create Walkable Tilemap");
+
+            Selection.activeGameObject = ground;
+        }
+
+        /// <summary>Only a 2D field is walked tile by tile.</summary>
+        [MenuItem(MENU + "Walkable Tilemap", true)]
+        private static bool IsIn2DField()
+        {
+            FieldEntities field = FindField(Selection.activeGameObject);
+
+            return field != null && field.Dimension == FieldDimension.TwoD;
         }
 
         /// <summary>
