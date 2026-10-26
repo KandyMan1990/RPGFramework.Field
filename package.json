@@ -13,6 +13,7 @@
     "com.rpgframework.hashing": "2.0.2",
     "com.rpgframework.localisation": "3.0.0",
     "com.rpgframework.menu.sharedtypes": "0.3.0",
+    "com.unity.cinemachine": "6.6.0",
     "com.unity.mathematics": "1.4.0"
   },
   "unity": "6000.6",

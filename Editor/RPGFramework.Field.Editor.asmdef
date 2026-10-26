@@ -8,7 +8,8 @@
         "RPGFramework.Core",
         "RPGFramework.Core.Editor",
         "RPGFramework.Hashing",
-        "RPGFramework.Localisation.Editor"
+        "RPGFramework.Localisation.Editor",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [
         "Editor"

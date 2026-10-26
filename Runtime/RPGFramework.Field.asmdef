@@ -11,7 +11,8 @@
         "RPGFramework.Menu.SharedTypes",
         "Unity.Mathematics",
         "RPGFramework.Hashing",
-        "RPGFramework.Battle.SharedTypes"
+        "RPGFramework.Battle.SharedTypes",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

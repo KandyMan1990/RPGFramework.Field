@@ -11,6 +11,13 @@ namespace RPGFramework.Field
     [RequireComponent(typeof(Tilemap))]
     internal sealed class WalkableTilemap : MonoBehaviour
     {
-        internal Tilemap Tilemap => GetComponent<Tilemap>();
+        private Tilemap m_Tilemap;
+
+        internal Tilemap Tilemap => m_Tilemap;
+
+        private void Awake()
+        {
+            m_Tilemap = GetComponent<Tilemap>();
+        }
     }
 }

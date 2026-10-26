@@ -411,7 +411,7 @@ namespace RPGFramework.Field.Editor
             Place(body.gameObject, context, field, $"Create {preset}");
         }
 
-        private static FieldEntities FindField(GameObject context)
+        internal static FieldEntities FindField(GameObject context)
         {
             FieldEntities field = context != null ? context.GetComponentInParent<FieldEntities>(true) : null;
 
@@ -427,7 +427,7 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// Under the object right-clicked if it is in this field, otherwise the field's root, at its parent's origin.
         /// </summary>
-        private static void Place(GameObject created, GameObject context, FieldEntities field, string undoName)
+        internal static void Place(GameObject created, GameObject context, FieldEntities field, string undoName)
         {
             GameObject parent = context != null && context.GetComponentInParent<FieldEntities>(true) == field ? context : field.gameObject;
 

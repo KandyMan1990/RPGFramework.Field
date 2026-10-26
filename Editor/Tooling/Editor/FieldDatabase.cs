@@ -7,6 +7,7 @@ using RPGFramework.Core.Editor;
 using RPGFramework.Core.Memory;
 using RPGFramework.Hashing;
 using RPGFramework.Localisation.Editor;
+using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.Animations;
@@ -211,6 +212,7 @@ namespace RPGFramework.Field.Editor
                 }
 
                 ValidateTileField(prefab, fieldEntities, problems);
+                ValidateCamera(prefab, problems);
 
                 List<FieldEntityRecord> records = fieldEntities.Entities;
 
@@ -657,7 +659,7 @@ namespace RPGFramework.Field.Editor
 
             try
             {
-                Tilemap walkable = field.GetComponentInChildren<WalkableTilemap>(true).Tilemap;
+                Tilemap walkable = field.GetComponentInChildren<WalkableTilemap>(true).GetComponent<Tilemap>();
 
                 SpawnPoint[] spawnPoints = field.GetComponentsInChildren<SpawnPoint>(true);
 
@@ -684,6 +686,58 @@ namespace RPGFramework.Field.Editor
             finally
             {
                 PrefabUtility.UnloadPrefabContents(field);
+            }
+        }
+
+        /// <summary>
+        /// A field is seen through its own Cinemachine camera; one without would be seen from wherever the field before
+        /// it left the view. Nothing yet chooses between two. A camera kept within bounds needs them, and they must be
+        /// a trigger, or they would be a wall.
+        /// </summary>
+        internal static void ValidateCamera(GameObject field, List<string> problems)
+        {
+            CinemachineCamera[] cameras = field.GetComponentsInChildren<CinemachineCamera>(true);
+
+            if (cameras.Length == 0)
+            {
+                problems.Add($"{field.name} has no Cinemachine camera, so it would be seen from wherever the field before it left the view. Add one from GameObject > RPG Framework > Field > Camera");
+                return;
+            }
+
+            if (cameras.Length > 1)
+            {
+                problems.Add($"{field.name} has a Cinemachine camera on '{cameras[0].name}' and on '{cameras[1].name}', but nothing chooses between a field's cameras yet. Keep one");
+                return;
+            }
+
+            CinemachineCamera camera = cameras[0];
+
+            if (camera.TryGetComponent(out CinemachineConfiner2D confiner2D))
+            {
+                Collider2D bounds = confiner2D.BoundingShape2D;
+
+                ValidateCameraBounds(field, camera, bounds, bounds != null && bounds.isTrigger, problems);
+            }
+
+            if (camera.TryGetComponent(out CinemachineConfiner3D confiner3D))
+            {
+                Collider bounds = confiner3D.BoundingVolume;
+
+                ValidateCameraBounds(field, camera, bounds, bounds != null && bounds.isTrigger, problems);
+            }
+        }
+
+        private static void ValidateCameraBounds(GameObject field, CinemachineCamera camera, Component bounds, bool isTrigger, List<string> problems)
+        {
+            if (bounds == null)
+            {
+                problems.Add($"{field.name} / '{camera.name}' is kept within bounds, but its confiner has none. Give it the collider it stays within");
+                return;
+            }
+
+            if (!isTrigger)
+            {
+                problems.Add($"{field.name} / '{bounds.name}', the bounds of '{camera.name}', is not a trigger, so it is also a wall. Tick Is Trigger on its collider");
             }
         }
 

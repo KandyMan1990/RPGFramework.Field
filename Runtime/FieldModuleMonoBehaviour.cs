@@ -2,6 +2,7 @@ using RPGFramework.Core;
 using RPGFramework.Core.Input;
 using RPGFramework.DI;
 using RPGFramework.Field.SharedTypes;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -9,13 +10,14 @@ namespace RPGFramework.Field
 {
     internal sealed class FieldModuleMonoBehaviour : MonoBehaviour, IModuleBindings
     {
-        public Vector3         Up                     => m_Up.normalized;
-        public float           PlayerInteractionAngle => m_PlayerInteractionAngle;
-        public InputAdapter    InputAdapter           => m_InputAdapter;
-        public UIDocument      UIDocument             => m_UIDocument;
-        public TransformHandle CameraTransformHandle  => m_Camera.transformHandle;
-        public Camera          Camera                 => m_Camera;
-        public bool            VisibleWhileSuspended  => m_VisibleWhileSuspended;
+        public Vector3          Up                     => m_Up.normalized;
+        public float            PlayerInteractionAngle => m_PlayerInteractionAngle;
+        public InputAdapter     InputAdapter           => m_InputAdapter;
+        public UIDocument       UIDocument             => m_UIDocument;
+        public TransformHandle  CameraTransformHandle  => m_CinemachineBrain.OutputCamera.transformHandle;
+        public Camera           Camera                 => m_CinemachineBrain.OutputCamera;
+        public CinemachineBrain CinemachineBrain       => m_CinemachineBrain;
+        public bool             VisibleWhileSuspended  => m_VisibleWhileSuspended;
 
         /// <summary>
         /// Which way is up the screen for a camera looking the usual way over the field, along the ground: forward in a
@@ -46,8 +48,9 @@ namespace RPGFramework.Field
         [SerializeField]
         private UIDocument m_UIDocument;
 
+        [Tooltip("The Cinemachine Brain on the camera the field is seen through, taking its view from the Cinemachine camera in each field.")]
         [SerializeField]
-        private Camera m_Camera;
+        private CinemachineBrain m_CinemachineBrain;
 
         [Tooltip("Keep the field on screen, frozen, under a module opened over it, such as the menu. Off, its camera is switched off until the field resumes.")]
         [SerializeField]

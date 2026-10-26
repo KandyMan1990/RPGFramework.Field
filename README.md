@@ -5,7 +5,8 @@ characters and objects are **entities**, and each runs **scripts**, authored in 
 compiled to bytecode, for movement, dialogue, music, the menus, saving and starting battles. Fields can be 2D or 3D.
 
 Requires Unity 6000.6 or newer, RPGFramework.Core and its shared types, the Field, Menu and Battle shared types,
-RPGFramework.DI, RPGFramework.Audio, RPGFramework.Localisation, RPGFramework.Hashing and Unity.Mathematics.
+RPGFramework.DI, RPGFramework.Audio, RPGFramework.Localisation, RPGFramework.Hashing, Unity.Mathematics and
+Cinemachine.
 
 ---
 
@@ -18,8 +19,10 @@ on.
 
 ## Setting up
 
-1. **A field scene** holding a `FieldModuleMonoBehaviour` with:
-   - the camera;
+1. **A field scene** holding a `FieldModuleMonoBehaviour` (GameObject > RPG Framework > Field > Field Module makes one,
+   with its camera) with:
+   - the **Cinemachine Brain** on the scene's camera, set to cut: it takes its view from each field's own camera
+     (Cameras, below);
    - the `UIDocument` dialogue windows are drawn in;
    - the scene's `InputAdapter`;
    - the game's up direction, `0,1,0` for a 3D field and `0,0,1` for a 2D one;
@@ -60,6 +63,23 @@ character, or a wall of colliders — and walking at one that cannot be entered 
 character pushes it, as in a free field. Characters keep their rigidbodies, so triggers still notice them. Scripted
 moves still go straight to their point.
 
+### Cameras
+
+**Each field is seen through its own Cinemachine camera**, placed in its prefab, whose view the field scene's camera
+takes. **GameObject > RPG Framework > Field > Camera** makes one for each way a field is seen:
+
+| Camera | For | What it is |
+| --- | --- | --- |
+| 2D Fixed | a 2D field that fits the screen | a camera at the centre of the field's tilemaps |
+| 2D Follow | a 2D field larger than the screen | a camera locked onto the player, stopping where its view meets the edge of its bounds, which start out covering the tilemaps |
+| 3D Fixed | a 3D field seen from one angle | a camera where the scene view looks from |
+| 3D Follow | a 3D field the view slides across | a camera at a fixed angle, locked onto the player and moving only within its bounds |
+
+A follow camera carries **Follow Player**, which keeps it on whoever is the player, and its bounds are a trigger
+collider, so nothing walks into them. Everything else is Cinemachine's: give a camera damping, a dead zone, or URP's
+Pixel Perfect Camera with Cinemachine's pixel-perfect extension for pixel art. The field moves the camera from its own
+update, so it stops with the field under the menu.
+
 ### Entities
 
 An entity is an id, a name, its scripts and, if it is something in the world, a **body**. An entity with no body is
@@ -91,8 +111,8 @@ A body's visuals are your own prefab, placed as its visible object.
   - Add and delete entities, scripts and blockers, and give an entity a body built from a preset.
   - Edit the selected script in the **block editor**, check it compiles, and save the field.
 
-Entities, blockers and spawn points can also be made from **GameObject > RPG Framework > Field** while editing a field's
-prefab.
+Entities, blockers, spawn points and cameras can also be made from **GameObject > RPG Framework > Field** while
+editing a field's prefab.
 
 ### Export
 
@@ -105,7 +125,8 @@ prefab.
 - a dialogue key none of the field's sheets has;
 - a jump to a spawn point its destination lacks;
 - a Walkable Tilemap in a 3D field, or two in one field, and in a tile field a spawn point or character off a tile's
-  centre.
+  centre;
+- a field with no Cinemachine camera, or more than one, and a follow camera's bounds missing or not a trigger.
 
 It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated, so
 don't edit it. It builds each field's asset bundle and records the variable map's layout. **A player build is refused if
@@ -251,10 +272,10 @@ What a script can do, by what it acts on. Each block in the palette says what it
 **2D Field Sample**: a field module scene for a 2D game, `FieldModule`, and two fields joined by a gateway each way,
 drawn with Unity's built-in sprites:
 
-- `SampleField`, walked freely: a tilemap of ground, a player character, a villager who turns to face whoever talks to
-  them, and a save point;
-- `SampleTileField`, a tile field walked a tile at a time: its ground the Walkable Tilemap, a wall across it, and a
-  villager standing in the way.
+- `SampleField`, walked freely and larger than the screen: ground walled in, with pillars, a 2D Follow camera, a player
+  character, a villager who turns to face whoever talks to them, and a save point;
+- `SampleTileField`, a tile field walked a tile at a time, seen through a 2D Fixed camera: its ground the Walkable
+  Tilemap, a wall across it, and a villager standing in the way.
 
 The characters share an Animator controller whose blend tree reads `FacingX` and `FacingY` and moves a marker to the side
 they face, as a sprite sheet's frames would. Its scene installer binds the `FieldDatabase` the Field Designer's export
@@ -276,7 +297,8 @@ testable: add it to `testables` in `Packages/manifest.json`,
 
 then open **Window › General › Test Runner** and run the **EditMode** tests. They run scripts' bytecode through the VM —
 maths, comparisons, waits, priority slots, requests between scripts, init, and what scripts ask the field for — compile
-and run every opcode's new block, and test the compiler, the block editor's text and the opcode list. The field itself,
+and run every opcode's new block, and test the compiler, the block editor's text, the opcode list and export's camera
+checks. The field itself,
 which needs loading in play mode, is not tested yet.
 
 ---

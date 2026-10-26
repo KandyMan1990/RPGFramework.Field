@@ -9,7 +9,8 @@
         "RPGFramework.Field.Editor",
         "RPGFramework.Field.SharedTypes",
         "RPGFramework.Hashing",
-        "UnityEngine.TestRunner"
+        "UnityEngine.TestRunner",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [
         "Editor"

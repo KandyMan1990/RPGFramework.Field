@@ -30,6 +30,7 @@ using RPGFramework.Localisation;
 using RPGFramework.Menu.SharedTypes;
 using RPGFramework.Menu.SharedTypes.Constants;
 using RPGFramework.Menu.SharedTypes.Stores;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.UIElements;
@@ -79,6 +80,8 @@ namespace RPGFramework.Field
         private BlockAllInputContext                   m_ScriptInputLock;
         private int                                    m_OpenDialogueWindows;
         private TransformHandle                        m_CameraTransformHandle;
+        private CinemachineBrain                       m_CinemachineBrain;
+        private FollowPlayer[]                         m_PlayerCameras;
         private VisualElement                          m_RootElement;
         private InputAdapter                           m_InputAdapter;
         private FieldContext                           m_FieldContext;
@@ -185,6 +188,9 @@ namespace RPGFramework.Field
             m_Screen.Enter(m_RootElement);
 
             m_CameraTransformHandle = m_FieldModuleMonoBehaviour.CameraTransformHandle;
+
+            m_CinemachineBrain              = m_FieldModuleMonoBehaviour.CinemachineBrain;
+            m_CinemachineBrain.UpdateMethod = CinemachineBrain.UpdateMethods.ManualUpdate;
 
             FieldContext fieldContext = m_FieldResumeDataStore.Get<FieldContext>();
             bool         musicPaused  = m_PausedMusicStore.TryTake(out MusicSnapshot pausedMusic);
@@ -318,6 +324,8 @@ namespace RPGFramework.Field
                     entity.AnimationDriver.Tick(velocity, new Vector2(Vector3.Dot(facing, east), Vector3.Dot(facing, north)));
                 }
             }
+
+            m_CinemachineBrain.ManualUpdate();
 
 #if UNITY_EDITOR
             DrawInteractionDebug();
@@ -611,6 +619,7 @@ namespace RPGFramework.Field
             FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
             m_Dimension       = fieldEntities.Dimension;
             m_WalkableTilemap = FindWalkableTilemap(fieldGameObject);
+            m_PlayerCameras   = fieldGameObject.GetComponentsInChildren<FollowPlayer>(true);
             m_Entities        = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
             m_AnimationNames  = BuildAnimationNames(fieldEntities);
 
@@ -891,6 +900,10 @@ namespace RPGFramework.Field
 
         private void PostFieldLoad()
         {
+            PointCamerasAtPlayer();
+
+            m_CinemachineBrain.ManualUpdate(Time.frameCount, -1f);
+
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
 
@@ -1059,6 +1072,17 @@ namespace RPGFramework.Field
             m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
 
             SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
+            PointCamerasAtPlayer();
+        }
+
+        private void PointCamerasAtPlayer()
+        {
+            Transform player = m_PlayerEntityId != FieldEntity.NO_ENTITY ? m_Entities[m_PlayerEntityId].Entity.transform : null;
+
+            for (int i = 0; i < m_PlayerCameras.Length; i++)
+            {
+                m_PlayerCameras[i].Follow(player);
+            }
         }
 
         private void SetCollisionTriggerPlayerEntityId(int entityId)
