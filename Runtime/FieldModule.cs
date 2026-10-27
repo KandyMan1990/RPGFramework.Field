@@ -41,41 +41,43 @@ namespace RPGFramework.Field
     {
         private const float MUSIC_RESUME_SECONDS = 1f;
 
-        private readonly ICoreModule               m_CoreModule;
-        private readonly IDIResolver               m_DIResolver;
-        private readonly IInputRouter              m_InputRouter;
-        private readonly IMusicPlayer              m_MusicPlayer;
-        private readonly ISfxPlayer                m_SfxPlayer;
-        private readonly IAudioIntentPlayer        m_AudioIntentPlayer;
-        private readonly IFieldDatabase            m_FieldDatabase;
-        private readonly IFieldPresentation        m_FieldPresentation;
-        private readonly ILocalisationService      m_LocalisationService;
-        private readonly FieldDialogueChannel[]    m_DialogueChannels;
-        private readonly int[]                     m_MessageVariables;
-        private readonly IMemoryService            m_MemoryService;
-        private readonly ITempMemoryArgs           m_TempMemoryArgs;
-        private readonly ITransitionService        m_Transitions;
-        private readonly IBattleArgsStore          m_BattleArgsStore;
-        private readonly IFieldArgsStore           m_FieldArgsStore;
-        private readonly IMenuArgsStore            m_MenuArgsStore;
-        private readonly ICurrentModuleStore       m_CurrentModuleStore;
-        private readonly IFieldResumeDataStore     m_FieldResumeDataStore;
-        private readonly SavedPlayerPose           m_SavedPlayerPose;
-        private readonly FieldScreen               m_Screen;
-        private readonly IMusicVolumeStore         m_MusicVolumeStore;
-        private readonly ISettingsService          m_SettingsService;
-        private readonly ISaveEnabledStore         m_SaveEnabledStore;
-        private readonly ILocationNameStore        m_LocationNameStore;
-        private readonly IBattleMusicStore         m_BattleMusicStore;
-        private readonly IPausedMusicStore         m_PausedMusicStore;
-        private readonly IBattleModeStore          m_BattleModeStore;
-        private readonly IBattleCompleteStateStore m_BattleCompleteStateStore;
-        private readonly DialogueInputContext      m_DialogueInputContext;
-        private readonly IModuleScene              m_ModuleScene;
-        private readonly BlockAllInputContext      m_SuspendedInputBlock;
+        private readonly ICoreModule                m_CoreModule;
+        private readonly IDIResolver                m_DIResolver;
+        private readonly IInputRouter               m_InputRouter;
+        private readonly IMusicPlayer               m_MusicPlayer;
+        private readonly ISfxPlayer                 m_SfxPlayer;
+        private readonly IAudioIntentPlayer         m_AudioIntentPlayer;
+        private readonly IFieldDatabase             m_FieldDatabase;
+        private readonly IFieldPresentation         m_FieldPresentation;
+        private readonly ILocalisationService       m_LocalisationService;
+        private readonly FieldDialogueChannel[]     m_DialogueChannels;
+        private readonly int[]                      m_MessageVariables;
+        private readonly IMemoryService             m_MemoryService;
+        private readonly ITempMemoryArgs            m_TempMemoryArgs;
+        private readonly ITransitionService         m_Transitions;
+        private readonly IBattleArgsStore           m_BattleArgsStore;
+        private readonly IFieldArgsStore            m_FieldArgsStore;
+        private readonly IMenuArgsStore             m_MenuArgsStore;
+        private readonly ICurrentModuleStore        m_CurrentModuleStore;
+        private readonly IFieldResumeDataStore      m_FieldResumeDataStore;
+        private readonly SavedPlayerPose            m_SavedPlayerPose;
+        private readonly FieldScreen                m_Screen;
+        private readonly IMusicVolumeStore          m_MusicVolumeStore;
+        private readonly ISettingsService           m_SettingsService;
+        private readonly ISaveEnabledStore          m_SaveEnabledStore;
+        private readonly ILocationNameStore         m_LocationNameStore;
+        private readonly IBattleMusicStore          m_BattleMusicStore;
+        private readonly IPausedMusicStore          m_PausedMusicStore;
+        private readonly IBattleModeStore           m_BattleModeStore;
+        private readonly IBattleCompleteStateStore  m_BattleCompleteStateStore;
+        private readonly DialogueInputContext       m_DialogueInputContext;
+        private readonly IModuleScene               m_ModuleScene;
+        private readonly BlockAllInputContext       m_SuspendedInputBlock;
+        private readonly List<InteractionCandidate> m_InteractionCandidates;
 
         private Task                                   m_MusicVolumeFade;
         private FieldModuleMonoBehaviour               m_FieldModuleMonoBehaviour;
+        private InteractionSearch                      m_InteractionSearch;
         private IInputContext                          m_ExplorationInputContext;
         private BlockAllInputContext                   m_ScriptInputLock;
         private int                                    m_OpenDialogueWindows;
@@ -167,6 +169,7 @@ namespace RPGFramework.Field
             m_DialogueInputContext     = new DialogueInputContext();
             m_ModuleScene              = moduleScene;
             m_SuspendedInputBlock      = new BlockAllInputContext();
+            m_InteractionCandidates    = new List<InteractionCandidate>();
             m_ExitFades                = true;
 
             for (int i = 0; i < m_DialogueChannels.Length; i++)
@@ -178,6 +181,7 @@ namespace RPGFramework.Field
         async Task IModule.OnEnterAsync(byte entry)
         {
             m_FieldModuleMonoBehaviour = m_ModuleScene.Find<FieldModuleMonoBehaviour>();
+            m_InteractionSearch        = new InteractionSearch(m_FieldModuleMonoBehaviour.Up, m_FieldModuleMonoBehaviour.PlayerInteractionAngle, m_FieldModuleMonoBehaviour.InteractionHeight);
 
             m_InputAdapter = m_FieldModuleMonoBehaviour.InputAdapter;
             m_DIResolver.InjectInto(m_InputAdapter);
@@ -1264,59 +1268,6 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestScript(entityId, eventId);
         }
 
-        private bool IsPlayerFacingEntity(int entityId)
-        {
-            FieldEntityComponents player = m_Entities[m_FieldContext.PlayerEntity.EntityId];
-            FieldEntity           entity = m_Entities[entityId].Entity;
-
-            Vector3 playerPos = player.Entity.transform.position;
-            Vector3 entityPos = entity.transform.position;
-
-            return IsFacing(playerPos, FacingOf(player), entityPos, m_FieldModuleMonoBehaviour.PlayerInteractionAngle);
-        }
-
-        private bool IsEntityFacingPlayer(int entityId)
-        {
-            FieldEntity           player      = m_Entities[m_FieldContext.PlayerEntity.EntityId].Entity;
-            FieldEntityComponents entity      = m_Entities[entityId];
-            FieldEntity           fieldEntity = m_Entities[entityId].Entity;
-
-            Transform entityTransform = fieldEntity.transform;
-
-            Vector3 playerPos = player.transform.position;
-            Vector3 entityPos = entityTransform.position;
-
-            if (entity.InteractionTrigger == null)
-            {
-                return false;
-            }
-
-            return IsFacing(entityPos, FacingOf(entity), playerPos, entity.InteractionTrigger.InteractionAngle);
-        }
-
-        private bool IsFacing(Vector3 fromPosition, Vector3 fromForward, Vector3 toPosition, float maxAngle)
-        {
-            Vector3 toEntity = toPosition - fromPosition;
-            toEntity = Vector3.ProjectOnPlane(toEntity, m_FieldModuleMonoBehaviour.Up);
-
-            if (toEntity.sqrMagnitude < 0.0001f)
-            {
-                return true;
-            }
-
-            toEntity.Normalize();
-
-            Vector3 forward = Vector3.ProjectOnPlane(fromForward, m_FieldModuleMonoBehaviour.Up);
-            forward.Normalize();
-
-            float dot = Vector3.Dot(forward, toEntity);
-
-            float halfAngle = maxAngle * 0.5f;
-            float threshold = Mathf.Cos(halfAngle * Mathf.Deg2Rad);
-
-            return dot >= threshold;
-        }
-
         private FieldInteractionTrigger GetBestInteractionTrigger()
         {
             if (m_FieldContext.PlayerEntity == null)
@@ -1326,66 +1277,26 @@ namespace RPGFramework.Field
 
             FieldEntityComponents player = m_Entities[m_FieldContext.PlayerEntity.EntityId];
 
-            Vector3 playerPos     = player.Entity.transform.position;
-            Vector3 playerForward = Vector3.ProjectOnPlane(FacingOf(player), m_FieldModuleMonoBehaviour.Up).normalized;
-
-            FieldInteractionTrigger best      = null;
-            float                   bestScore = float.MinValue;
+            m_InteractionCandidates.Clear();
 
             foreach (FieldEntityComponents entity in m_Entities.Values)
             {
-                FieldInteractionTrigger trigger = entity.InteractionTrigger;
-
-                if (trigger == null || !trigger.IsActive || !IsInInteractionRange(playerPos, entity))
+                if (entity.InteractionTrigger != null && entity.InteractionTrigger.IsActive)
                 {
-                    continue;
-                }
-
-                int entityId = trigger.Entity.EntityId;
-
-                if (!IsPlayerFacingEntity(entityId))
-                {
-                    continue;
-                }
-
-                if (!IsEntityFacingPlayer(entityId))
-                {
-                    continue;
-                }
-
-                Vector3 toEntity = entity.Entity.transform.position - playerPos;
-                toEntity = Vector3.ProjectOnPlane(toEntity, m_FieldModuleMonoBehaviour.Up);
-
-                float distance = toEntity.magnitude;
-                if (distance < 0.0001f)
-                {
-                    continue;
-                }
-
-                Vector3 dir = toEntity.normalized;
-
-                float dot = Vector3.Dot(playerForward, dir);
-
-                float score = (dot * 2f) - distance;
-
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best      = trigger;
+                    m_InteractionCandidates.Add(CandidateOf(entity));
                 }
             }
 
-            return best;
+            int picked = m_InteractionSearch.Pick(m_FieldContext.PlayerEntity.EntityId, player.Entity.transform.position, FacingOf(player), m_InteractionCandidates);
+
+            return picked == InteractionSearch.NONE ? null : m_Entities[picked].InteractionTrigger;
         }
 
-        private bool IsInInteractionRange(Vector3 playerPos, FieldEntityComponents entity)
+        private InteractionCandidate CandidateOf(FieldEntityComponents entity)
         {
-            Vector3 toEntity = Vector3.ProjectOnPlane(entity.Entity.transform.position - playerPos, m_FieldModuleMonoBehaviour.Up);
-            float   range    = entity.InteractionTrigger.InteractionRange;
+            FieldInteractionTrigger trigger = entity.InteractionTrigger;
 
-            bool inRange = toEntity.sqrMagnitude <= range * range;
-
-            return inRange;
+            return new InteractionCandidate(trigger.Entity.EntityId, entity.Entity.transform.position, FacingOf(entity), trigger.InteractionRange, trigger.InteractionAngle);
         }
 
         private void OpenPartyMenu()

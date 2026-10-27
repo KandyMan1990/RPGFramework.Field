@@ -73,16 +73,15 @@ namespace RPGFramework.Field
                     m_DebugOverlay.Line(entityPos, entityPos + Quaternion.AngleAxis(trigger.InteractionAngle, up) * arcStart * trigger.InteractionRange, rangeColour);
                 }
 
-                if (!trigger.IsActive || !IsInInteractionRange(playerPos, entity))
+                if (!trigger.IsActive || !m_InteractionSearch.IsInReach(playerPos, CandidateOf(entity)))
                 {
                     continue;
                 }
 
-                int entityId = trigger.Entity.EntityId;
-
-                Color outcome = trigger == best                   ? Color.green
-                                : !IsPlayerFacingEntity(entityId) ? Color.yellow
-                                                                    : Color.red;
+                bool  ahead   = m_InteractionSearch.IsAheadOfPlayer(playerPos, FacingOf(player), entityPos);
+                Color outcome = trigger == best ? Color.green
+                                : !ahead        ? Color.yellow
+                                                : Color.red;
 
                 m_DebugOverlay.Line(playerPos, entityPos, outcome);
             }

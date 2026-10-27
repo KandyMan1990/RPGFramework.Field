@@ -58,17 +58,23 @@ namespace RPGFramework.Field
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
-            FieldEntity entity          = m_Entity != null ? m_Entity : GetComponentInParent<FieldEntity>();
-            Transform   entityTransform = entity   != null ? entity.transform : transform;
-            Vector3     position        = entityTransform.position;
-            Vector3     arcStart        = Quaternion.Euler(0, -m_InteractionAngle / 2, 0) * entityTransform.forward;
+            FieldEntity   entity          = m_Entity != null ? m_Entity : GetComponentInParent<FieldEntity>();
+            Transform     entityTransform = entity   != null ? entity.transform : transform;
+            FieldEntities field           = GetComponentInParent<FieldEntities>(true);
+
+            // A 2D field lies on the screen, and its entities start out facing down it.
+            bool    flat     = field != null && field.Dimension == FieldDimension.TwoD;
+            Vector3 up       = flat ? Vector3.forward : Vector3.up;
+            Vector3 facing   = flat ? SpriteFacing.Default : entityTransform.forward;
+            Vector3 position = entityTransform.position;
+            Vector3 arcStart = Quaternion.AngleAxis(-m_InteractionAngle / 2, up) * facing;
 
             UnityEditor.Handles.color = new Color(0, 1, 0, 0.25f);
-            UnityEditor.Handles.DrawSolidArc(position, Vector3.up, arcStart, m_InteractionAngle, m_InteractionRange);
+            UnityEditor.Handles.DrawSolidArc(position, up, arcStart, m_InteractionAngle, m_InteractionRange);
 
             UnityEditor.Handles.color = Color.green;
-            UnityEditor.Handles.DrawWireArc(position, Vector3.up, arcStart, m_InteractionAngle, m_InteractionRange);
-            UnityEditor.Handles.DrawWireDisc(position, Vector3.up, m_InteractionRange);
+            UnityEditor.Handles.DrawWireArc(position, up, arcStart, m_InteractionAngle, m_InteractionRange);
+            UnityEditor.Handles.DrawWireDisc(position, up, m_InteractionRange);
         }
 #endif
     }

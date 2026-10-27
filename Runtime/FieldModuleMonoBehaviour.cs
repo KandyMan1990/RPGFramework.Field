@@ -12,6 +12,7 @@ namespace RPGFramework.Field
     {
         public Vector3          Up                     => m_Up.normalized;
         public float            PlayerInteractionAngle => m_PlayerInteractionAngle;
+        public float            InteractionHeight      => m_InteractionHeight;
         public InputAdapter     InputAdapter           => m_InputAdapter;
         public UIDocument       UIDocument             => m_UIDocument;
         public TransformHandle  CameraTransformHandle  => m_CinemachineBrain.OutputCamera.transformHandle;
@@ -37,10 +38,15 @@ namespace RPGFramework.Field
         [SerializeField]
         private Vector3 m_Up = Vector3.up;
 
-        [Tooltip("Used to determine how wide the player interaction angle is.  Most likely should be between 45 and 90 degrees.")]
+        [Tooltip("How wide a cone ahead of the player confirm looks in, in degrees. At 180, anyone from straight ahead round to either side; the one most nearly ahead is talked to.")]
         [SerializeField]
         [Range(0f, 360f)]
-        private float m_PlayerInteractionAngle = 60f;
+        private float m_PlayerInteractionAngle = 180f;
+
+        [Tooltip("How far above or below the player someone can stand and still be talked to, so a floor between them blocks it.")]
+        [SerializeField]
+        [Min(0f)]
+        private float m_InteractionHeight = 2f;
 
         [SerializeField]
         private InputAdapter m_InputAdapter;

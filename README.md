@@ -26,7 +26,8 @@ on.
    - the `UIDocument` dialogue windows are drawn in;
    - the scene's `InputAdapter`;
    - the game's up direction, `0,1,0` for a 3D field and `0,0,1` for a 2D one;
-   - how wide the player's interaction angle is.
+   - how wide the player's interaction angle is, 180° by default, and how far above or below them someone can be
+     talked to, 2 by default.
 
    It also binds the field module, and its default presentation, loading fields from prefabs.
 2. **A scene installer** binding `IFieldDatabase` to the generated `FieldDatabase` (see Export, below). To show fields
@@ -224,7 +225,9 @@ What a script can do, by what it acts on. Each block in the palette says what it
 - **Blockers** are objects in the field with an id that a script switches on and off. Switching one switches its
   colliders, its tilemap of closed cells and its visuals together, to close off part of a field.
 - **Interaction:**
-  - Confirm picks the closest entity within its own interaction range that the player faces and that faces the player.
+  - Confirm talks to whoever is most nearly straight ahead of the player, among the entities within their own
+    interaction range and the field's height limit. Distance only decides who is in range. An entity can be made to
+    answer only when it faces the player, by narrowing its interaction angle.
   - Which entity is the player is a script's choice, and may be none, for a field that is all cutscene.
 - **Animation:**
   - An entity's base animation is one Animator state.
