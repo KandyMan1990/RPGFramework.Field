@@ -122,6 +122,7 @@ editing a field's prefab.
 - a request for an entity or script the field lacks;
 - a body of the wrong dimension, or a dynamic rigidbody;
 - an animation state the entity's Animator lacks;
+- a music track or sound no music or SFX provider lists, or a stem state its track doesn't have;
 - a dialogue key none of the field's sheets has;
 - a jump to a spawn point its destination lacks;
 - a Walkable Tilemap in a 3D field, or two in one field, and in a tile field a spawn point or character off a tile's
@@ -165,7 +166,8 @@ triggers, gateways and blockers in the Game view.
 
 The block editor stacks blocks, and every argument that names something is picked from a list. Picked arguments include
 entities and their scripts, fields and spawn points, music, sounds and stem states, animation states, dialogue keys and
-variables.
+variables. A new block starts on the first choice in each list, and changing a block's track or field moves its stem
+state or spawn point to one the new choice has.
 
 The script is kept as text, one instruction a line. A shopkeeper's interaction script might read:
 

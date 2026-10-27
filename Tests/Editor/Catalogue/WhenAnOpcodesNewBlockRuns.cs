@@ -108,7 +108,10 @@ namespace RPGFramework.Field.Tests.Catalogue
         {
             FieldOpCodeCatalogue.TryGet(scriptName, out FieldOpCodeInfo info);
 
-            return FieldScriptBlock.CreateEmpty(info).ToLine();
+            FieldScriptBlock block = FieldScriptBlock.CreateEmpty(info);
+            block.PickFirstChoices(new OneChoiceEach());
+
+            return block.ToLine();
         }
 
         private static bool Never()

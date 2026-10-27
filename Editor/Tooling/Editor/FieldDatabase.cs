@@ -169,6 +169,7 @@ namespace RPGFramework.Field.Editor
             }
 
             HashSet<string> localisationKeys = new HashSet<string>(AllLocalisationKeys(), StringComparer.Ordinal);
+            AudioNames      audioNames       = AudioNames.FromProject();
 
             for (int i = 0; i < m_Fields.Count; i++)
             {
@@ -232,7 +233,7 @@ namespace RPGFramework.Field.Editor
                 {
                     FieldEntityRecord record = records[j];
 
-                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, blockerIds, dialogueChannels, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, blockerIds, dialogueChannels, audioNames, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -370,7 +371,7 @@ namespace RPGFramework.Field.Editor
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
         /// </summary>
-        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, HashSet<int> withBodies, HashSet<int> blockerIds, DialogueChannelUse dialogueChannels, List<string> problems)
+        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, HashSet<int> withBodies, HashSet<int> blockerIds, DialogueChannelUse dialogueChannels, AudioNames audioNames, List<string> problems)
         {
             string      entityName = $"{prefab.name} / '{record.Name}'";
             FieldEntity body       = record.Body;
@@ -443,6 +444,7 @@ namespace RPGFramework.Field.Editor
                 ValidateEntityTargets(scriptCounts, withBodies, scriptDescription, lines, problems);
                 ValidateBlockerTargets(blockerIds, scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
+                ValidateAudioNames(audioNames, scriptDescription, lines, problems);
                 ValidateScriptRequests(record, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
                 ValidateMapJumps(scriptDescription, lines, problems);
@@ -827,6 +829,77 @@ namespace RPGFramework.Field.Editor
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// A music or sound name is hashed as written, so one no provider lists, or a stem state its track lacks,
+        /// compiles and fails only as the game plays it. A track named only to offer its states may be left empty, and
+        /// its state is then any track's.
+        /// </summary>
+        internal static void ValidateAudioNames(AudioNames audioNames, string scriptDescription, string[] lines, List<string> problems)
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = FieldScriptLine.Split(lines[i]);
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                string track = null;
+
+                for (int argument = 0; argument < opCode.Arguments.Count; argument++)
+                {
+                    ArgumentType type = opCode.Arguments[argument].Type;
+
+                    if (type == ArgumentType.MusicName || type == ArgumentType.MusicNameHint)
+                    {
+                        track = ArgumentOf(parts, argument);
+                    }
+                }
+
+                for (int argument = 0; argument < opCode.Arguments.Count; argument++)
+                {
+                    ArgumentType type = opCode.Arguments[argument].Type;
+                    string       name = ArgumentOf(parts, argument);
+
+                    switch (type)
+                    {
+                        case ArgumentType.MusicName:
+                        case ArgumentType.MusicNameHint when name.Length > 0:
+                            if (!audioNames.Music.Contains(name))
+                            {
+                                problems.Add($"{scriptDescription} uses {parts[0]} on music [{name}], which no music provider lists. Pick a track the block editor offers");
+                            }
+
+                            break;
+
+                        case ArgumentType.SoundName:
+                            if (!audioNames.Sounds.Contains(name))
+                            {
+                                problems.Add($"{scriptDescription} uses {parts[0]} on sound [{name}], which no SFX provider lists. Pick a sound the block editor offers");
+                            }
+
+                            break;
+
+                        case ArgumentType.MusicStateName:
+                            if (!audioNames.StatesOf(track).Contains(name))
+                            {
+                                string owner = audioNames.Music.Contains(track ?? string.Empty) ? $"[{track}] does not have" : "no track has";
+
+                                problems.Add($"{scriptDescription} uses {parts[0]} on stem state [{name}], which {owner}. Pick a state the block editor offers");
+                            }
+
+                            break;
+                    }
+                }
+            }
+        }
+
+        private static string ArgumentOf(string[] parts, int argument)
+        {
+            return argument + 1 < parts.Length ? parts[argument + 1] : string.Empty;
         }
 
         /// <summary>

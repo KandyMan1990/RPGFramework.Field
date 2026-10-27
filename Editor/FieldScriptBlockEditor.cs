@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.Transitions;
-using RPGFramework.Audio.Music;
-using RPGFramework.Audio.Sfx;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -22,7 +20,7 @@ namespace RPGFramework.Field.Editor
     /// The script text stays the source of truth. This edits it, so a script can still be read, diffed
     /// and hand-edited, and a line the editor does not recognise is preserved rather than dropped.
     /// </summary>
-    internal sealed class FieldScriptBlockEditor : VisualElement
+    internal sealed class FieldScriptBlockEditor : VisualElement, IArgumentChoiceProvider
     {
         private readonly List<FieldScriptBlock>                m_Blocks;
         private readonly VisualElement                         m_BlockList;
@@ -31,15 +29,12 @@ namespace RPGFramework.Field.Editor
         private readonly FieldEntityRecord                     m_Entity;
         private readonly IReadOnlyList<LocalisationSheetAsset> m_Sheets;
         private readonly Dictionary<string, List<SpawnChoice>> m_SpawnChoices;
-        private readonly Dictionary<string, List<string>>      m_StateNamesByTrack;
 
         private List<string>     m_DialogueKeys;
         private List<string>     m_AnimationNames;
         private VariableMapAsset m_VariableMap;
         private List<string>     m_FieldNames;
-        private List<string>     m_MusicNames;
-        private List<string>     m_SoundNames;
-        private List<string>     m_MusicStateNames;
+        private AudioNames       m_AudioNames;
         private List<string>     m_TransitionNames;
 
         public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, IReadOnlyList<LocalisationSheetAsset> sheets, Action<string> onChanged)
@@ -50,7 +45,6 @@ namespace RPGFramework.Field.Editor
             m_Sheets            = sheets;
             m_Blocks            = FieldScriptBlocks.Parse(scriptText);
             m_SpawnChoices      = new Dictionary<string, List<SpawnChoice>>();
-            m_StateNamesByTrack = new Dictionary<string, List<string>>();
 
             Add(BuildToolbar());
 
@@ -107,7 +101,10 @@ namespace RPGFramework.Field.Editor
 
                 menu.AppendAction(label, _ =>
                                          {
-                                             target.Add(WithFirstLabel(FieldScriptBlock.CreateEmpty(captured)));
+                                             FieldScriptBlock block = FieldScriptBlock.CreateEmpty(captured);
+                                             block.PickFirstChoices(this);
+
+                                             target.Add(WithFirstLabel(block));
                                              RebuildBlockList();
                                              NotifyChanged();
                                          });
@@ -847,14 +844,18 @@ namespace RPGFramework.Field.Editor
                         field.formatListItemCallback      = DescribeTransition;
                     }
 
-                    // Naming a field decides which spawn points exist, and naming a track decides which
-                    // stem states exist, so changing either rebuilds the block to refresh the list beside
-                    // it.
-                    bool rebuildOnChange = argument.Type == ArgumentType.FieldName ||
-                                           argument.Type == ArgumentType.MusicName ||
-                                           argument.Type == ArgumentType.MusicNameHint;
+                    bool decidesAnother = argument.Type == ArgumentType.FieldName ||
+                                          argument.Type == ArgumentType.MusicName ||
+                                          argument.Type == ArgumentType.MusicNameHint;
 
-                    field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue, rebuildOnChange));
+                    if (decidesAnother)
+                    {
+                        field.RegisterValueChangedCallback(e => SetDeciding(block, argumentIndex, e.newValue));
+                    }
+                    else
+                    {
+                        field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue));
+                    }
 
                     return field;
                 }
@@ -1042,16 +1043,16 @@ namespace RPGFramework.Field.Editor
                     return m_FieldNames ??= GatherFieldNames();
 
                 case ArgumentType.MusicName:
-                    return m_MusicNames ??= GatherMusicNames();
+                case ArgumentType.MusicNameHint:
+                    return Audio.Music;
 
                 case ArgumentType.SoundName:
-                    return m_SoundNames ??= GatherProviderNames<SfxAssetProvider>(provider => provider.AssetNames);
-
-                case ArgumentType.MusicNameHint:
-                    return m_MusicNames ??= GatherMusicNames();
+                    return Audio.Sounds;
 
                 case ArgumentType.MusicStateName:
-                    return GetMusicStateChoices(block);
+                    // Narrowed to the track the block names, which is why MUSIC_STEM_STATE names a track it never
+                    // compiles.
+                    return Audio.StatesOf(MusicTrackArgumentOf(block));
 
                 case ArgumentType.TransitionName:
                     return m_TransitionNames ??= GatherTransitionNames();
@@ -1359,39 +1360,6 @@ namespace RPGFramework.Field.Editor
             return written;
         }
 
-        /// <summary>
-        /// The stem states to offer for this block.<br /><br />
-        /// Narrowed to the track the block names, which is the whole reason <c>MUSIC_STEM_STATE</c> carries
-        /// a track it never compiles. With no track named, or one nothing answers to, the only honest
-        /// answer is every state across every track — which will include states the track that ends up
-        /// playing does not have.
-        /// </summary>
-        private List<string> GetMusicStateChoices(FieldScriptBlock block)
-        {
-            string trackName = MusicTrackArgumentOf(block);
-
-            if (string.IsNullOrEmpty(trackName))
-            {
-                return m_MusicStateNames ??= GatherProviderNames<MusicAssetProvider>(provider => provider.StemStateNames);
-            }
-
-            if (m_StateNamesByTrack.TryGetValue(trackName, out List<string> cached))
-            {
-                return cached;
-            }
-
-            List<string> states = GatherProviderNames<MusicAssetProvider>(provider => provider.StemStateNamesOf(trackName));
-
-            if (states.Count == 0)
-            {
-                states = m_MusicStateNames ??= GatherProviderNames<MusicAssetProvider>(provider => provider.StemStateNames);
-            }
-
-            m_StateNamesByTrack[trackName] = states;
-
-            return states;
-        }
-
         /// <summary>The track this block names, whether it compiles that name or only offers it.</summary>
         private static string MusicTrackArgumentOf(FieldScriptBlock block)
         {
@@ -1406,13 +1374,6 @@ namespace RPGFramework.Field.Editor
             }
 
             return string.Empty;
-        }
-
-        private static List<string> GatherMusicNames()
-        {
-            List<string> names = GatherProviderNames<MusicAssetProvider>(provider => provider.AssetNames);
-
-            return names;
         }
 
         internal static List<string> GatherFieldNames()
@@ -1540,12 +1501,7 @@ namespace RPGFramework.Field.Editor
 
         private void Set(FieldScriptBlock block, int argumentIndex, string value, bool rebuild = false)
         {
-            while (block.Arguments.Count <= argumentIndex)
-            {
-                block.Arguments.Add(string.Empty);
-            }
-
-            block.Arguments[argumentIndex] = value;
+            block.SetArgument(argumentIndex, value);
 
             if (rebuild)
             {
@@ -1554,6 +1510,41 @@ namespace RPGFramework.Field.Editor
 
             NotifyChanged();
         }
+
+        /// <summary>
+        /// Naming a field decides which spawn points it offers, and naming a track which stem states, so one the new
+        /// choice lacks moves to its first, and the block is rebuilt to refresh the list beside it.
+        /// </summary>
+        private void SetDeciding(FieldScriptBlock block, int argumentIndex, string value)
+        {
+            block.SetArgument(argumentIndex, value);
+            block.KeepChoicesOffered(this);
+
+            RebuildBlockList();
+            NotifyChanged();
+        }
+
+        IReadOnlyList<string> IArgumentChoiceProvider.ChoicesFor(FieldScriptBlock block, int argumentIndex)
+        {
+            ArgumentType type = block.OpCode.Arguments[argumentIndex].Type;
+
+            if (type != ArgumentType.SpawnId)
+            {
+                return GetNameChoices(block, type);
+            }
+
+            List<SpawnChoice> spawns = GetSpawnChoices(block);
+            string[]          ids    = new string[spawns.Count];
+
+            for (int i = 0; i < spawns.Count; i++)
+            {
+                ids[i] = spawns[i].Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            return ids;
+        }
+
+        private AudioNames Audio => m_AudioNames ??= AudioNames.FromProject();
 
         private void Move(List<FieldScriptBlock> owner, int index, int direction)
         {

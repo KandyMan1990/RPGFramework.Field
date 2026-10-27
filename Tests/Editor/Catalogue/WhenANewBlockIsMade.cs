@@ -24,6 +24,12 @@ namespace RPGFramework.Field.Tests.Catalogue
         }
 
         [Test]
+        public void ThenANameStartsWithNothingChosen()
+        {
+            Assert.AreEqual(string.Empty, New("PLAY_SOUND").Arguments[0]);
+        }
+
+        [Test]
         public void ThenAnArgumentWithNoDefaultStartsAtItsTypes()
         {
             Assert.AreEqual("FADE_MUSIC_VOLUME 0 0", New("FADE_MUSIC_VOLUME").ToLine());

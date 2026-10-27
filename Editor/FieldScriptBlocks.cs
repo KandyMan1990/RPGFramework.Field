@@ -106,6 +106,96 @@ namespace RPGFramework.Field.Editor
             return block;
         }
 
+        /// <summary>Writes an argument, padding a line written with fewer.</summary>
+        public void SetArgument(int index, string value)
+        {
+            while (Arguments.Count <= index)
+            {
+                Arguments.Add(string.Empty);
+            }
+
+            Arguments[index] = value;
+        }
+
+        /// <summary>
+        /// Gives a new block's names the first choice each picker offers, in order, so a stem state is its track's and
+        /// a spawn point its field's. A picker with nothing to offer leaves its name empty.
+        /// </summary>
+        public void PickFirstChoices(IArgumentChoiceProvider choices)
+        {
+            for (int i = 0; i < OpCode.Arguments.Count; i++)
+            {
+                if (!IsPicked(OpCode.Arguments[i].Type))
+                {
+                    continue;
+                }
+
+                IReadOnlyList<string> offered = choices.ChoicesFor(this, i);
+
+                if (offered.Count > 0)
+                {
+                    SetArgument(i, offered[0]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// After a track or a field changes, moves a stem state or spawn point the new one does not offer to its first
+        /// choice, and keeps one it does.
+        /// </summary>
+        public void KeepChoicesOffered(IArgumentChoiceProvider choices)
+        {
+            for (int i = 0; i < OpCode.Arguments.Count; i++)
+            {
+                ArgumentType type = OpCode.Arguments[i].Type;
+
+                if (type != ArgumentType.MusicStateName && type != ArgumentType.SpawnId)
+                {
+                    continue;
+                }
+
+                IReadOnlyList<string> offered = choices.ChoicesFor(this, i);
+                string                current = i < Arguments.Count ? Arguments[i] : string.Empty;
+
+                if (offered.Count > 0 && !Offers(offered, current))
+                {
+                    SetArgument(i, offered[0]);
+                }
+            }
+        }
+
+        private static bool IsPicked(ArgumentType type)
+        {
+            switch (type)
+            {
+                case ArgumentType.FieldName:
+                case ArgumentType.MusicName:
+                case ArgumentType.SoundName:
+                case ArgumentType.MusicNameHint:
+                case ArgumentType.MusicStateName:
+                case ArgumentType.AnimationName:
+                case ArgumentType.LocalisationKey:
+                case ArgumentType.SpawnId:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        private static bool Offers(IReadOnlyList<string> offered, string value)
+        {
+            for (int i = 0; i < offered.Count; i++)
+            {
+                if (offered[i] == value)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         internal static string DefaultFor(FieldArgumentInfo argument)
         {
             if (argument.Default != null)
@@ -126,6 +216,14 @@ namespace RPGFramework.Field.Editor
                     // A destination has to be a variable, so it starts with the marker already there.
                     return "$";
 
+                // A name starts with nothing chosen, never a number, which would read as a choice.
+                case ArgumentType.FieldName:
+                case ArgumentType.MusicName:
+                case ArgumentType.SoundName:
+                case ArgumentType.MusicNameHint:
+                case ArgumentType.MusicStateName:
+                case ArgumentType.AnimationName:
+                case ArgumentType.LocalisationKey:
                 case ArgumentType.LocalisationKeyList:
                 case ArgumentType.Label:
                 case ArgumentType.TransitionName:
@@ -158,14 +256,18 @@ namespace RPGFramework.Field.Editor
 
             StringBuilder sb = new StringBuilder(OpCode.ScriptName);
 
-            for (int i = 0; i < Arguments.Count; i++)
+            // Empty arguments at the end are left off, as a line written before they existed; one before an argument
+            // that is written is written as "", so those after it keep their places.
+            int last = Arguments.Count - 1;
+
+            while (last >= 0 && string.IsNullOrWhiteSpace(Arguments[last]))
+            {
+                last--;
+            }
+
+            for (int i = 0; i <= last; i++)
             {
                 string argument = Arguments[i];
-
-                if (string.IsNullOrWhiteSpace(argument))
-                {
-                    continue;
-                }
 
                 bool isScriptText = i < OpCode.Arguments.Count && OpCode.Arguments[i].Type == ArgumentType.LocalisationKeyList;
 

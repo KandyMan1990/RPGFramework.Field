@@ -20,6 +20,7 @@ namespace RPGFramework.Field.Tests.Catalogue
         [TestCase("IF_BYTE $flag == 1\n    YIELD\nELSE\n    RETURN\nEND_IF")]
         [TestCase("IF_BYTE $a == 1\n    YIELD\nELSE\n    IF_BYTE $b == 2\n        YIELD\n    ELSE\n        RETURN\n    END_IF\nEND_IF")]
         [TestCase("IF_BYTE $flag == 1\n    YIELD\nELSE\nEND_IF")]
+        [TestCase("CROSSFADE_MUSIC \"\" Calm 2 1")]
         public void ThenTheTextIsUnchanged(string script)
         {
             Assert.AreEqual(script, RoundTrip(script));
