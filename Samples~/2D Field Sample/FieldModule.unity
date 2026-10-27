@@ -426,7 +426,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: RPGFramework.Field::RPGFramework.Field.FieldModuleMonoBehaviour
   m_Up: {x: 0, y: 0, z: 1}
-  m_PlayerInteractionAngle: 60
+  m_PlayerInteractionAngle: 180
+  m_InteractionHeight: 2
   m_InputAdapter: {fileID: 449652878}
   m_UIDocument: {fileID: 449652880}
   m_CinemachineBrain: {fileID: 336217847}
