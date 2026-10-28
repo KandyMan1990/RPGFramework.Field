@@ -432,6 +432,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestShowDialogueWindow          += OnRequestShowDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindowNoWait    += OnRequestShowDialogueWindowNoWait;
             m_FieldContext.VM.RequestCloseDialogueWindow         += OnRequestCloseDialogueWindow;
+            m_FieldContext.VM.RequestWaitForDialogueWindow       += OnRequestWaitForDialogueWindow;
             m_FieldContext.VM.RequestSetDialogueWindowStyle      += OnRequestSetDialogueWindowStyle;
             m_FieldContext.VM.RequestSetMessageVariable          += OnRequestSetMessageVariable;
             m_FieldContext.VM.IsDialogueWindowOpen               =  IsDialogueWindowOpen;
@@ -455,6 +456,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestShowDialogueWindow          -= OnRequestShowDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindowNoWait    -= OnRequestShowDialogueWindowNoWait;
             m_FieldContext.VM.RequestCloseDialogueWindow         -= OnRequestCloseDialogueWindow;
+            m_FieldContext.VM.RequestWaitForDialogueWindow       -= OnRequestWaitForDialogueWindow;
             m_FieldContext.VM.RequestSetDialogueWindowStyle      -= OnRequestSetDialogueWindowStyle;
             m_FieldContext.VM.RequestSetMessageVariable          -= OnRequestSetMessageVariable;
             m_FieldContext.VM.RequestCreateDialogueWindow        -= OnRequestCreateDialogueWindow;
@@ -1739,8 +1741,9 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// A window the player does not answer, up until a script closes it. It never touches input, so the player
-        /// walks, talks to people and opens the menu while it plays out.
+        /// A window the player does not answer, up until a script closes it. It turns its pages on a press while it has
+        /// the focus, and lets the press carry on, so the player walks, talks to people and opens the menu while it
+        /// plays out.
         /// </summary>
         private void OnRequestShowDialogueWindowNoWait(byte channel, ulong dialogueId)
         {
@@ -1750,7 +1753,7 @@ namespace RPGFramework.Field
             }
 
             string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
-            Task     running   = RunUnansweredDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues);
+            Task     running   = RunDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues, false, null);
 
             m_DialogueChannels[channel].Running = running;
             running.FireAndForget();
@@ -1759,6 +1762,11 @@ namespace RPGFramework.Field
         private void OnRequestCloseDialogueWindow(byte channel)
         {
             m_DialogueChannels[channel].Close?.Cancel();
+        }
+
+        private void OnRequestWaitForDialogueWindow(byte channel)
+        {
+            m_DialogueInputContext.LetPressClose(m_DialogueChannels[channel].Window);
         }
 
         private void OnRequestAskPlayerToMakeAChoice(byte channel, ulong dialogueId, ulong[] answerIds, Action<byte> storeChoice)
@@ -1824,8 +1832,9 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Run a window to the end. Every open window shares <see cref="m_DialogueInputContext" />, so one press is
-        /// seen by all of them — each finishes typing or closes together, and windows may close in any order.
+        /// Run a window to the end. Every open window shares <see cref="m_DialogueInputContext" />, which gives a press
+        /// to the focused window, the newest, and closes with it every window that has finished, so windows may close
+        /// in any order.
         /// </summary>
         /// <param name="blockOtherInput">
         /// Hold back movement and every button but confirm while this window is open: someone the player is talking
@@ -1843,10 +1852,14 @@ namespace RPGFramework.Field
                 m_DialogueInputContext.BlockOtherInput();
             }
 
+            m_DialogueInputContext.Open(window, dialogueFlow.Kind);
+
             CancellationToken close = m_DialogueChannels[channel].Close.Token;
 
             await window.AnimateWindowOpenAsync();
             await dialogueFlow.RunAsync(window, dialogues, m_DialogueInputContext, close);
+
+            m_DialogueInputContext.Close(window);
 
             // A question closed by a script was never answered, so its destination keeps what it held.
             if (storeChoice != null && !close.IsCancellationRequested)
@@ -1865,15 +1878,6 @@ namespace RPGFramework.Field
             {
                 m_InputRouter.Pop(m_DialogueInputContext);
             }
-        }
-
-        private async Task RunUnansweredDialogueAsync(byte channel, IDialogueWindow window, IDialogueFlow dialogueFlow, string[] dialogues)
-        {
-            CancellationToken close = m_DialogueChannels[channel].Close.Token;
-
-            await window.AnimateWindowOpenAsync();
-            await dialogueFlow.RunAsync(window, dialogues, null, close);
-            await CloseDialogueWindowAsync(channel, window);
         }
 
         /// <summary>

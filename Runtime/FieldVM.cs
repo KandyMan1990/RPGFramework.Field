@@ -67,6 +67,7 @@ namespace RPGFramework.Field
         internal event Action<byte, ulong, bool>                  RequestShowDialogueWindow;
         internal event Action<byte, ulong>                        RequestShowDialogueWindowNoWait;
         internal event Action<byte>                               RequestCloseDialogueWindow;
+        internal event Action<byte>                               RequestWaitForDialogueWindow;
         internal Func<byte, bool>                                 IsDialogueWindowOpen;
         internal event Action<byte, ulong, ulong[], Action<byte>> RequestAskPlayerToMakeAChoice;
         internal event Action<byte, DialogueWindowStyle>          RequestSetDialogueWindowStyle;
@@ -1787,7 +1788,8 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Wait until nothing is showing on a dialogue channel.
+        /// Wait until nothing is showing on a dialogue channel. The field is told, as a window left up in the background
+        /// then closes on a press once it has finished.
         /// </summary>
         private void WaitForDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
         {
@@ -1795,6 +1797,8 @@ namespace RPGFramework.Field
 
             if (IsDialogueWindowOpen(channel))
             {
+                RequestWaitForDialogueWindow?.Invoke(channel);
+
                 ctx.Block(new WaitUntilBlock(() => !IsDialogueWindowOpen(channel)));
             }
         }

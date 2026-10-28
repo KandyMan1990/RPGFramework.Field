@@ -238,7 +238,11 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - Windows are addressed by channel, 0 to 7, each keeping its position and style until the field changes, when
     every window closes.
   - A window can hold the player while it waits for confirm, or leave the player free to walk away. A background one
-    stays up until a script closes it.
+    stays up until a script closes it, or until a press does once its script waits for it.
+  - The newest window has the focus, a question keeping it until answered: only it finishes typing, turns its page or
+    answers. One press closes every window that has finished, so two people speaking at once both close together.
+  - A background window turns its pages while it has the focus, and lets the press through, so the player can still
+    talk to someone.
   - Text types at the player's field message speed.
 - **The screen:**
   - Scripts fade the screen out and back in beneath the message windows, so a message can show over a black screen,
