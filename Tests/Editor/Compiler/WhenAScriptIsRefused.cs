@@ -24,6 +24,9 @@ namespace RPGFramework.Field.Tests.Compiler
         [TestCase("SET_DIALOGUE_WINDOW_STYLE 0 1",                   "needs a window style")]
         [TestCase("SET_MESSAGE_VARIABLE 8 1",                        "message variable from 0 to 7")]
         [TestCase("ASK_PLAYER_TO_MAKE_A_CHOICE $answer question",    "at least one answer")]
+        [TestCase("ASK_PLAYER_TO_MAKE_A_CHOICE $answer 0 Q 2 Last A B", "starting answer from 0 to 1")]
+        [TestCase("ASK_PLAYER_TO_MAKE_A_CHOICE $answer 0 Q 0 2 A B",    "cancel answer from 0 to 1, Last or None")]
+        [TestCase("ASK_PLAYER_TO_MAKE_A_CHOICE $answer 0 Q 0 Maybe A B", "cancel answer from 0 to 1, Last or None")]
         public void ThenDialogueItCannotShowSaysWhy(string source, string why)
         {
             StringAssert.Contains(why, Refusal(source));

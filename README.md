@@ -243,6 +243,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
     answers. One press closes every window that has finished, so two people speaking at once both close together.
   - A background window turns its pages while it has the focus, and lets the press through, so the player can still
     talk to someone.
+  - A question's cursor starts on the answer its script names, and cancel moves it to its cancel answer, with the
+    cancel sound; the player still confirms it.
   - Text types at the player's field message speed.
 - **The screen:**
   - Scripts fade the screen out and back in beneath the message windows, so a message can show over a black screen,

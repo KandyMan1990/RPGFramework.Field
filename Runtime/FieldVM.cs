@@ -69,7 +69,7 @@ namespace RPGFramework.Field
         internal event Action<byte>                               RequestCloseDialogueWindow;
         internal event Action<byte>                               RequestWaitForDialogueWindow;
         internal Func<byte, bool>                                 IsDialogueWindowOpen;
-        internal event Action<byte, ulong, ulong[], Action<byte>> RequestAskPlayerToMakeAChoice;
+        internal event Action<QuestionArgs, Action<byte>>         RequestAskPlayerToMakeAChoice;
         internal event Action<byte, DialogueWindowStyle>          RequestSetDialogueWindowStyle;
         internal event Action<byte, int>                          RequestSetMessageVariable;
         internal event Action<BattleFlags>                        RequestSetBattleMode;
@@ -1848,6 +1848,8 @@ namespace RPGFramework.Field
             ushort  addressToStoreChoice = ReadUshort(ctx);
             byte    channel              = ReadByte(ctx);
             ulong   dialogueId           = ReadUlong(ctx);
+            byte    startingAnswer       = ReadByte(ctx);
+            byte    cancelAnswer         = ReadByte(ctx);
             byte    answerCount          = ReadByte(ctx);
             ulong[] answerIds            = new ulong[answerCount];
 
@@ -1863,7 +1865,9 @@ namespace RPGFramework.Field
 
             MemoryBank choiceBank = (MemoryBank)bank;
 
-            RequestAskPlayerToMakeAChoice?.Invoke(channel, dialogueId, answerIds, choice => WriteVariableByte(ctx, choiceBank, addressToStoreChoice, choice));
+            QuestionArgs question = new QuestionArgs(channel, dialogueId, answerIds, startingAnswer, cancelAnswer);
+
+            RequestAskPlayerToMakeAChoice?.Invoke(question, choice => WriteVariableByte(ctx, choiceBank, addressToStoreChoice, choice));
 
             ctx.Block(new WaitUntilBlock(() => !IsDialogueWindowOpen(channel)));
         }

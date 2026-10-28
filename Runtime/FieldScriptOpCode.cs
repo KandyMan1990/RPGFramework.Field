@@ -897,7 +897,9 @@ namespace RPGFramework.Field
         [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
         [Argument(1, "channel",     ArgumentType.DialogueChannel)]
         [Argument(2, "question",    ArgumentType.LocalisationKey)]
-        [Argument(3, "answers",     ArgumentType.LocalisationKeyList)]
+        [Argument(3, "starting",    ArgumentType.Answer,       Description = "the answer the cursor starts on")]
+        [Argument(4, "cancel",      ArgumentType.CancelAnswer, Description = "the answer cancel moves the cursor to, which the player still confirms; None for none")]
+        [Argument(5, "answers",     ArgumentType.LocalisationKeyList)]
         AskPlayerToMakeAChoice = 0x0308,
 
         [FieldOpCode("MAIN_MENU_ACCESSIBILITY", ArgumentLayout.Sequential, Summary = "Allow or block the player opening the main menu")]

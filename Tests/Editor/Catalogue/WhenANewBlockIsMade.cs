@@ -24,6 +24,18 @@ namespace RPGFramework.Field.Tests.Catalogue
         }
 
         [Test]
+        public void ThenAQuestionStartsOnItsFirstAnswer()
+        {
+            Assert.AreEqual("0", New("ASK_PLAYER_TO_MAKE_A_CHOICE").Arguments[3]);
+        }
+
+        [Test]
+        public void ThenAQuestionCancelsToItsLastAnswer()
+        {
+            Assert.AreEqual(FieldScriptCompiler.CANCEL_LAST, New("ASK_PLAYER_TO_MAKE_A_CHOICE").Arguments[4]);
+        }
+
+        [Test]
         public void ThenANameStartsWithNothingChosen()
         {
             Assert.AreEqual(string.Empty, New("PLAY_SOUND").Arguments[0]);

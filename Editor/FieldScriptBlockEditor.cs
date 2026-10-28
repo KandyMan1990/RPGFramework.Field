@@ -863,6 +863,10 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.LocalisationKeyList:
                     return KeyList(block, argumentIndex, label, current);
 
+                case ArgumentType.Answer:
+                case ArgumentType.CancelAnswer:
+                    return AnswerChoice(block, argumentIndex, label, current);
+
                 case ArgumentType.Label:
                     return LabelChoice(block, argumentIndex, label, current);
 
@@ -1094,6 +1098,40 @@ namespace RPGFramework.Field.Editor
         /// A key per row, for a list that runs to the end of the line — the answers to a choice. The script text keeps
         /// them space separated in one argument, which is how the compiler reads them.
         /// </summary>
+        /// <summary>
+        /// A question's starting or cancel answer, picked from its own answers by key. What is written stays shown when no
+        /// answer has that number any more.
+        /// </summary>
+        private VisualElement AnswerChoice(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            string[]     answers = block.Answers();
+            string[]     values  = block.AnswerChoices(block.OpCode.Arguments[argumentIndex].Type);
+            List<string> labels  = new List<string>(values.Length);
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                string value = values[i];
+
+                labels.Add(int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int number) && number < answers.Length ? $"{number}: {answers[number]}" : value);
+            }
+
+            if (labels.Count == 0)
+            {
+                TextField typed = new TextField(label) { value = current };
+                typed.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue));
+
+                return typed;
+            }
+
+            int shown = Array.IndexOf(values, current);
+
+            DropdownField field = new DropdownField(label, labels, 0);
+            field.SetValueWithoutNotify(shown >= 0 ? labels[shown] : current);
+            field.RegisterValueChangedCallback(e => Set(block, argumentIndex, values[labels.IndexOf(e.newValue)]));
+
+            return field;
+        }
+
         private VisualElement KeyList(FieldScriptBlock block, int argumentIndex, string label, string current)
         {
             List<string> keys    = string.IsNullOrWhiteSpace(current) ? new List<string>() : new List<string>(FieldScriptLine.Split(current));
@@ -1102,7 +1140,7 @@ namespace RPGFramework.Field.Editor
             VisualElement list = new VisualElement();
             list.Add(new Label(label));
 
-            void Write() => Set(block, argumentIndex, FieldScriptLine.Join(keys, 0), true);
+            void Write() => SetDeciding(block, argumentIndex, FieldScriptLine.Join(keys, 0));
 
             for (int i = 0; i < keys.Count; i++)
             {
@@ -1129,7 +1167,7 @@ namespace RPGFramework.Field.Editor
                     chosen.RegisterValueChangedCallback(e =>
                                                         {
                                                             keys[index] = e.newValue;
-                                                            Set(block, argumentIndex, FieldScriptLine.Join(keys, 0));
+                                                            Write();
                                                         });
                     key = chosen;
                 }
@@ -1527,6 +1565,11 @@ namespace RPGFramework.Field.Editor
         IReadOnlyList<string> IArgumentChoiceProvider.ChoicesFor(FieldScriptBlock block, int argumentIndex)
         {
             ArgumentType type = block.OpCode.Arguments[argumentIndex].Type;
+
+            if (type == ArgumentType.Answer || type == ArgumentType.CancelAnswer)
+            {
+                return block.AnswerChoices(type);
+            }
 
             if (type != ArgumentType.SpawnId)
             {

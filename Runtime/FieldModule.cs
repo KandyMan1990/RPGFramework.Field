@@ -1769,24 +1769,25 @@ namespace RPGFramework.Field
             m_DialogueInputContext.LetPressClose(m_DialogueChannels[channel].Window);
         }
 
-        private void OnRequestAskPlayerToMakeAChoice(byte channel, ulong dialogueId, ulong[] answerIds, Action<byte> storeChoice)
+        private void OnRequestAskPlayerToMakeAChoice(QuestionArgs question, Action<byte> storeChoice)
         {
-            if (!TryOpenDialogueWindow(channel, dialogueId, out IDialogueWindow window))
+            if (!TryOpenDialogueWindow(question.Channel, question.QuestionId, out IDialogueWindow window))
             {
                 return;
             }
 
-            string[] dialogues = new string[answerIds.Length + 1];
-            dialogues[0] = m_LocalisationService.Get(dialogueId);
+            string[] dialogues = new string[question.AnswerIds.Length + 1];
+            dialogues[0] = m_LocalisationService.Get(question.QuestionId);
 
             for (int i = 1; i < dialogues.Length; i++)
             {
-                dialogues[i] = m_LocalisationService.Get(answerIds[i - 1]);
+                dialogues[i] = m_LocalisationService.Get(question.AnswerIds[i - 1]);
             }
 
-            Task running = RunDialogueAsync(channel, window, new ChoiceDialogueFlow(m_AudioIntentPlayer, AudioContext.Field), dialogues, true, storeChoice);
+            ChoiceDialogueFlow flow    = new ChoiceDialogueFlow(m_AudioIntentPlayer, AudioContext.Field, question.StartingAnswer, question.CancelAnswer);
+            Task               running = RunDialogueAsync(question.Channel, window, flow, dialogues, true, storeChoice);
 
-            m_DialogueChannels[channel].Running = running;
+            m_DialogueChannels[question.Channel].Running = running;
             running.FireAndForget();
         }
 

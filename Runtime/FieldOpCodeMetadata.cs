@@ -154,7 +154,16 @@ namespace RPGFramework.Field
         /// A message variable, which dialogue shows as <c>{Var n}</c>, 0 to
         /// <c>DialogueMarkup.MESSAGE_VARIABLE_COUNT</c> - 1. Always literal.
         /// </summary>
-        MessageVariableSlot
+        MessageVariableSlot,
+
+        /// <summary>One of the question's answers, counting from 0, picked from them. Always literal.</summary>
+        Answer,
+
+        /// <summary>
+        /// The answer cancel moves a question's cursor to: one of its answers, counting from 0, <c>Last</c> for whichever
+        /// is last, or <c>None</c>. Always literal.
+        /// </summary>
+        CancelAnswer
     }
 
     /// <summary>

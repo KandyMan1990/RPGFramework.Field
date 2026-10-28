@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
@@ -140,21 +142,22 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// After a track or a field changes, moves a stem state or spawn point the new one does not offer to its first
-        /// choice, and keeps one it does.
+        /// After a track, a field or a question's answers change, moves a stem state, spawn point or answer the new ones
+        /// do not offer to its first choice, and keeps one they do.
         /// </summary>
         public void KeepChoicesOffered(IArgumentChoiceProvider choices)
         {
             for (int i = 0; i < OpCode.Arguments.Count; i++)
             {
                 ArgumentType type = OpCode.Arguments[i].Type;
+                bool         isAnswer = type == ArgumentType.Answer || type == ArgumentType.CancelAnswer;
 
-                if (type != ArgumentType.MusicStateName && type != ArgumentType.SpawnId)
+                if (type != ArgumentType.MusicStateName && type != ArgumentType.SpawnId && !isAnswer)
                 {
                     continue;
                 }
 
-                IReadOnlyList<string> offered = choices.ChoicesFor(this, i);
+                IReadOnlyList<string> offered = isAnswer ? AnswerChoices(type) : choices.ChoicesFor(this, i);
                 string                current = i < Arguments.Count ? Arguments[i] : string.Empty;
 
                 if (offered.Count > 0 && !Offers(offered, current))
@@ -162,6 +165,46 @@ namespace RPGFramework.Field.Editor
                     SetArgument(i, offered[0]);
                 }
             }
+        }
+
+        /// <summary>The question's answers, by key, from the list that ends its line.</summary>
+        public string[] Answers()
+        {
+            for (int i = 0; i < OpCode.Arguments.Count; i++)
+            {
+                if (OpCode.Arguments[i].Type != ArgumentType.LocalisationKeyList)
+                {
+                    continue;
+                }
+
+                return i < Arguments.Count && !string.IsNullOrWhiteSpace(Arguments[i]) ? FieldScriptLine.Split(Arguments[i]) : Array.Empty<string>();
+            }
+
+            return Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// What a starting or cancel answer can be, as written: each answer's number, and for a cancel answer
+        /// <c>Last</c> and <c>None</c> before them.
+        /// </summary>
+        public string[] AnswerChoices(ArgumentType type)
+        {
+            int      count  = Answers().Length;
+            int      extra  = type == ArgumentType.CancelAnswer ? 2 : 0;
+            string[] values = new string[count + extra];
+
+            if (extra > 0)
+            {
+                values[0] = FieldScriptCompiler.CANCEL_LAST;
+                values[1] = FieldScriptCompiler.CANCEL_NONE;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                values[extra + i] = i.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return values;
         }
 
         private static bool IsPicked(ArgumentType type)
@@ -231,6 +274,12 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.Comparison:
                     return ScriptComparison.Equal.ToScriptText();
+
+                case ArgumentType.Answer:
+                    return "0";
+
+                case ArgumentType.CancelAnswer:
+                    return FieldScriptCompiler.CANCEL_LAST;
 
                 case ArgumentType.DialogueWindowStyle:
                     return nameof(DialogueWindowStyle.Spoken);
