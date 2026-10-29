@@ -65,7 +65,7 @@ namespace RPGFramework.Field
         internal event Action                                     RequestOpenSaveMenu;
         internal event Action<DialogueWindowArgs>                 RequestCreateDialogueWindow;
         internal event Action<byte, ulong, bool>                  RequestShowDialogueWindow;
-        internal event Action<byte, ulong>                        RequestShowDialogueWindowNoWait;
+        internal event Action<byte, ulong, bool>                  RequestShowDialogueWindowNoWait;
         internal event Action<byte>                               RequestCloseDialogueWindow;
         internal event Action<byte>                               RequestWaitForDialogueWindow;
         internal Func<byte, bool>                                 IsDialogueWindowOpen;
@@ -312,6 +312,7 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.OpenNameEntry, OpenNameEntryOpcodeHandler },
                        // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
                        // { FieldScriptOpCode.RunTutorial, RunTutorialOpcodeHandler },
+                       { FieldScriptOpCode.ShowDialogueWindowNoWaitDismissible, ShowDialogueWindowNoWaitDismissibleOpcodeHandler },
 
                        // Party and inventory
                        // { FieldScriptOpCode.AddCharacterToParty, AddCharacterToPartyOpcodeHandler },
@@ -1773,6 +1774,11 @@ namespace RPGFramework.Field
         /// </summary>
         private void ShowDialogueWindowNoWaitOpcodeHandler(ScriptExecutionContext ctx)
         {
+            ShowDialogueWindowWithoutWaiting(ctx, false);
+        }
+
+        private void ShowDialogueWindowWithoutWaiting(ScriptExecutionContext ctx, bool dismissible)
+        {
             int   instructionStart = ctx.InstructionPointer - sizeof(ushort);
             byte  channel          = ReadByte(ctx);
             ulong dialogueId       = ReadUlong(ctx);
@@ -1782,7 +1788,7 @@ namespace RPGFramework.Field
                 return;
             }
 
-            RequestShowDialogueWindowNoWait?.Invoke(channel, dialogueId);
+            RequestShowDialogueWindowNoWait?.Invoke(channel, dialogueId, dismissible);
 
             ctx.YieldRequested = true;
         }
@@ -1890,6 +1896,15 @@ namespace RPGFramework.Field
             RequestOpenSaveMenu?.Invoke();
 
             ctx.YieldRequested = true;
+        }
+
+        /// <summary>
+        /// As <c>SHOW_DIALOGUE_WINDOW_NO_WAIT</c>, but a press closes the window once it has typed, as one a script
+        /// waits for.
+        /// </summary>
+        private void ShowDialogueWindowNoWaitDismissibleOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ShowDialogueWindowWithoutWaiting(ctx, true);
         }
 
         /// <summary>

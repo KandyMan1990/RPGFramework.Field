@@ -198,7 +198,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | **Flow** | `RETURN` `REQUEST_SCRIPT` `REQUEST_SCRIPT_WAIT_START` `REQUEST_SCRIPT_WAIT_END` `RETURN_TO_SCRIPT` `GOTO_JUMP` `GOTO_DIRECTLY` `IF_BOOL` to `IF_FLOAT` `YIELD` `WAIT_SECONDS` `NOP` |
 | **The field, saving, battles and game over** | `JUMP_TO_MAP` `GATEWAY_TRIGGER_ACTIVATION` `SET_FIELD_EXIT_FADE` `SAVE_ACCESSIBILITY` `SET_BATTLE_MODE` `START_BATTLE` `GET_LAST_BATTLE_RESULT` `GAME_OVER` |
 | **Variables** | `SET_` at each width from `BOOL` to `FLOAT`; `ADD_`, `SUB_`, `MUL_` and `DIV_` from `SBYTE` to `FLOAT`; `MOD_`, `INC_`, `DEC_`, `AND_`, `OR_`, `XOR_`, `SET_BIT_` and `UNSET_BIT_` from `SBYTE` to `ULONG`; `_CLAMPED` forms of `ADD_`, `SUB_`, `INC_` and `DEC_`; `GET_RANDOM` `RANDOM_SEED` |
-| **Dialogue and menus** | `CREATE_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW_NO_WAIT` `WAIT_FOR_DIALOGUE_WINDOW` `CLOSE_DIALOGUE_WINDOW` `SET_DIALOGUE_WINDOW_STYLE` `SET_MESSAGE_VARIABLE` `ASK_PLAYER_TO_MAKE_A_CHOICE` `MAIN_MENU_ACCESSIBILITY` `OPEN_SAVE_MENU` |
+| **Dialogue and menus** | `CREATE_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW_NO_WAIT` `SHOW_DIALOGUE_WINDOW_NO_WAIT_DISMISSIBLE` `WAIT_FOR_DIALOGUE_WINDOW` `CLOSE_DIALOGUE_WINDOW` `SET_DIALOGUE_WINDOW_STYLE` `SET_MESSAGE_VARIABLE` `ASK_PLAYER_TO_MAKE_A_CHOICE` `MAIN_MENU_ACCESSIBILITY` `OPEN_SAVE_MENU` |
 | **Entities** | `SET_PLAYER_ENTITY` `LOCK_INPUT` `VISIBILITY` `SOLIDITY` `PUSH_SCRIPT_ACTIVATION` `INTERACTION_TRIGGER_ACTIVATION` `SET_INTERACTION_RANGE` `COLLISION_TRIGGER_ACTIVATION` `SET_ENTITY_POSITION` `SET_ENTITY_ROTATION` `SET_ENTITY_ROTATION_OVER_TIME` `SET_DIRECTION_TO_FACE_ENTITY` |
 | **Movement** | `SET_MOVEMENT_SPEED`; `MOVE_ENTITY` `GLIDE_ENTITY` `SLIDE_ENTITY` `MOVE_ENTITY_TO_ENTITY`, each also `_AND_WAIT`; `WAIT_FOR_MOVEMENT` `STOP_MOVEMENT` |
 | **Animation** | `SET_BASE_ANIMATION`; `PLAY_ANIMATION` and `PLAY_PART_OF_ANIMATION`, each also `_AND_WAIT`, `_AND_HOLD`, `_HOLDING` and `_LOOPING`; `SET_ANIMATION_SPEED` `WAIT_FOR_ANIMATION` `STOP_ANIMATION` `PUSH_ANIMATION_STATE` `POP_ANIMATION_STATE` |
@@ -242,7 +242,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - The newest window has the focus, a question keeping it until answered: only it finishes typing, turns its page or
     answers. One press closes every window that has finished, so two people speaking at once both close together.
   - A background window turns its pages while it has the focus, and lets the press through, so the player can still
-    talk to someone.
+    talk to someone. A dismissible one also closes on a press once it has typed, as people chatting nearby do, their
+    script closing each line after a while if the player does not.
   - A question's cursor starts on the answer its script names, and cancel moves it to its cancel answer, with the
     cancel sound; the player still confirms it.
   - Text types at the player's field message speed.

@@ -1741,11 +1741,11 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// A window the player does not answer, up until a script closes it. It turns its pages on a press while it has
-        /// the focus, and lets the press carry on, so the player walks, talks to people and opens the menu while it
-        /// plays out.
+        /// A window the player does not answer, up until a script closes it — or, dismissible, until a press does once it
+        /// has typed. It turns its pages on a press while it has the focus, and lets the press carry on, so the player
+        /// walks, talks to people and opens the menu while it plays out.
         /// </summary>
-        private void OnRequestShowDialogueWindowNoWait(byte channel, ulong dialogueId)
+        private void OnRequestShowDialogueWindowNoWait(byte channel, ulong dialogueId, bool dismissible)
         {
             if (!TryOpenDialogueWindow(channel, dialogueId, out IDialogueWindow window))
             {
@@ -1754,6 +1754,11 @@ namespace RPGFramework.Field
 
             string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
             Task     running   = RunDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues, false, null);
+
+            if (dismissible)
+            {
+                m_DialogueInputContext.LetPressClose(window);
+            }
 
             m_DialogueChannels[channel].Running = running;
             running.FireAndForget();

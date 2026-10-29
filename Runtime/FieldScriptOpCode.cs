@@ -916,6 +916,11 @@ namespace RPGFramework.Field
         SetMapNameInMenu = 0x030E,
         RunTutorial      = 0x030F,
 
+        [FieldOpCode("SHOW_DIALOGUE_WINDOW_NO_WAIT_DISMISSIBLE", ArgumentLayout.Sequential, Summary = "Show dialogue the player does not answer, and carry on. A press closes it once it has typed, or CLOSE_DIALOGUE_WINDOW does", StopsInit = true)]
+        [Argument(0, "channel",  ArgumentType.DialogueChannel)]
+        [Argument(1, "dialogue", ArgumentType.LocalisationKey)]
+        ShowDialogueWindowNoWaitDismissible = 0x0310,
+
         // Party and inventory (0x0400)
         AddCharacterToParty      = 0x0400,
         RemoveCharacterFromParty = 0x0401,
