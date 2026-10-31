@@ -64,6 +64,14 @@ namespace RPGFramework.Field.Tests.Compiler
             StringAssert.Contains(why, Refusal(source));
         }
 
+        // Core's settings are required of every map, so the project's has them.
+        [TestCase("SET_FLOAT $MusicVolume 0.5",                 "one of the player's settings")]
+        [TestCase("IF_FLOAT $FieldMessageSpeed > 0.5\nEND_IF", "one of the player's settings")]
+        public void ThenASettingItCannotUseSaysWhy(string source, string why)
+        {
+            StringAssert.Contains(why, Refusal(source));
+        }
+
         private static string Refusal(string source)
         {
             Exception refused = Assert.Catch(() => FieldScriptCompiler.Compile(source));

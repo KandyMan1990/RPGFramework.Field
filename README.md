@@ -272,7 +272,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - The player's position and facing are saved with the game, and a loaded game resumes in the field it was saved in.
 - **Music:**
   - Scripts play, crossfade and stop music, and switch its stem states.
-  - They set or fade its volume, Core's `MusicVolume`, which is saved so it outlasts the menu and battles.
+  - They set or fade its volume, Core's `SongVolume`, which is saved so it outlasts the menu and battles, and plays
+    under the player's own music volume.
   - They set the battle music, which every battle plays until a script sets another, and which is saved.
   - A battle pauses the field's music, unless it keeps it playing, and the field picks it up where it was on the
     return, fading it in over a second as the battle's fades out, with its echo and reverb as they were.

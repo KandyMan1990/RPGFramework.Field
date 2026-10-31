@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 using RPGFramework.Core.Memory;
+using RPGFramework.Core.SharedTypes;
 using RPGFramework.Hashing;
 using UnityEditor;
 using UnityEngine;
@@ -22,11 +23,20 @@ namespace RPGFramework.Field.Editor
         /// <summary>
         /// What compiled scripts depend on in the variable map — every variable's name, bank, offset, width and count,
         /// and a record's fields — in an order the list's own does not change. Scripts address variables by the offset
-        /// they had when compiled, so fields exported under one layout are wrong under another.
+        /// they had when compiled, so fields exported under one layout are wrong under another. The settings are left
+        /// out, as no script can name one.
         /// </summary>
         internal static ulong LayoutHash(IVariableMap map)
         {
-            List<VariableDefinition> variables = new List<VariableDefinition>(map.Variables);
+            List<VariableDefinition> variables = new List<VariableDefinition>(map.Variables.Count);
+
+            for (int i = 0; i < map.Variables.Count; i++)
+            {
+                if (map.Variables[i].Bank != MemoryBank.Settings)
+                {
+                    variables.Add(map.Variables[i]);
+                }
+            }
 
             variables.Sort((a, b) => a.Bank   != b.Bank   ? a.Bank.CompareTo(b.Bank)
                                    : a.Offset != b.Offset ? a.Offset.CompareTo(b.Offset)

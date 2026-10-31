@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using RPGFramework.Core.Memory;
+using RPGFramework.Core.SharedTypes;
 using RPGFramework.Field.Editor;
 using UnityEditor;
 using UnityEngine;
@@ -8,7 +9,7 @@ namespace RPGFramework.Field.Tests.Compiler
 {
     /// <summary>
     /// A player build refuses fields exported against another layout: what scripts address changes the layout, and
-    /// what they do not, the list's order, leaves it alone.
+    /// what they do not, the list's order and the settings, leaves it alone.
     /// </summary>
     internal sealed class WhenTheVariableMapChangesUnderExportedFields
     {
@@ -65,6 +66,27 @@ namespace RPGFramework.Field.Tests.Compiler
             m_Asset.ApplyModifiedPropertiesWithoutUndo();
 
             Assert.AreNotEqual(m_Exported, FieldExport.LayoutHash(m_Map));
+        }
+
+        [Test]
+        public void ThenAddingASettingKeepsTheLayout()
+        {
+            SerializedProperty variables = m_Asset.FindProperty("m_Variables");
+
+            variables.arraySize = 4;
+
+            SerializedProperty setting = variables.GetArrayElementAtIndex(3);
+
+            setting.FindPropertyRelative("m_Id").uintValue     = 4;
+            setting.FindPropertyRelative("m_Name").stringValue = "brightness";
+            setting.FindPropertyRelative("m_Bank").intValue    = (int)MemoryBank.Settings;
+            setting.FindPropertyRelative("m_Width").intValue   = (int)VariableWidth.Float;
+            setting.FindPropertyRelative("m_Count").intValue   = 1;
+            setting.FindPropertyRelative("m_Offset").intValue  = 0;
+            setting.FindPropertyRelative("m_Fields").arraySize = 0;
+            m_Asset.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.AreEqual(m_Exported, FieldExport.LayoutHash(m_Map));
         }
 
         [Test]

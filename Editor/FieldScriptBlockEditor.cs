@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
+using RPGFramework.Core.SharedTypes;
 using RPGFramework.Core.Transitions;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
@@ -974,6 +975,11 @@ namespace RPGFramework.Field.Editor
             for (int i = 0; i < variables.Count; i++)
             {
                 VariableDefinition variable = variables[i];
+
+                if (variable.Bank == MemoryBank.Settings)
+                {
+                    continue;
+                }
 
                 string label = $"{variable.Bank}/{variable.Name}{DescribeCount(variable.Count)}";
                 string token = $"${variable.Name}{FirstElement(variable.Count)}";

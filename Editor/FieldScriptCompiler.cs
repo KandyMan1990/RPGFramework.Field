@@ -952,6 +952,11 @@ namespace RPGFramework.Field.Editor
                 throw new KeyNotFoundException($"{nameof(FieldScriptCompiler)}::{nameof(ResolveVariable)} No variable named '{name}' in the variable map, required by [{scriptName}]");
             }
 
+            if (definition.Bank == MemoryBank.Settings)
+            {
+                throw new Exception($"[{scriptName}] '{name}' is one of the player's settings, which scripts cannot read or write");
+            }
+
             CheckElement(name, definition.Count, hasIndex, index, scriptName);
 
             int           address = definition.GetElementOffset(index);

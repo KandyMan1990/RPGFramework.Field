@@ -9,14 +9,11 @@ using RPGFramework.Battle.SharedTypes.Constants;
 using RPGFramework.Battle.SharedTypes.Stores;
 using RPGFramework.Core;
 using RPGFramework.Core.Audio;
-using RPGFramework.Core.Data;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Dialogue.Flows;
 using RPGFramework.Core.Input;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.PlayerLoop;
-using RPGFramework.Core.SaveData;
-using RPGFramework.Core.Settings;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Core.Store;
 using RPGFramework.Core.Transitions;
@@ -62,8 +59,8 @@ namespace RPGFramework.Field
         private readonly IFieldResumeDataStore      m_FieldResumeDataStore;
         private readonly SavedPlayerPose            m_SavedPlayerPose;
         private readonly FieldScreen                m_Screen;
-        private readonly IMusicVolumeStore          m_MusicVolumeStore;
-        private readonly ISettingsService           m_SettingsService;
+        private readonly ISongVolumeStore           m_SongVolumeStore;
+        private readonly ISettingsStore             m_SettingsStore;
         private readonly ISaveEnabledStore          m_SaveEnabledStore;
         private readonly ILocationNameStore         m_LocationNameStore;
         private readonly IBattleMusicStore          m_BattleMusicStore;
@@ -127,11 +124,11 @@ namespace RPGFramework.Field
                              ICurrentModuleStore       currentModuleStore,
                              IFieldResumeDataStore     fieldResumeDataStore,
                              IVariableMap              variableMap,
-                             ISettingsService          settingsService,
+                             ISettingsStore            settingsStore,
                              ISaveEnabledStore         saveEnabledStore,
                              ILocationNameStore        locationNameStore,
                              IBattleMusicStore         battleMusicStore,
-                             IMusicVolumeStore         musicVolumeStore,
+                             ISongVolumeStore          songVolumeStore,
                              IPausedMusicStore         pausedMusicStore,
                              IBattleModeStore          battleModeStore,
                              IBattleCompleteStateStore battleCompleteStateStore,
@@ -156,8 +153,8 @@ namespace RPGFramework.Field
             m_FieldResumeDataStore     = fieldResumeDataStore;
             m_SavedPlayerPose          = new SavedPlayerPose(memoryService, variableMap);
             m_Screen                   = new FieldScreen(transitionConfig, transitionDatabase, sfxPlayer, memoryService, variableMap);
-            m_MusicVolumeStore         = musicVolumeStore;
-            m_SettingsService          = settingsService;
+            m_SongVolumeStore          = songVolumeStore;
+            m_SettingsStore            = settingsStore;
             m_SaveEnabledStore         = saveEnabledStore;
             m_LocationNameStore        = locationNameStore;
             m_BattleMusicStore         = battleMusicStore;
@@ -211,7 +208,7 @@ namespace RPGFramework.Field
 
                 if (musicPaused)
                 {
-                    m_MusicPlayer.ResumeAsync(pausedMusic, MUSIC_RESUME_SECONDS, m_MusicVolumeStore.MusicVolume).FireAndForget();
+                    m_MusicPlayer.ResumeAsync(pausedMusic, MUSIC_RESUME_SECONDS, m_SongVolumeStore.SongVolume).FireAndForget();
                 }
 
                 await ResumeFieldAsync();
@@ -1015,7 +1012,7 @@ namespace RPGFramework.Field
 
         private void OnRequestMusic(ulong nameHash, ulong stateNameHash)
         {
-            m_MusicPlayer.PlayAsync(nameHash, stateNameHash, 0f, m_MusicVolumeStore.MusicVolume).FireAndForget();
+            m_MusicPlayer.PlayAsync(nameHash, stateNameHash, 0f, m_SongVolumeStore.SongVolume).FireAndForget();
         }
 
         // The crossfade's volume is for that track alone, and the field's music volume stays as it was.
@@ -1031,7 +1028,7 @@ namespace RPGFramework.Field
 
         private void OnRequestMusicVolume(float volume, float seconds)
         {
-            m_MusicVolumeStore.SetMusicVolume(Mathf.Clamp01(volume));
+            m_SongVolumeStore.SetSongVolume(Mathf.Clamp01(volume));
 
             m_MusicVolumeFade = m_MusicPlayer.SetSongVolumeAsync(volume, seconds);
             m_MusicVolumeFade.FireAndForget();
@@ -1835,21 +1832,12 @@ namespace RPGFramework.Field
             window.SetRect(dialogueChannel.Rect);
             window.SetStyle(dialogueChannel.Style);
             window.SetMessageVariables(m_MessageVariables);
-            window.SetMessageSpeed(GetFieldMessageSpeed());
+            window.SetMessageSpeed(m_SettingsStore.FieldMessageSpeed);
 
             dialogueChannel.Window = window;
             dialogueChannel.Close  = new CancellationTokenSource();
 
             return true;
-        }
-
-        private float GetFieldMessageSpeed()
-        {
-            m_SettingsService.TryGetSection(FrameworkSettingsSections.CONFIG_DATA, out SaveSection<ConfigData_V1> configData);
-
-            float messageSpeed = configData.Data.FieldMessageSpeed;
-
-            return messageSpeed;
         }
 
         /// <summary>
