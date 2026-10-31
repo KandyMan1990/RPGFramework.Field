@@ -73,6 +73,9 @@ namespace RPGFramework.Field
 
         internal bool IsColourFading => !m_ColourFade.IsCompleted;
 
+        /// <summary>Neither fading nor covered; a colour shown does not count.</summary>
+        internal bool IsClear => m_Fade.IsCompleted && m_Layer.Covered <= 0f;
+
         /// <summary>Puts the layer at the back of the field's UI, showing where the save says the screen was left.</summary>
         internal void Enter(VisualElement root)
         {

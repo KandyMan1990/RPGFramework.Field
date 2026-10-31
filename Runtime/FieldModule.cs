@@ -105,6 +105,7 @@ namespace RPGFramework.Field
         private float                                  m_TimeScaleBeforeSuspend;
         private bool                                   m_ExitFades;
         private bool                                   m_ClosingAllDialogueWindows;
+        private bool                                   m_Revealed;
 
         internal FieldModule(ICoreModule               coreModule,
                              IDIResolver               diResolver,
@@ -171,6 +172,7 @@ namespace RPGFramework.Field
             m_SuspendedInputBlock      = new BlockAllInputContext();
             m_InteractionCandidates    = new List<InteractionCandidate>();
             m_ExitFades                = true;
+            m_Revealed                 = false;
 
             for (int i = 0; i < m_DialogueChannels.Length; i++)
             {
@@ -202,17 +204,20 @@ namespace RPGFramework.Field
             if (entry != ModuleEntries.RETURN || fieldContext == null)
             {
                 await LoadNewFieldAsync();
-                return;
             }
-
-            m_FieldContext = fieldContext;
-
-            if (musicPaused)
+            else
             {
-                m_MusicPlayer.ResumeAsync(pausedMusic, MUSIC_RESUME_SECONDS, m_MusicVolumeStore.MusicVolume).FireAndForget();
+                m_FieldContext = fieldContext;
+
+                if (musicPaused)
+                {
+                    m_MusicPlayer.ResumeAsync(pausedMusic, MUSIC_RESUME_SECONDS, m_MusicVolumeStore.MusicVolume).FireAndForget();
+                }
+
+                await ResumeFieldAsync();
             }
 
-            await ResumeFieldAsync();
+            m_InputAdapter.Enable();
         }
 
         async Task IModule.OnExitAsync()
@@ -233,6 +238,8 @@ namespace RPGFramework.Field
         // lose what this keeps.
         Task IModule.OnSuspendAsync()
         {
+            m_Revealed = false;
+
             m_InputAdapter.Disable();
             m_InputRouter.Push(m_SuspendedInputBlock);
 
@@ -265,11 +272,13 @@ namespace RPGFramework.Field
 
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
+
+            m_InputAdapter.Enable();
         }
 
         void IModule.OnRevealed()
         {
-            m_InputAdapter.Enable();
+            m_Revealed = true;
         }
 
         private void Freeze()
@@ -336,7 +345,7 @@ namespace RPGFramework.Field
 #endif
 
 #if ENABLE_RPG_FRAMEWORK_DEBUG
-            if (DebugRoomShortcut.IsHeld(m_InputAdapter))
+            if (m_Revealed && DebugRoomShortcut.IsHeld(m_InputAdapter))
             {
                 LeaveForDebugRoomAsync().FireAndForget();
                 return;
@@ -529,9 +538,13 @@ namespace RPGFramework.Field
 
             await UnloadCurrentFieldAsync();
             await LoadNewFieldAsync();
-            await m_Transitions.RevealAsync(m_FieldDefinition.EntryTransition);
 
             m_InputAdapter.Enable();
+
+            if (await m_Transitions.RevealAsync(m_FieldDefinition.EntryTransition))
+            {
+                m_Revealed = true;
+            }
         }
 
         private Task TriggerMenuTransitionAsync()
@@ -584,6 +597,8 @@ namespace RPGFramework.Field
         // for one: nothing moves on, no walk cycle plays in place, and no script runs past the one that asked.
         private void StopRunning()
         {
+            m_Revealed = false;
+
             m_InputAdapter.Disable();
 
             UpdateManager.UnregisterUpdatable(this);
@@ -1303,7 +1318,7 @@ namespace RPGFramework.Field
 
         private void OpenPartyMenu()
         {
-            if (!m_FieldContext.MainMenuAccessible)
+            if (!m_FieldContext.MainMenuAccessible || !m_Revealed || !m_Screen.IsClear)
             {
                 return;
             }

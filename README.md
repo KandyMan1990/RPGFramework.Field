@@ -256,8 +256,10 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - The colours, and the default subtractive fade, need URP (Core's README).
 - **Leaving a field:** a gateway or a script jumps to another field and spawn point, the screen covered by the field's
   exit transition and revealed by the next field's entry transition, unless a script has turned the exit's cover off
-  because it faded the screen itself. The menu button opens the party menu when the field allows it, and a script can
-  start a battle or end the game.
+  because it faded the screen itself. The player can walk and talk as a field fades in, whether arriving, back from
+  the menu or a battle, or after a load. The menu button opens the party menu when the field allows it and the screen
+  is clear — not while it fades in, nor while a script's fade plays or holds it covered — and a script can start a
+  battle or end the game.
   - A battle carries its own arena, enemies, flags and level. Whether losing it, or a countdown running out, ends the
     game is the battle mode's, which a script sets and the game saves; after the battle, a script reads how it ended.
   - A game over sends the player to the game-over field your map names, entered afresh: a field like any other, whose
