@@ -1285,9 +1285,22 @@ namespace RPGFramework.Field
         WaitForMovie = 0x0902,
 
         // Timer (0x0A00)
-        SetCountdownTimer  = 0x0A00, // int seconds
-        ShowCountdownTimer = 0x0A01, // bool visible, int x, int y
-        GetCountdownTimer  = 0x0A02, // ushort destination - seconds left, to branch on
+
+        [FieldOpCode("SET_COUNTDOWN_TIMER", ArgumentLayout.Sequential, Summary = "Set the countdown's seconds, which start counting down at once, in every module, shown or not. To end a timed stretch early, hide it")]
+        [Argument(0, "seconds", ArgumentType.Seconds, Description = "at least one", Default = "60")]
+        SetCountdownTimer = 0x0A00,
+
+        [FieldOpCode("SHOW_COUNTDOWN_TIMER", ArgumentLayout.Sequential, Summary = "Show the countdown on screen, there through every field and battle until hidden. At zero it ends the game, unless SET_BATTLE_MODE lets it run out")]
+        [Argument(0, "x", ArgumentType.Int, Description = "across, in the units a dialogue window's rectangle is in; a battle carrying it shows it there too")]
+        [Argument(1, "y", ArgumentType.Int, Description = "down, in the units a dialogue window's rectangle is in")]
+        ShowCountdownTimer = 0x0A01,
+
+        [FieldOpCode("GET_COUNTDOWN_TIMER", ArgumentLayout.BankUnary, Summary = "Store the countdown's seconds left")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Int)]
+        GetCountdownTimer = 0x0A02,
+
+        [FieldOpCode("HIDE_COUNTDOWN_TIMER", ArgumentLayout.Sequential, Summary = "Take the countdown off the screen. It counts down still, and at zero no longer ends the game")]
+        HideCountdownTimer = 0x0A03,
 
         // Input and haptics (0x0B00)
         SetVibration = 0x0B00, // float lowFrequency, float highFrequency, float duration

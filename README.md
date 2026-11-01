@@ -204,6 +204,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | **Animation** | `SET_BASE_ANIMATION`; `PLAY_ANIMATION` and `PLAY_PART_OF_ANIMATION`, each also `_AND_WAIT`, `_AND_HOLD`, `_HOLDING` and `_LOOPING`; `SET_ANIMATION_SPEED` `WAIT_FOR_ANIMATION` `STOP_ANIMATION` `PUSH_ANIMATION_STATE` `POP_ANIMATION_STATE` |
 | **The screen and blockers** | `FADE_SCREEN` `FADE_SCREEN_AND_WAIT` `WAIT_FOR_FADE` `SUBTRACT_SCREEN_COLOUR` `ADD_SCREEN_COLOUR` `WAIT_FOR_SCREEN_COLOUR` `BLOCKER_ACTIVATION` |
 | **Music and sounds** | `PLAY_MUSIC` `CROSSFADE_MUSIC` `STOP_MUSIC` `MUSIC_STEM_STATE` `IS_MUSIC_PLAYING` `SET_MUSIC_VOLUME` `FADE_MUSIC_VOLUME` `FADE_MUSIC_VOLUME_FROM` `WAIT_FOR_MUSIC_VOLUME` `SET_BATTLE_MUSIC` `PLAY_SOUND` `SET_REVERB_PRESET` `SET_REVERB_VOLUME` |
+| **The countdown** | `SET_COUNTDOWN_TIMER` `SHOW_COUNTDOWN_TIMER` `HIDE_COUNTDOWN_TIMER` `GET_COUNTDOWN_TIMER` |
 | **Input** | `WAIT_FOR_BUTTON` |
 
 ---
@@ -270,6 +271,15 @@ What a script can do, by what it acts on. Each block in the palette says what it
 - **Saving:**
   - Saving is allowed where your game's policy says: anywhere, or only where a script allows it, such as at a save point.
   - The player's position and facing are saved with the game, and a loaded game resumes in the field it was saved in.
+- **The countdown:**
+  - Scripts set it in seconds and show it where they choose, as minutes and seconds with a blinking colon; a battle
+    carrying it shows it in the same place. It counts down beside the play time, in every module, shown or not, and is
+    saved with the game.
+  - A battle won as the time runs out is won: the battle stops reacting to the countdown once the fight is over, and a
+    script that hides the countdown straight after `START_BATTLE` ends nothing when it reaches zero.
+  - Shown and at zero, it sends the player to the game-over field, as a lost battle does, unless the battle mode lets it
+    run out. Hiding it ends a timed stretch early.
+  - Restyle it through Core's `rpg-countdown` class, which battles share.
 - **Music:**
   - Scripts play, crossfade and stop music, and switch its stem states.
   - They set or fade its volume, Core's `SongVolume`, which is saved so it outlasts the menu and battles, and plays

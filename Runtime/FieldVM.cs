@@ -76,6 +76,10 @@ namespace RPGFramework.Field
         internal event Action<BattleArgs>                         RequestStartBattle;
         internal Func<BattleCompleteState>                        GetLastBattleResult;
         internal event Action                                     RequestGameOver;
+        internal event Action<int>                                RequestSetCountdown;
+        internal event Action<int, int>                           RequestShowCountdown;
+        internal event Action                                     RequestHideCountdown;
+        internal Func<int>                                        GetCountdown;
         internal Func<ControlSlot, Func<bool>>                    StartWaitingForButton;
 
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
@@ -451,9 +455,10 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.WaitForMovie, WaitForMovieOpcodeHandler },
 
                        // Timer
-                       // { FieldScriptOpCode.SetCountdownTimer, SetCountdownTimerOpcodeHandler },
-                       // { FieldScriptOpCode.ShowCountdownTimer, ShowCountdownTimerOpcodeHandler },
-                       // { FieldScriptOpCode.GetCountdownTimer, GetCountdownTimerOpcodeHandler },
+                       { FieldScriptOpCode.SetCountdownTimer, SetCountdownTimerOpcodeHandler },
+                       { FieldScriptOpCode.ShowCountdownTimer, ShowCountdownTimerOpcodeHandler },
+                       { FieldScriptOpCode.GetCountdownTimer, GetCountdownTimerOpcodeHandler },
+                       { FieldScriptOpCode.HideCountdownTimer, HideCountdownTimerOpcodeHandler },
 
                        // Input and haptics
                        // { FieldScriptOpCode.SetVibration, SetVibrationOpcodeHandler },
@@ -2517,6 +2522,47 @@ namespace RPGFramework.Field
         private void WaitForMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsMusicVolumeFading()));
+        }
+
+        /// <summary>
+        /// Set the countdown's seconds left.
+        /// </summary>
+        private void SetCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            int               seconds = ReadArgumentInt(ctx, ref sources);
+
+            RequestSetCountdown?.Invoke(seconds);
+        }
+
+        /// <summary>
+        /// Show the countdown at a place on screen.
+        /// </summary>
+        private void ShowCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            int               x       = ReadArgumentInt(ctx, ref sources);
+            int               y       = ReadArgumentInt(ctx, ref sources);
+
+            RequestShowCountdown?.Invoke(x, y);
+        }
+
+        /// <summary>
+        /// Store the countdown's seconds left.
+        /// </summary>
+        private void GetCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ReadDestination(ctx, out MemoryBank bank, out ushort address);
+
+            WriteVariableInt(ctx, bank, address, GetCountdown());
+        }
+
+        /// <summary>
+        /// Take the countdown off the screen.
+        /// </summary>
+        private void HideCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            RequestHideCountdown?.Invoke();
         }
 
         /// <summary>

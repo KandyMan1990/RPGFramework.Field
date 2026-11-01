@@ -4,6 +4,7 @@ using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Core.Transitions;
+using RPGFramework.Core.UI;
 using RPGFramework.Localisation.Editor;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -713,6 +714,37 @@ namespace RPGFramework.Field.Editor
             return field;
         }
 
+        // Seconds are what a script holds, and minutes and seconds what a designer thinks in, so both are shown.
+        private VisualElement SecondsField(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            VisualElement row     = new VisualElement();
+            IntegerField  field   = new IntegerField(label) { value = ParseInt(current) };
+            Label         minutes = new Label(MinutesAndSeconds(field.value));
+
+            row.style.flexDirection      = FlexDirection.Row;
+            field.style.flexGrow         = 1;
+            minutes.style.marginLeft     = 6;
+            minutes.style.unityTextAlign = TextAnchor.MiddleLeft;
+            minutes.style.minWidth       = 48;
+
+            // The compiler refuses less than a second, so the field never offers it.
+            field.RegisterValueChangedCallback(e =>
+                                               {
+                                                   int seconds = Math.Max(e.newValue, 1);
+
+                                                   field.SetValueWithoutNotify(seconds);
+                                                   minutes.text = MinutesAndSeconds(seconds);
+                                                   Set(block, argumentIndex, seconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                                               });
+
+            row.Add(field);
+            row.Add(minutes);
+
+            return row;
+        }
+
+        private static string MinutesAndSeconds(int seconds) => ClockText.Countdown((uint)Math.Max(seconds, 0), true);
+
         private VisualElement BuildControl(FieldScriptBlock block, int argumentIndex, FieldArgumentInfo argument, string label)
         {
             string current = argumentIndex < block.Arguments.Count ? block.Arguments[argumentIndex] : string.Empty;
@@ -767,6 +799,9 @@ namespace RPGFramework.Field.Editor
                     field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue.ToString(System.Globalization.CultureInfo.InvariantCulture)));
                     return field;
                 }
+
+                case ArgumentType.Seconds:
+                    return SecondsField(block, argumentIndex, label, current);
 
                 case ArgumentType.SpawnId:
                 {

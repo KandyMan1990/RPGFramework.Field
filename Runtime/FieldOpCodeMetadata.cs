@@ -66,6 +66,12 @@ namespace RPGFramework.Field
         Bool,
 
         /// <summary>
+        /// A duration of at least one whole second, encoded as an <see cref="Int" />; the editor shows it as minutes and
+        /// seconds too, and the compiler refuses less.
+        /// </summary>
+        Seconds,
+
+        /// <summary>
         /// Where a jump goes: the name of a <c>LABEL</c> in the same script, which the compiler turns into the byte
         /// the jump needs. Never a number — a byte offset silently moves when a block is inserted or removed.
         /// </summary>
@@ -333,6 +339,7 @@ namespace RPGFramework.Field
                     return true;
 
                 case ArgumentType.Int:
+                case ArgumentType.Seconds:
                 case ArgumentType.SpawnId:
                     width = VariableWidth.Int;
                     return true;

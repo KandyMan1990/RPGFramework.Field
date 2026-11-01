@@ -37,6 +37,7 @@ namespace RPGFramework.Field.Tests.Catalogue
             m_Field.Vm.IsEntityAnimating     = Never;
             m_Field.Vm.IsDialogueWindowOpen  = Never;
             m_Field.Vm.GetLastBattleResult   = Won;
+            m_Field.Vm.GetCountdown          = NoTimeLeft;
             m_Field.Vm.StartWaitingForButton = AlreadyPressed;
 
             // Entity 0, which a new block's entity arguments name.
@@ -132,6 +133,11 @@ namespace RPGFramework.Field.Tests.Catalogue
         private static BattleCompleteState Won()
         {
             return BattleCompleteState.VICTORY;
+        }
+
+        private static int NoTimeLeft()
+        {
+            return 0;
         }
 
         private static Func<bool> AlreadyPressed(ControlSlot button)

@@ -496,6 +496,17 @@ namespace RPGFramework.Field.Editor
                     bw.Write(int.Parse(token, CultureInfo.InvariantCulture));
                     break;
 
+                case ArgumentType.Seconds:
+                    int seconds = int.Parse(token, CultureInfo.InvariantCulture);
+
+                    if (seconds <= 0)
+                    {
+                        throw new Exception($"line {lineNumber}: {scriptName} needs at least one second, got {seconds}");
+                    }
+
+                    bw.Write(seconds);
+                    break;
+
                 case ArgumentType.Float:
                     bw.Write(float.Parse(token, CultureInfo.InvariantCulture));
                     break;

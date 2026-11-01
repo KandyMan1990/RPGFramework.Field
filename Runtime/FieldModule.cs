@@ -28,6 +28,7 @@ using RPGFramework.Menu.SharedTypes;
 using RPGFramework.Menu.SharedTypes.Constants;
 using RPGFramework.Menu.SharedTypes.Stores;
 using Unity.Cinemachine;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.UIElements;
@@ -59,6 +60,9 @@ namespace RPGFramework.Field
         private readonly IFieldResumeDataStore      m_FieldResumeDataStore;
         private readonly SavedPlayerPose            m_SavedPlayerPose;
         private readonly FieldScreen                m_Screen;
+        private readonly FieldCountdown             m_Countdown;
+        private readonly ICountdownStore            m_CountdownStore;
+        private readonly IGameOverFieldStore        m_GameOverFieldStore;
         private readonly ISongVolumeStore           m_SongVolumeStore;
         private readonly ISettingsStore             m_SettingsStore;
         private readonly ISaveEnabledStore          m_SaveEnabledStore;
@@ -132,6 +136,8 @@ namespace RPGFramework.Field
                              IPausedMusicStore         pausedMusicStore,
                              IBattleModeStore          battleModeStore,
                              IBattleCompleteStateStore battleCompleteStateStore,
+                             ICountdownStore           countdownStore,
+                             IGameOverFieldStore       gameOverFieldStore,
                              IModuleScene              moduleScene)
         {
             m_CoreModule               = coreModule;
@@ -153,6 +159,9 @@ namespace RPGFramework.Field
             m_FieldResumeDataStore     = fieldResumeDataStore;
             m_SavedPlayerPose          = new SavedPlayerPose(memoryService, variableMap);
             m_Screen                   = new FieldScreen(transitionConfig, transitionDatabase, sfxPlayer, memoryService, variableMap);
+            m_Countdown                = new FieldCountdown(countdownStore);
+            m_CountdownStore           = countdownStore;
+            m_GameOverFieldStore       = gameOverFieldStore;
             m_SongVolumeStore          = songVolumeStore;
             m_SettingsStore            = settingsStore;
             m_SaveEnabledStore         = saveEnabledStore;
@@ -189,6 +198,7 @@ namespace RPGFramework.Field
             m_RootElement = uiDoc.rootVisualElement.Q("Root");
 
             m_Screen.Enter(m_RootElement);
+            m_Countdown.Enter(m_RootElement);
 
             m_CameraTransformHandle = m_FieldModuleMonoBehaviour.CameraTransformHandle;
 
@@ -227,6 +237,7 @@ namespace RPGFramework.Field
             await UnloadCurrentFieldAsync();
 
             m_Screen.Exit();
+            m_Countdown.Exit();
             m_InputRouter.Clear();
         }
 
@@ -336,6 +347,13 @@ namespace RPGFramework.Field
             }
 
             m_CinemachineBrain.ManualUpdate();
+
+            m_Countdown.Tick(Time.unscaledDeltaTime);
+
+            if (m_Countdown.HasRunOut && (m_BattleModeStore.Mode & BattleFlags.DISABLE_GAME_OVER_ON_TIME_OUT) == 0)
+            {
+                RunOutOfTime();
+            }
 
 #if UNITY_EDITOR
             DrawInteractionDebug();
@@ -447,12 +465,20 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestStartBattle                 += OnRequestStartBattle;
             m_FieldContext.VM.GetLastBattleResult                =  GetLastBattleResult;
             m_FieldContext.VM.RequestGameOver                    += OnRequestGameOver;
+            m_FieldContext.VM.RequestSetCountdown                += OnRequestSetCountdown;
+            m_FieldContext.VM.RequestShowCountdown               += OnRequestShowCountdown;
+            m_FieldContext.VM.RequestHideCountdown               += OnRequestHideCountdown;
+            m_FieldContext.VM.GetCountdown                       =  GetCountdown;
             m_FieldContext.VM.StartWaitingForButton              =  StartWaitingForButton;
         }
 
         private void UnsubscribeVm()
         {
             m_FieldContext.VM.StartWaitingForButton              =  null;
+            m_FieldContext.VM.GetCountdown                       =  null;
+            m_FieldContext.VM.RequestHideCountdown               -= OnRequestHideCountdown;
+            m_FieldContext.VM.RequestShowCountdown               -= OnRequestShowCountdown;
+            m_FieldContext.VM.RequestSetCountdown                -= OnRequestSetCountdown;
             m_FieldContext.VM.RequestGameOver                    -= OnRequestGameOver;
             m_FieldContext.VM.GetLastBattleResult                =  null;
             m_FieldContext.VM.RequestStartBattle                 -= OnRequestStartBattle;
@@ -1968,6 +1994,34 @@ namespace RPGFramework.Field
         private void OnRequestGameOver()
         {
             m_GameOverRequested = true;
+        }
+
+        private void OnRequestSetCountdown(int seconds)
+        {
+            m_CountdownStore.SetSeconds((uint)math.max(seconds, 0));
+        }
+
+        private void OnRequestShowCountdown(int x, int y)
+        {
+            m_Countdown.Show(x, y);
+            m_BattleModeStore.SetMode(m_BattleModeStore.Mode | BattleFlags.INHERIT_COUNTDOWN_TIMER);
+        }
+
+        private void OnRequestHideCountdown()
+        {
+            m_CountdownStore.SetShown(false);
+            m_BattleModeStore.SetMode(m_BattleModeStore.Mode & ~BattleFlags.INHERIT_COUNTDOWN_TIMER);
+        }
+
+        private int GetCountdown()
+        {
+            return (int)m_CountdownStore.Seconds;
+        }
+
+        private void RunOutOfTime()
+        {
+            OnRequestHideCountdown();
+            OnSetFieldModuleArgs(m_GameOverFieldStore.Args);
         }
 
         // Above the script's input lock, which would otherwise swallow the press, as it may be locked before or after.
