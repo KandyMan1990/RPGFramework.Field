@@ -54,7 +54,8 @@ Field's variables:
 ## Fields
 
 A field is a prefab whose root has **`FieldEntities`**: whether the field is 2D or 3D, and every entity in it. Under the
-root sit the entities' bodies, spawn points, blockers and scenery.
+root sit the entities' bodies, spawn points, blockers and scenery. A field is loaded whole, from its own bundle: large
+areas aren't streamed.
 
 **A tile field** is a 2D field with a **Walkable Tilemap** component on one of its tilemaps (GameObject > RPG Framework
 > Field > Walkable Tilemap makes one): every character in it walks a tile at a time on that tilemap's tiles, in the four
@@ -130,9 +131,10 @@ editing a field's prefab.
   centre;
 - a field with no Cinemachine camera, or more than one, and a follow camera's bounds missing or not a trigger.
 
-It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated, so
-don't edit it. It builds each field's asset bundle and records the variable map's layout. **A player build is refused if
-the variable map has changed since the last export**, because compiled scripts address variables where they were.
+It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated,
+so don't edit it, and as it is C#, a field can't be added without a new build. It builds each field's asset bundle and
+records the variable map's layout. **A player build is refused if the variable map has changed since the last
+export**, because compiled scripts address variables where they were.
 
 **RPG Framework > Field > Draw Interaction and Trigger Debug** draws interaction ranges and which way each entity faces,
 triggers, gateways and blockers in the Game view.
@@ -183,11 +185,13 @@ RETURN
 
 - **`$name` reads or writes a variable** from the variable map. `$items[3]` names an array's element, and
   `$leader.hp` a record's field. Any number, flag or id argument can be a variable.
-- **`IF_` blocks** compare two values, with an optional `ELSE`, and close with `END_IF`. **`LABEL`s** mark where jumps go.
+- **`IF_` blocks** compare two values, with an optional `ELSE`, and close with `END_IF`. **`LABEL`s** mark where jumps
+  go.
 - **Names are hashed when compiled**, so reordering a list never repoints a script. A name with a space in it is
   written in double quotes, `PLAY_MUSIC "Town Theme" AllStems`, which the block editor does itself.
 - **The palette only offers opcodes the field can run.** Those that act through an optional package, such as PS1 reverb,
-  appear only once it is installed.
+  appear only once it is installed. Some opcodes are declared for what is still to come but don't run yet, and aren't
+  offered, and a game can't add opcodes of its own yet.
 
 ### The opcodes
 
@@ -214,8 +218,10 @@ What a script can do, by what it acts on. Each block in the palette says what it
 - **Movement:**
   - In a tile field every body moves a tile at a time on its walkable tilemap. Elsewhere a body moves with a driver
     chosen from what it has: a 3D rigidbody, a 2D rigidbody, or a plain transform.
-  - Bodies are kinematic. The rigidbody drivers sweep and slide along what they hit, rather than pushing or being pushed.
+  - Bodies are kinematic. The rigidbody drivers sweep and slide along what they hit, rather than pushing or being
+    pushed.
   - Scripts walk entities to a point, glide or slide them there, or have one follow another.
+  - There is no NavMesh or walkmesh: movement is physics, a tilemap or plain transforms.
 - **Facing:** every entity with a body faces one way, which walking turns it to at once, scripts set or turn over time,
   and interaction, the saved game and its animation read.
   - A 3D entity faces by turning its body.
@@ -235,6 +241,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - The field writes a `Speed` parameter, and `FacingX` and `FacingY` — which way the entity faces, with up the screen
     positive — so your controller decides how idle, walking and running blend, and which way a sprite looks.
   - Scripts play other states over the base one, once or looping, and can wait for them.
+  - Animation events, timeline cutscenes and animated turning aren't supported yet.
 - **Dialogue:**
   - Windows are addressed by channel, 0 to 7, each keeping its position and style until the field changes, when
     every window closes.
@@ -263,13 +270,15 @@ What a script can do, by what it acts on. Each block in the palette says what it
   battle or end the game.
   - A battle carries its own arena, enemies, flags and level. Whether losing it, or a countdown running out, ends the
     game is the battle mode's, which a script sets and the game saves; after the battle, a script reads how it ended.
+    There are no random encounters yet: a battle starts only when a script starts it.
   - A game over sends the player to the game-over field your map names, entered afresh: a field like any other, whose
     scripts decide what it shows and when the game goes back to the title.
   - Returning from the menu or a battle puts the field back as it was: positions, animations, visibility, blockers and
     more.
   - Arriving in a new field starts it afresh.
 - **Saving:**
-  - Saving is allowed where your game's policy says: anywhere, or only where a script allows it, such as at a save point.
+  - Saving is allowed where your game's policy says: anywhere, or only where a script allows it, such as at a save
+    point.
   - The player's position and facing are saved with the game, and a loaded game resumes in the field it was saved in.
 - **The countdown:**
   - Scripts set it in seconds and show it where they choose, as minutes and seconds with a blinking colon; a battle
@@ -289,6 +298,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
     return, fading it in over a second as the battle's fades out, with its echo and reverb as they were.
   - A battle that keeps the music but plays its victory fanfare leaves the fanfare playing; the script that started it
     fades it out and starts what comes next.
+  - Looping sounds aren't built, so there are none to start again after a battle.
 
 ---
 
@@ -302,10 +312,10 @@ drawn with Unity's built-in sprites:
 - `SampleTileField`, a tile field walked a tile at a time, seen through a 2D Fixed camera: its ground the Walkable
   Tilemap, a wall across it, and a villager standing in the way.
 
-The characters share an Animator controller whose blend tree reads `FacingX` and `FacingY` and moves a marker to the side
-they face, as a sprite sheet's frames would. Its scene installer binds the `FieldDatabase` the Field Designer's export
-wrote, and its input adapter uses the RPG Framework Starter sample's actions: it runs as the field of the Starter's
-game, whose README says how to set it up, exporting the fields among the steps.
+The characters share an Animator controller whose blend tree reads `FacingX` and `FacingY` and moves a marker to the
+side they face, as a sprite sheet's frames would. Its scene installer binds the `FieldDatabase` the Field Designer's
+export wrote, and its input adapter uses the RPG Framework Starter sample's actions: it runs as the field of the
+Starter's game, whose README says how to set it up, exporting the fields among the steps.
 
 ---
 
@@ -322,25 +332,6 @@ testable: add it to `testables` in `Packages/manifest.json`,
 
 then open **Window › General › Test Runner** and run the **EditMode** tests. They run scripts' bytecode through the VM —
 maths, comparisons, waits, priority slots, requests between scripts, init, and what scripts ask the field for — compile
-and run every opcode's new block, and test the compiler, the block editor's text, the opcode list and export's camera
-checks. The field itself,
+and run every opcode's new block, and test the compiler, the block editor's text and a new block's choices, the opcode
+list, who confirm talks to, 2D facing, walking a tile field, and export's camera and audio checks. The field itself,
 which needs loading in play mode, is not tested yet.
-
----
-
-## In this version
-
-**0.3.1** adds the tests. What the package does is unchanged.
-
----
-
-## Not in this version
-
-- **Random encounters** aren't built; a battle starts only when a script starts it.
-- **Some opcodes are declared but not yet run**, and the editor doesn't offer them.
-- **A game can't add opcodes of its own** yet.
-- **The list of fields is generated C#**, so a field can't be added without a new build.
-- **A field is loaded whole**; large areas aren't streamed.
-- **No NavMesh or walkmesh**: movement is physics, a tilemap or plain transforms.
-- **Animation events, timeline cutscenes and animated turning** aren't supported.
-- **Looping sounds** aren't built, so none are started again after a battle.
