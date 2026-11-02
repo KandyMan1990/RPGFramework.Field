@@ -19,6 +19,23 @@ namespace RPGFramework.Field.Editor
     [Serializable]
     internal sealed class FieldDatabase
     {
+        private enum TilePlace
+        {
+            Centre,
+            OffCentre,
+            NoTile
+        }
+
+        private static readonly FieldScriptOpCode[] m_MovesToAPoint =
+        {
+            FieldScriptOpCode.MoveEntityAndWait,
+            FieldScriptOpCode.MoveEntity,
+            FieldScriptOpCode.GlideEntityAndWait,
+            FieldScriptOpCode.GlideEntity,
+            FieldScriptOpCode.SlideEntityAndWait,
+            FieldScriptOpCode.SlideEntity
+        };
+
         private readonly string m_AssetBundlesPath;
 
         [SerializeField]
@@ -215,25 +232,25 @@ namespace RPGFramework.Field.Editor
                 ValidateTileField(prefab, fieldEntities, problems);
                 ValidateCamera(prefab, problems);
 
-                List<FieldEntityRecord> records = fieldEntities.Entities;
+                List<FieldEntityRecord> fieldEntityRecords = fieldEntities.Entities;
 
-                for (int j = 0; j < records.Count; j++)
+                for (int j = 0; j < fieldEntityRecords.Count; j++)
                 {
-                    FieldEntityRecord record = records[j];
+                    FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                    scriptCounts[record.EntityId] = record.Scripts.Count;
+                    scriptCounts[fieldEntityRecord.EntityId] = fieldEntityRecord.Scripts.Count;
 
-                    if (record.Body != null)
+                    if (fieldEntityRecord.Body != null)
                     {
-                        withBodies.Add(record.EntityId);
+                        withBodies.Add(fieldEntityRecord.EntityId);
                     }
                 }
 
-                for (int j = 0; j < records.Count; j++)
+                for (int j = 0; j < fieldEntityRecords.Count; j++)
                 {
-                    FieldEntityRecord record = records[j];
+                    FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                    ValidateEntity(prefab, fieldEntities.Dimension, record, entityIds, bodies, scriptCounts, withBodies, blockerIds, dialogueChannels, audioNames, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, dialogueChannels, audioNames, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -371,16 +388,26 @@ namespace RPGFramework.Field.Editor
         /// change afterwards. The VM addresses entities and scripts by index at runtime with no way to
         /// report which authored thing was wrong, so it is all decided here instead.
         /// </summary>
-        private void ValidateEntity(GameObject prefab, FieldDimension dimension, FieldEntityRecord record, HashSet<int> entityIds, HashSet<FieldEntity> bodies, Dictionary<int, int> scriptCounts, HashSet<int> withBodies, HashSet<int> blockerIds, DialogueChannelUse dialogueChannels, AudioNames audioNames, List<string> problems)
+        private void ValidateEntity(GameObject           prefab,
+                                    FieldDimension       dimension,
+                                    FieldEntityRecord    fieldEntityRecord,
+                                    HashSet<int>         entityIds,
+                                    HashSet<FieldEntity> bodies,
+                                    Dictionary<int, int> scriptCounts,
+                                    HashSet<int>         withBodies,
+                                    HashSet<int>         blockerIds,
+                                    DialogueChannelUse   dialogueChannels,
+                                    AudioNames           audioNames,
+                                    List<string>         problems)
         {
-            string      entityName = $"{prefab.name} / '{record.Name}'";
-            FieldEntity body       = record.Body;
+            string      entityName = $"{prefab.name} / '{fieldEntityRecord.Name}'";
+            FieldEntity body       = fieldEntityRecord.Body;
 
             // Scripts address each other by entity id, so two entities sharing one makes the target
             // ambiguous — and the VM's entity dictionary would throw on the duplicate key at load.
-            if (!entityIds.Add(record.EntityId))
+            if (!entityIds.Add(fieldEntityRecord.EntityId))
             {
-                problems.Add($"{entityName} reuses entity id [{record.EntityId}], which another entity in this field already has");
+                problems.Add($"{entityName} reuses entity id [{fieldEntityRecord.EntityId}], which another entity in this field already has");
             }
 
             if (body != null)
@@ -394,13 +421,13 @@ namespace RPGFramework.Field.Editor
                 ValidateCollisionTrigger(dimension, body, entityName, problems);
             }
 
-            if (record.Scripts.Count == 0)
+            if (fieldEntityRecord.Scripts.Count == 0)
             {
                 problems.Add($"{entityName} declares no scripts, so it has no init script");
                 return;
             }
 
-            FieldScriptType firstScriptType = record.Scripts[0].Type;
+            FieldScriptType firstScriptType = fieldEntityRecord.Scripts[0].Type;
 
             if (firstScriptType != FieldScriptType.Init)
             {
@@ -410,9 +437,9 @@ namespace RPGFramework.Field.Editor
             int initScriptCount    = 0;
             int defaultScriptCount = 0;
 
-            for (int i = 0; i < record.Scripts.Count; i++)
+            for (int i = 0; i < fieldEntityRecord.Scripts.Count; i++)
             {
-                FieldScriptRecord script = record.Scripts[i];
+                FieldScriptRecord script = fieldEntityRecord.Scripts[i];
 
                 if (script.Type == FieldScriptType.Init)
                 {
@@ -445,7 +472,7 @@ namespace RPGFramework.Field.Editor
                 ValidateBlockerTargets(blockerIds, scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
-                ValidateScriptRequests(record, scriptCounts, scriptDescription, lines, problems);
+                ValidateScriptRequests(fieldEntityRecord, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
                 ValidateMapJumps(scriptDescription, lines, problems);
                 ValidateGatewayScript(script.Type, scriptDescription, lines, problems);
@@ -462,8 +489,8 @@ namespace RPGFramework.Field.Editor
                 problems.Add($"{entityName} has {defaultScriptCount} {nameof(FieldScriptType.Default)} scripts, but only one is started after initialisation");
             }
 
-            ValidateGateway(prefab, record, entityName, problems);
-            ValidatePushScript(record, entityName, problems);
+            ValidateGateway(prefab, fieldEntityRecord, entityName, problems);
+            ValidatePushScript(fieldEntityRecord, entityName, problems);
         }
 
         /// <summary>
@@ -509,9 +536,9 @@ namespace RPGFramework.Field.Editor
             }
         }
 
-        private static bool HasScript(FieldEntityRecord record, FieldScriptType scriptType)
+        private static bool HasScript(FieldEntityRecord fieldEntityRecord, FieldScriptType scriptType)
         {
-            bool hasScript = record.Scripts.Exists(script => script.Type == scriptType);
+            bool hasScript = fieldEntityRecord.Scripts.Exists(script => script.Type == scriptType);
 
             return hasScript;
         }
@@ -521,7 +548,7 @@ namespace RPGFramework.Field.Editor
         /// list. Deleting either leaves the number pointing at nothing, or at whatever moved into its place, and the
         /// VM looks entities up by id with nothing to say when one is missing.
         /// </summary>
-        private static void ValidateScriptRequests(FieldEntityRecord record, Dictionary<int, int> scriptCounts, string scriptDescription, string[] lines, List<string> problems)
+        private static void ValidateScriptRequests(FieldEntityRecord fieldEntityRecord, Dictionary<int, int> scriptCounts, string scriptDescription, string[] lines, List<string> problems)
         {
             for (int i = 0; i < lines.Length; i++)
             {
@@ -543,7 +570,7 @@ namespace RPGFramework.Field.Editor
                 }
 
                 // With no entity named, the event is one of this entity's own, as RETURN_TO_SCRIPT's is.
-                string entityToken = entityArgument < 0 ? record.EntityId.ToString(CultureInfo.InvariantCulture) : parts[entityArgument + 1];
+                string entityToken = entityArgument < 0 ? fieldEntityRecord.EntityId.ToString(CultureInfo.InvariantCulture) : parts[entityArgument + 1];
 
                 ValidateScriptRequest(entityToken, parts[eventArgument + 1], scriptCounts, parts[0], scriptDescription, problems);
             }
@@ -684,11 +711,71 @@ namespace RPGFramework.Field.Editor
                         ValidateOnTile(walkable, body.transform.position, $"{prefab.name} / '{body.name}'", problems);
                     }
                 }
+
+                List<FieldEntityRecord> fieldEntityRecords = fieldEntities.Entities;
+
+                for (int i = 0; i < fieldEntityRecords.Count; i++)
+                {
+                    FieldEntityRecord fieldEntityRecord = fieldEntityRecords[i];
+
+                    for (int j = 0; j < fieldEntityRecord.Scripts.Count; j++)
+                    {
+                        FieldScriptRecord script = fieldEntityRecord.Scripts[j];
+
+                        string   scriptDescription = $"{prefab.name} / '{fieldEntityRecord.Name}' script [{j}] ({script.Type})";
+                        string[] lines             = (script.Text ?? string.Empty).Split('\n');
+
+                        ValidateMoveTargets(walkable, scriptDescription, lines, problems);
+                    }
+                }
             }
             finally
             {
                 PrefabUtility.UnloadPrefabContents(field);
             }
+        }
+
+        /// <summary>
+        /// On a tile field a scripted move walks to its point a tile at a time and ends on the tile's centre, so a point
+        /// written off a centre would end somewhere else, and one where there is no tile could never be reached. A point
+        /// worked out while playing is only known then.
+        /// </summary>
+        internal static void ValidateMoveTargets(Tilemap walkable, string scriptDescription, string[] lines, List<string> problems)
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = FieldScriptLine.Split(lines[i]);
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) ||
+                    Array.IndexOf(m_MovesToAPoint, opCode.OpCode) < 0                  || parts.Length < 4                      ||
+                    !TryParseFloat(parts[1], out float x)                              || !TryParseFloat(parts[2], out float y) ||
+                    !TryParseFloat(parts[3], out float z))
+                {
+                    continue;
+                }
+
+                Vector3 point = new Vector3(x, y, z);
+
+                switch (PlaceOnTile(walkable, point, out Vector3 centre))
+                {
+                    case TilePlace.NoTile:
+                        problems.Add($"{scriptDescription} uses {parts[0]} to {ScriptPoint(point)}, where '{walkable.name}' has no tile, so the entity could never get there. Send it to a tile's centre");
+                        break;
+                    case TilePlace.OffCentre:
+                        problems.Add($"{scriptDescription} uses {parts[0]} to {ScriptPoint(point)}, off the centre of its tile, but a move on a tile field ends on a tile's centre. Use {ScriptPoint(centre)}");
+                        break;
+                }
+            }
+        }
+
+        private static bool TryParseFloat(string token, out float value)
+        {
+            return float.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+        }
+
+        private static string ScriptPoint(Vector3 point)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0} {1} {2}", point.x, point.y, point.z);
         }
 
         /// <summary>
@@ -745,22 +832,35 @@ namespace RPGFramework.Field.Editor
 
         private static void ValidateOnTile(Tilemap walkable, Vector3 position, string name, List<string> problems)
         {
+            switch (PlaceOnTile(walkable, position, out Vector3 centre))
+            {
+                case TilePlace.NoTile:
+                    problems.Add($"{name} stands where '{walkable.name}' has no tile, so it could never step from there. Move it onto a tile");
+                    break;
+                case TilePlace.OffCentre:
+                    problems.Add($"{name} stands off the centre of its tile, so it would step from between tiles. Move it to the tile's centre, {centre}");
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Where a point lies on a tile field, judged across the grid's plane, as a step moves only across it.
+        /// </summary>
+        private static TilePlace PlaceOnTile(Tilemap walkable, Vector3 position, out Vector3 centre)
+        {
             Vector3Int cell = walkable.WorldToCell(position);
+
+            centre = walkable.GetCellCenterWorld(cell);
 
             if (!walkable.HasTile(cell))
             {
-                problems.Add($"{name} stands where '{walkable.name}' has no tile, so it could never step from there. Move it onto a tile");
-                return;
+                return TilePlace.NoTile;
             }
 
             Vector3 origin = walkable.CellToWorld(Vector3Int.zero);
             Vector3 normal = Vector3.Cross(walkable.CellToWorld(Vector3Int.up) - origin, walkable.CellToWorld(Vector3Int.right) - origin);
-            Vector3 centre = walkable.GetCellCenterWorld(cell);
 
-            if (Vector3.ProjectOnPlane(position - centre, normal).sqrMagnitude > 0.0001f)
-            {
-                problems.Add($"{name} stands off the centre of its tile, so it would step from between tiles. Move it to the tile's centre, {centre}");
-            }
+            return Vector3.ProjectOnPlane(position - centre, normal).sqrMagnitude > 0.0001f ? TilePlace.OffCentre : TilePlace.Centre;
         }
 
         private static void ValidateBlockerTargets(HashSet<int> blockerIds, string scriptDescription, string[] lines, List<string> problems)
@@ -980,8 +1080,8 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                string                      stateName = parts[argument + 1];
-                Dictionary<string, AnimatorState> states  = States(animator);
+                string                            stateName = parts[argument + 1];
+                Dictionary<string, AnimatorState> states    = States(animator);
 
                 if (!states.TryGetValue(stateName, out AnimatorState state))
                 {
@@ -1068,7 +1168,7 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                string destination = transition.destinationState != null        ? transition.destinationState.name :
+                string destination = transition.destinationState        != null ? transition.destinationState.name :
                                      transition.destinationStateMachine != null ? transition.destinationStateMachine.name : "the exit";
 
                 problems.Add($"{scriptDescription} names the animation [{stateName}], which the controller on [{animator.gameObject.name}] leaves by itself {transition.exitTime:0.##} of the way through, for [{destination}]. It would stop short of its end, and could not be held or looped. Turn off that transition's exit time, or give it a condition");
@@ -1358,15 +1458,15 @@ namespace RPGFramework.Field.Editor
                 known.UnionWith(sheet.Keys);
             }
 
-            List<FieldEntityRecord> records = fieldEntities.Entities;
+            List<FieldEntityRecord> fieldEntityRecords = fieldEntities.Entities;
 
-            for (int j = 0; j < records.Count; j++)
+            for (int j = 0; j < fieldEntityRecords.Count; j++)
             {
-                FieldEntityRecord record = records[j];
+                FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                for (int i = 0; i < record.Scripts.Count; i++)
+                for (int i = 0; i < fieldEntityRecord.Scripts.Count; i++)
                 {
-                    foreach (string key in DialogueKeysIn(record.Scripts[i].Text))
+                    foreach (string key in DialogueKeysIn(fieldEntityRecord.Scripts[i].Text))
                     {
                         if (known.Contains(key))
                         {
@@ -1375,7 +1475,7 @@ namespace RPGFramework.Field.Editor
 
                         string recorded = withoutKeys.Count == 0 ? string.Empty : $". Sheet(s) {string.Join(", ", withoutKeys)} have no keys recorded — generate the localisation again so they are";
 
-                        problems.Add($"{prefab.name} / '{record.Name}' script [{i}] ({record.Scripts[i].Type}) shows [{key}], which none of this field's sheets has{recorded}");
+                        problems.Add($"{prefab.name} / '{fieldEntityRecord.Name}' script [{i}] ({fieldEntityRecord.Scripts[i].Type}) shows [{key}], which none of this field's sheets has{recorded}");
                     }
                 }
             }
@@ -1420,14 +1520,14 @@ namespace RPGFramework.Field.Editor
         /// A push script runs when the player walks into the entity's body, so on an entity with no body, or with nothing
         /// but triggers on it, nothing can walk into it and nothing runs it.
         /// </summary>
-        private static void ValidatePushScript(FieldEntityRecord record, string entityName, List<string> problems)
+        private static void ValidatePushScript(FieldEntityRecord fieldEntityRecord, string entityName, List<string> problems)
         {
-            if (!HasScript(record, FieldScriptType.OnPush) || HasSolidCollider(record.Body))
+            if (!HasScript(fieldEntityRecord, FieldScriptType.OnPush) || HasSolidCollider(fieldEntityRecord.Body))
             {
                 return;
             }
 
-            string missing = record.Body == null ? "no body" : "nothing but triggers on its body";
+            string missing = fieldEntityRecord.Body == null ? "no body" : "nothing but triggers on its body";
 
             problems.Add($"{entityName} has an {nameof(FieldScriptType.OnPush)} script but {missing}, so nothing can walk into it and nothing runs it");
         }
@@ -1464,19 +1564,19 @@ namespace RPGFramework.Field.Editor
         /// A gateway has to be reachable and must not be where a player arrives: a spawn point inside one sends the
         /// player straight back out the moment they land.
         /// </summary>
-        private static void ValidateGateway(GameObject prefab, FieldEntityRecord record, string entityName, List<string> problems)
+        private static void ValidateGateway(GameObject prefab, FieldEntityRecord fieldEntityRecord, string entityName, List<string> problems)
         {
-            if (!HasScript(record, FieldScriptType.Gateway))
+            if (!HasScript(fieldEntityRecord, FieldScriptType.Gateway))
             {
                 return;
             }
 
-            if (HasScript(record, FieldScriptType.OnEnter))
+            if (HasScript(fieldEntityRecord, FieldScriptType.OnEnter))
             {
                 problems.Add($"{entityName} has both a {nameof(FieldScriptType.Gateway)} and an {nameof(FieldScriptType.OnEnter)} script. Both run on entering, in the same slot, so only one would — put the other on its own entity");
             }
 
-            FieldCollisionTrigger trigger = record.Body == null ? null : record.Body.GetComponentInChildren<FieldCollisionTrigger>(true);
+            FieldCollisionTrigger trigger = fieldEntityRecord.Body == null ? null : fieldEntityRecord.Body.GetComponentInChildren<FieldCollisionTrigger>(true);
 
             if (trigger == null)
             {

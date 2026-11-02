@@ -2142,6 +2142,14 @@ MonoBehaviour:
       m_Name: OnInteraction
       m_Text: 'SET_DIRECTION_TO_FACE_ENTITY 0
 
+        MOVE_ENTITY_AND_WAIT 5.5 -0.5 0
+
+        WAIT_SECONDS 1
+
+        MOVE_ENTITY_AND_WAIT 3.5 -1.5 0
+
+        SET_DIRECTION_TO_FACE_ENTITY 0
+
         RETURN'
       m_Slot: 0
   - m_EntityId: 2

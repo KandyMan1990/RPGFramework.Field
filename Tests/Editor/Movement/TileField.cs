@@ -49,6 +49,7 @@ namespace RPGFramework.Field.Tests.Movement
 
         internal GameObject      Character { get; }
         internal IMovementDriver Driver    { get; }
+        internal Tilemap         Tilemap   => m_Tilemap;
 
         internal Vector3 Centre(Vector3Int cell)
         {
@@ -65,7 +66,24 @@ namespace RPGFramework.Field.Tests.Movement
             Driver.Tick(2f);
         }
 
-        internal void AddSolid(Vector3Int cell, bool isTrigger)
+        /// <summary>
+        /// Ticks a second at a time, a tile at the character's speed, while a scripted move lasts, and gives where each
+        /// tick left it.
+        /// </summary>
+        internal Vector3[] TickWhileMoving()
+        {
+            List<Vector3> positions = new List<Vector3>();
+
+            for (int i = 0; i < 20 && Driver.IsMovingToTarget; i++)
+            {
+                Driver.Tick(1f);
+                positions.Add(Character.transform.position);
+            }
+
+            return positions.ToArray();
+        }
+
+                internal void AddSolid(Vector3Int cell, bool isTrigger)
         {
             GameObject solid = Make(isTrigger ? "Trigger" : "Wall");
             solid.transform.position = Centre(cell);

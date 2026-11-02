@@ -62,8 +62,12 @@ areas aren't streamed.
 directions of its grid, as the SNES-era games do. A 2D field without one is walked freely, sliding along what it meets.
 A tile can be entered only where the tilemap has one, no blocker closes it and nothing solid stands on it — another
 character, or a wall of colliders — and walking at one that cannot be entered turns the walker to face it; walking at a
-character pushes it, as in a free field. Characters keep their rigidbodies, so triggers still notice them. Scripted
-moves still go straight to their point.
+character pushes it, as in a free field. Characters keep their rigidbodies, so triggers still notice them.
+
+**A scripted move on a tile field** walks a tile at a time too: across the grid first, then up or down, to the tile its
+point is in, so it always ends on a tile's centre. For another route, a script uses two moves. A tile it cannot enter is
+waited at, the character facing it, until it clears or a script stops the move, and stopping finishes the step under
+way. Walking up to an entity stops on the first tile within the stop distance, so a distance of 1 is the tile beside it.
 
 ### Cameras
 
@@ -128,7 +132,7 @@ editing a field's prefab.
 - a dialogue key none of the field's sheets has;
 - a jump to a spawn point its destination lacks;
 - a Walkable Tilemap in a 3D field, or two in one field, and in a tile field a spawn point or character off a tile's
-  centre;
+  centre, or a move to a written point off a tile's centre or where there is no tile;
 - a field with no Cinemachine camera, or more than one, and a follow camera's bounds missing or not a trigger.
 
 It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated,
@@ -220,7 +224,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
     chosen from what it has: a 3D rigidbody, a 2D rigidbody, or a plain transform.
   - Bodies are kinematic. The rigidbody drivers sweep and slide along what they hit, rather than pushing or being
     pushed.
-  - Scripts walk entities to a point, glide or slide them there, or have one follow another.
+  - Scripts walk entities to a point, glide or slide them there, or have one follow another: straight there, or on a
+    tile field a tile at a time.
   - There is no NavMesh or walkmesh: movement is physics, a tilemap or plain transforms.
 - **Facing:** every entity with a body faces one way, which walking turns it to at once, scripts set or turn over time,
   and interaction, the saved game and its animation read.
@@ -310,7 +315,8 @@ drawn with Unity's built-in sprites:
 - `SampleField`, walked freely and larger than the screen: ground walled in, with pillars, a 2D Follow camera, a player
   character, a villager who turns to face whoever talks to them, and a save point;
 - `SampleTileField`, a tile field walked a tile at a time, seen through a 2D Fixed camera: its ground the Walkable
-  Tilemap, a wall across it, and a villager standing in the way.
+  Tilemap, a wall across it, and a villager standing in the way, who steps aside when talked to, across and then up,
+  and comes back.
 
 The characters share an Animator controller whose blend tree reads `FacingX` and `FacingY` and moves a marker to the
 side they face, as a sprite sheet's frames would. Its scene installer binds the `FieldDatabase` the Field Designer's
@@ -333,5 +339,6 @@ testable: add it to `testables` in `Packages/manifest.json`,
 then open **Window › General › Test Runner** and run the **EditMode** tests. They run scripts' bytecode through the VM —
 maths, comparisons, waits, priority slots, requests between scripts, init, and what scripts ask the field for — compile
 and run every opcode's new block, and test the compiler, the block editor's text and a new block's choices, the opcode
-list, who confirm talks to, 2D facing, walking a tile field, and export's camera and audio checks. The field itself,
+list, who confirm talks to, 2D facing, walking a tile field under input and by script, and export's camera, audio and
+tile checks. The field itself,
 which needs loading in play mode, is not tested yet.

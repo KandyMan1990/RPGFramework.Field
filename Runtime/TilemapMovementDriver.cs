@@ -9,12 +9,14 @@ namespace RPGFramework.Field
     /// <summary>
     /// Moves a body a tile at a time on a 2D tile field's walkable tilemap, in the four directions of the tilemap's own
     /// grid. A tile is entered only where the tilemap has one, no blocker closes it and nothing solid stands on it —
-    /// another character, or a wall of colliders — and walking at one that cannot be entered still faces it. A step under
-    /// way is finished; holding the input on starts the next as it ends. The body may keep a rigidbody, for its triggers.
+    /// another character, or a wall of colliders — and walking at one that cannot be entered still faces it. A step
+    /// under way is finished; holding the input on starts the next as it ends. A scripted move walks the same steps,
+    /// across the grid first and then along it. The body may keep a rigidbody, for its triggers.
     /// </summary>
     internal sealed class TilemapMovementDriver : MonoBehaviour, IMovementDriver
     {
         private const float MIN_MOVE_INPUT_SQR = 0.0001f;
+        private const float ARRIVAL_DISTANCE   = 0.001f;
 
         // Narrower than a tile, so what stands on the tiles beside the one asked about is not counted, and anything
         // stepping onto it is.
@@ -33,6 +35,7 @@ namespace RPGFramework.Field
         private Vector3                     m_MoveInput;
         private Vector3                     m_Target;
         private bool                        m_Moving;
+        private bool                        m_ScriptedStep;
         private ScriptedMove                m_ScriptedMove;
         private SpriteFacing                m_Facing;
 
@@ -106,24 +109,16 @@ namespace RPGFramework.Field
             return m_Facing.Turn;
         }
 
-        Vector3 IMovementDriver.CurrentVelocity
-        {
-            get
-            {
-                Vector3 currentVelocity = m_ScriptedMove.Active ? (m_ScriptedMove.Target - m_Transform.position).normalized * m_Speed :
-                                          m_Moving              ? (m_Target - m_Transform.position).normalized * m_Speed : Vector3.zero;
-
-                return currentVelocity;
-            }
-        }
+        Vector3 IMovementDriver.CurrentVelocity =>
+            m_Moving ? (m_Target - m_Transform.position).normalized * m_Speed : Vector3.zero;
 
         /// <summary>
-        /// A scripted move goes straight to its point rather than tile by tile, so it can finish between tiles; the
-        /// next step the player takes starts from the tile it ended in. A step already under way gives way to it.
+        /// Walks to the tile the point is in, a tile at a time, stopping on the first tile within the stop distance of
+        /// it. A step already under way is finished first. Called again each frame to follow an entity, which only
+        /// moves the point.
         /// </summary>
         void IMovementDriver.MoveTo(Vector3 target, float stopDistance, bool faceTravel)
         {
-            m_Moving = false;
             m_Pushed.Clear();
 
             m_ScriptedMove = new ScriptedMove
@@ -133,14 +128,20 @@ namespace RPGFramework.Field
                                  StopDistance = stopDistance,
                                  FaceTravel   = faceTravel
                              };
+
+            if (!m_Moving)
+            {
+                TakeScriptedStep();
+            }
         }
 
+        /// <summary>The step under way is finished, so the move ends on a tile.</summary>
         void IMovementDriver.StopMove()
         {
             m_ScriptedMove.Active = false;
         }
 
-        bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active;
+        bool IMovementDriver.IsMovingToTarget => m_ScriptedMove.Active || (m_Moving && m_ScriptedStep);
 
         /// <summary>What stands on the tile last walked at, solid or not, for as long as it is walked at.</summary>
         IReadOnlyList<FieldEntity> IMovementDriver.Pushed => m_Pushed;
@@ -167,8 +168,69 @@ namespace RPGFramework.Field
                 return;
             }
 
-            m_Target = target;
-            m_Moving = true;
+            StartStep(target, false);
+        }
+
+        /// <summary>
+        /// The next tile toward the scripted move's point: across the grid first, then along it, as a cutscene's moves
+        /// read. A tile that cannot be entered is faced and tried again next frame, so a blocked move waits.
+        /// </summary>
+        private void TakeScriptedStep()
+        {
+            m_Pushed.Clear();
+
+            Vector3Int cell   = m_Tilemap.WorldToCell(m_Transform.position);
+            Vector3    centre = m_Tilemap.GetCellCenterWorld(cell);
+
+            // Between tiles, as a move kept across a battle can be: onto the tile it is in first.
+            if (m_Transform.position != centre)
+            {
+                FaceScriptedStep(centre - m_Transform.position);
+                StartStep(centre, true);
+
+                return;
+            }
+
+            Vector3Int goal = m_Tilemap.WorldToCell(m_ScriptedMove.Target);
+            goal.z = cell.z;
+
+            float distance = (m_Tilemap.GetCellCenterWorld(goal) - centre).magnitude;
+
+            if (distance <= m_ScriptedMove.StopDistance + ARRIVAL_DISTANCE)
+            {
+                m_ScriptedMove.Active = false;
+
+                return;
+            }
+
+            Vector3Int step = goal.x != cell.x
+                ? new Vector3Int(math.sign(goal.x - cell.x), 0, 0)
+                : new Vector3Int(0, math.sign(goal.y - cell.y), 0);
+
+            Vector3Int next   = cell + step;
+            Vector3    target = m_Tilemap.GetCellCenterWorld(next);
+
+            FaceScriptedStep(target - centre);
+
+            if (CanEnter(next, target))
+            {
+                StartStep(target, true);
+            }
+        }
+
+        private void FaceScriptedStep(Vector3 direction)
+        {
+            if (m_ScriptedMove.FaceTravel)
+            {
+                m_Facing.Face(direction);
+            }
+        }
+
+        private void StartStep(Vector3 target, bool scripted)
+        {
+            m_Target       = target;
+            m_Moving       = true;
+            m_ScriptedStep = scripted;
         }
 
         private bool CanEnter(Vector3Int cell, Vector3 centre)
@@ -244,43 +306,29 @@ namespace RPGFramework.Field
 
         private void HandleMovement(float deltaTime)
         {
-            if (m_ScriptedMove.Active)
+            if (m_Moving)
             {
-                HandleScriptedMove(deltaTime);
+                m_Transform.position = Vector3.MoveTowards(m_Transform.position, m_Target, m_Speed * deltaTime);
 
-                return;
-            }
+                if (Vector3.Distance(m_Transform.position, m_Target) >= ARRIVAL_DISTANCE)
+                {
+                    return;
+                }
 
-            if (!m_Moving)
-            {
-                return;
-            }
-
-            m_Transform.position = Vector3.MoveTowards(m_Transform.position, m_Target, m_Speed * deltaTime);
-
-            if (Vector3.Distance(m_Transform.position, m_Target) < 0.001f)
-            {
                 m_Transform.position = m_Target;
                 m_Moving             = false;
 
-                TryStep();
-            }
-        }
+                if (!m_ScriptedMove.Active)
+                {
+                    TryStep();
 
-        private void HandleScriptedMove(float deltaTime)
-        {
-            Vector3 motion = m_ScriptedMove.Motion(m_Transform.position, m_Speed * deltaTime);
-
-            m_Transform.position += motion;
-
-            if (m_ScriptedMove.FaceTravel)
-            {
-                m_Facing.Face(motion);
+                    return;
+                }
             }
 
-            if (m_ScriptedMove.HasArrived(m_Transform.position))
+            if (m_ScriptedMove.Active)
             {
-                m_ScriptedMove.Active = false;
+                TakeScriptedStep();
             }
         }
     }

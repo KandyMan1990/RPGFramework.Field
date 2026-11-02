@@ -3,8 +3,9 @@ using UnityEngine;
 namespace RPGFramework.Field
 {
     /// <summary>
-    /// A point a script has sent an entity to. Each movement driver steps toward it in place of the player's input,
-    /// so the arithmetic of approaching and arriving lives here rather than in four drivers.
+    /// A point a script has sent an entity to. The drivers that go straight to it step toward it in place of the
+    /// player's input, so the arithmetic of approaching and arriving lives here rather than in each; the tile driver
+    /// walks to it a tile at a time.
     /// </summary>
     internal struct ScriptedMove
     {
