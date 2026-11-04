@@ -54,7 +54,7 @@ Field's variables:
 ## Fields
 
 A field is a prefab whose root has **`FieldEntities`**: whether the field is 2D or 3D, and every entity in it. Under the
-root sit the entities' bodies, spawn points, blockers and scenery. A field is loaded whole, from its own bundle: large
+root sit the entities' bodies, spawn points, blockers, cameras and scenery. A field is loaded whole, from its own bundle: large
 areas aren't streamed.
 
 **A tile field** is a 2D field with a **Walkable Tilemap** component on one of its tilemaps (GameObject > RPG Framework
@@ -89,6 +89,13 @@ else is Cinemachine's: give a camera damping, a dead zone, or URP's Pixel Perfec
 pixel-perfect extension for pixel art. The field moves the camera from its own update, so it stops with the field under
 the menu.
 
+**A field can have several cameras**, one looked through at a time. Each carries a **Field Camera** naming it by an id
+unique in the field, which every camera the menu makes is given; a field entered afresh starts on the lowest, and after
+the menu or a battle it is on the one it was. `SET_CAMERA` changes it, cutting at once or blending over seconds. A
+**camera zone** — an area whose enter script is a `SET_CAMERA` — changes it as the player walks in: give each part of
+the field a zone of its own, overlapping where they meet, as the physics may report leaving one after entering the next.
+A direction held through a cut follows the new camera at once.
+
 ### Entities
 
 An entity is an id, a name, its scripts and, if it is something in the world, a **body**. An entity with no body is
@@ -104,6 +111,7 @@ Bodies are built from **presets** named for what they are for:
 | Interactable object | a solid box and an interaction trigger | — |
 | Examine point | an interaction trigger only, so it doesn't block | — |
 | Area | a trigger area | — |
+| Camera zone | a trigger area | changes to the field's newest camera as the player walks in |
 | Save point | a trigger area, with placeholder visuals | allows saving while the player stands in it |
 | Plain | nothing: seen and moved by scripts, walked through and never talked to | — |
 
@@ -136,7 +144,8 @@ editing a field's prefab.
 - a jump to a spawn point its destination lacks;
 - a Walkable Tilemap in a 3D field, or two in one field, and in a tile field a spawn point or character off a tile's
   centre, or a move to a written point off a tile's centre or where there is no tile;
-- a field with no Cinemachine camera, or more than one, and a follow camera's bounds missing or not a trigger;
+- a field with no Cinemachine camera, a camera without a Field Camera or two sharing an id, a script naming a camera the
+  field lacks, and a follow camera's bounds missing or not a trigger;
 - a scroll in a field whose camera does not follow, or onto an entity with no body.
 
 It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated,
@@ -214,7 +223,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | **Entities** | `SET_PLAYER_ENTITY` `LOCK_INPUT` `VISIBILITY` `SOLIDITY` `PUSH_SCRIPT_ACTIVATION` `INTERACTION_TRIGGER_ACTIVATION` `SET_INTERACTION_RANGE` `COLLISION_TRIGGER_ACTIVATION` `SET_ENTITY_POSITION` `SET_ENTITY_ROTATION` `SET_ENTITY_ROTATION_OVER_TIME` `SET_DIRECTION_TO_FACE_ENTITY` |
 | **Movement** | `SET_MOVEMENT_SPEED`; `MOVE_ENTITY` `GLIDE_ENTITY` `SLIDE_ENTITY` `MOVE_ENTITY_TO_ENTITY`, each also `_AND_WAIT`; `WAIT_FOR_MOVEMENT` `STOP_MOVEMENT` |
 | **Animation** | `SET_BASE_ANIMATION`; `PLAY_ANIMATION` and `PLAY_PART_OF_ANIMATION`, each also `_AND_WAIT`, `_AND_HOLD`, `_HOLDING` and `_LOOPING`; `SET_ANIMATION_SPEED` `WAIT_FOR_ANIMATION` `STOP_ANIMATION` `PUSH_ANIMATION_STATE` `POP_ANIMATION_STATE` |
-| **The camera** | `SCROLL_SCREEN_TO_POSITION` `SCROLL_SCREEN_TO_ENTITY` `WAIT_FOR_SCROLLING` |
+| **The camera** | `SCROLL_SCREEN_TO_POSITION` `SCROLL_SCREEN_TO_ENTITY` `WAIT_FOR_SCROLLING` `SET_CAMERA` |
 | **The screen and blockers** | `FADE_SCREEN` `FADE_SCREEN_AND_WAIT` `WAIT_FOR_FADE` `SUBTRACT_SCREEN_COLOUR` `ADD_SCREEN_COLOUR` `WAIT_FOR_SCREEN_COLOUR` `BLOCKER_ACTIVATION` |
 | **Music and sounds** | `PLAY_MUSIC` `CROSSFADE_MUSIC` `STOP_MUSIC` `MUSIC_STEM_STATE` `IS_MUSIC_PLAYING` `SET_MUSIC_VOLUME` `FADE_MUSIC_VOLUME` `FADE_MUSIC_VOLUME_FROM` `WAIT_FOR_MUSIC_VOLUME` `SET_BATTLE_MUSIC` `PLAY_SOUND` `SET_REVERB_PRESET` `SET_REVERB_VOLUME` |
 | **The countdown** | `SET_COUNTDOWN_TIMER` `SHOW_COUNTDOWN_TIMER` `HIDE_COUNTDOWN_TIMER` `GET_COUNTDOWN_TIMER` |
@@ -272,6 +281,10 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - The player can still walk while the view is away, unless the script locks input.
   - A jump to another field starts with the view on the player; after the menu or a battle it is where the script left
     it.
+- **Cameras:**
+  - `SET_CAMERA` looks through another of the field's cameras: at once, or blending over seconds, steadily or easing in
+    and out. A blend cut short by a battle comes back finished.
+  - Every follow camera follows the same view, so a scroll carries on across a change between them.
 - **The screen:**
   - Scripts fade the screen out and back in beneath the message windows, so a message can show over a black screen,
     through any transition or the field's own exit and entry transitions, or at once.
@@ -290,8 +303,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
     There are no random encounters yet: a battle starts only when a script starts it.
   - A game over sends the player to the game-over field your map names, entered afresh: a field like any other, whose
     scripts decide what it shows and when the game goes back to the title.
-  - Returning from the menu or a battle puts the field back as it was: positions, animations, visibility, blockers and
-    more.
+  - Returning from the menu or a battle puts the field back as it was: positions, animations, visibility, blockers, the
+    camera and more.
   - Arriving in a new field starts it afresh.
 - **Saving:**
   - Saving is allowed where your game's policy says: anywhere, or only where a script allows it, such as at a save

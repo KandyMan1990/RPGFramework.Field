@@ -45,6 +45,7 @@ namespace RPGFramework.Field
         internal event Action<Vector3, float, Easing>             RequestScrollScreenToPosition;
         internal event Action<int, float, Easing>                 RequestScrollScreenToEntity;
         internal Func<bool>                                       IsScreenScrolling;
+        internal event Action<byte, float, Easing>                RequestSetCamera;
         internal event Action<int, float>                         RequestSetInteractionRange;
         internal event Action<bool>                               RequestInputLock;
         internal event Action<int, Vector3>                       RequestSetEntityPosition;
@@ -432,7 +433,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
                        // { FieldScriptOpCode.ScrollToPartyMember, ScrollToPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.WaitForScrolling, WaitForScrollingOpcodeHandler },
-                       // { FieldScriptOpCode.SetCamera, SetCameraOpcodeHandler },
+                       { FieldScriptOpCode.SetCamera, SetCameraOpcodeHandler },
 
                        // Audio
                        { FieldScriptOpCode.PlayMusic, PlayMusicOpcodeHandler },
@@ -2418,6 +2419,19 @@ namespace RPGFramework.Field
         private void WaitForScrollingOpcodeHandler(ScriptExecutionContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsScreenScrolling()));
+        }
+
+        /// <summary>
+        /// Look through another of the field's cameras, cutting to it or blending over seconds.
+        /// </summary>
+        private void SetCameraOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            byte              camera  = ReadArgumentByte(ctx, ref sources);
+            float             seconds = ReadArgumentFloat(ctx, ref sources);
+            Easing            easing  = (Easing)ReadArgumentByte(ctx, ref sources);
+
+            RequestSetCamera?.Invoke(camera, seconds, easing);
         }
 
         /// <summary>

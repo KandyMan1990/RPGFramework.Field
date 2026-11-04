@@ -224,6 +224,7 @@ namespace RPGFramework.Field.Editor
                 HashSet<int>         entityIds        = new HashSet<int>();
                 HashSet<FieldEntity> bodies           = new HashSet<FieldEntity>();
                 HashSet<int>         blockerIds       = new HashSet<int>();
+                HashSet<int>         cameraIds        = new HashSet<int>();
                 DialogueChannelUse   dialogueChannels = new DialogueChannelUse();
 
                 FieldBlocker[] blockers = prefab.GetComponentsInChildren<FieldBlocker>(true);
@@ -236,7 +237,7 @@ namespace RPGFramework.Field.Editor
                 }
 
                 ValidateTileField(prefab, fieldEntities, problems);
-                ValidateCamera(prefab, problems);
+                ValidateCamera(prefab, cameraIds, problems);
                 ValidateScrolls(prefab, fieldEntities, problems);
 
                 List<FieldEntityRecord> fieldEntityRecords = fieldEntities.Entities;
@@ -257,7 +258,7 @@ namespace RPGFramework.Field.Editor
                 {
                     FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, dialogueChannels, audioNames, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, dialogueChannels, audioNames, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -403,6 +404,7 @@ namespace RPGFramework.Field.Editor
                                     Dictionary<int, int> scriptCounts,
                                     HashSet<int>         withBodies,
                                     HashSet<int>         blockerIds,
+                                    HashSet<int>         cameraIds,
                                     DialogueChannelUse   dialogueChannels,
                                     AudioNames           audioNames,
                                     List<string>         problems)
@@ -476,7 +478,8 @@ namespace RPGFramework.Field.Editor
                 ValidateInitScript(script.Type, scriptDescription, lines, problems);
                 ValidateBodyOpcodes(body, scriptDescription, lines, problems);
                 ValidateEntityTargets(scriptCounts, withBodies, scriptDescription, lines, problems);
-                ValidateBlockerTargets(blockerIds, scriptDescription, lines, problems);
+                ValidateIdTargets(ArgumentType.BlockerId, blockerIds, "blocker", nameof(FieldBlocker), scriptDescription, lines, problems);
+                ValidateIdTargets(ArgumentType.CameraId, cameraIds, "camera", nameof(FieldCamera), scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
                 ValidateScriptRequests(fieldEntityRecord, scriptCounts, scriptDescription, lines, problems);
@@ -786,11 +789,12 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// A field is seen through its own Cinemachine camera; one without would be seen from wherever the field before
-        /// it left the view. Nothing yet chooses between two. A camera kept within bounds needs them, and they must be
-        /// a trigger, or they would be a wall.
+        /// A field is seen through its own Cinemachine cameras, one at a time; one without would be seen from wherever the
+        /// field before it left the view. Each is named by the id on its <see cref="FieldCamera" />, which scripts cut
+        /// to and the field starts on the lowest of, so one without is a camera nothing could choose. A camera kept
+        /// within bounds needs them, and they must be a trigger, or they would be a wall.
         /// </summary>
-        internal static void ValidateCamera(GameObject field, List<string> problems)
+        internal static void ValidateCamera(GameObject field, HashSet<int> cameraIds, List<string> problems)
         {
             CinemachineCamera[] cameras = field.GetComponentsInChildren<CinemachineCamera>(true);
 
@@ -800,26 +804,32 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            if (cameras.Length > 1)
+            for (int i = 0; i < cameras.Length; i++)
             {
-                problems.Add($"{field.name} has a Cinemachine camera on '{cameras[0].name}' and on '{cameras[1].name}', but nothing chooses between a field's cameras yet. Keep one");
-                return;
-            }
+                CinemachineCamera camera = cameras[i];
 
-            CinemachineCamera camera = cameras[0];
+                if (!camera.TryGetComponent(out FieldCamera fieldCamera))
+                {
+                    problems.Add($"{field.name} / '{camera.name}' has no {nameof(FieldCamera)}, so the field could never look through it. Add one, which gives it an id");
+                }
+                else if (!cameraIds.Add(fieldCamera.Id))
+                {
+                    problems.Add($"{field.name} / '{camera.name}' reuses camera id [{fieldCamera.Id}], which another camera in this field already has");
+                }
 
-            if (camera.TryGetComponent(out CinemachineConfiner2D confiner2D))
-            {
-                Collider2D bounds = confiner2D.BoundingShape2D;
+                if (camera.TryGetComponent(out CinemachineConfiner2D confiner2D))
+                {
+                    Collider2D bounds = confiner2D.BoundingShape2D;
 
-                ValidateCameraBounds(field, camera, bounds, bounds != null && bounds.isTrigger, problems);
-            }
+                    ValidateCameraBounds(field, camera, bounds, bounds != null && bounds.isTrigger, problems);
+                }
 
-            if (camera.TryGetComponent(out CinemachineConfiner3D confiner3D))
-            {
-                Collider bounds = confiner3D.BoundingVolume;
+                if (camera.TryGetComponent(out CinemachineConfiner3D confiner3D))
+                {
+                    Collider bounds = confiner3D.BoundingVolume;
 
-                ValidateCameraBounds(field, camera, bounds, bounds != null && bounds.isTrigger, problems);
+                    ValidateCameraBounds(field, camera, bounds, bounds != null && bounds.isTrigger, problems);
+                }
             }
         }
 
@@ -913,13 +923,15 @@ namespace RPGFramework.Field.Editor
             return Vector3.ProjectOnPlane(position - centre, normal).sqrMagnitude > 0.0001f ? TilePlace.OffCentre : TilePlace.Centre;
         }
 
-        private static void ValidateBlockerTargets(HashSet<int> blockerIds, string scriptDescription, string[] lines, List<string> problems)
+        /// <summary>
+        /// A blocker or camera a script names by a written id must be one the field has; one worked out while playing is
+        /// only known then.
+        /// </summary>
+        private static void ValidateIdTargets(ArgumentType type, HashSet<int> ids, string kind, string componentName, string scriptDescription, string[] lines, List<string> problems)
         {
             for (int i = 0; i < lines.Length; i++)
             {
-                string line = lines[i];
-
-                string[] parts = FieldScriptLine.Split(line);
+                string[] parts = FieldScriptLine.Split(lines[i]);
 
                 if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
@@ -930,16 +942,15 @@ namespace RPGFramework.Field.Editor
                 {
                     string token = parts[argument + 1];
 
-                    // One worked out while playing is only known then.
-                    if (opCode.Arguments[argument].Type != ArgumentType.BlockerId || token.StartsWith("$") ||
-                        !int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out int blockerId))
+                    if (opCode.Arguments[argument].Type != type || token.StartsWith("$") ||
+                        !int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id))
                     {
                         continue;
                     }
 
-                    if (!blockerIds.Contains(blockerId))
+                    if (!ids.Contains(id))
                     {
-                        problems.Add($"{scriptDescription} uses {parts[0]} on blocker [{blockerId}], which this field has no {nameof(FieldBlocker)} for");
+                        problems.Add($"{scriptDescription} uses {parts[0]} on {kind} [{id}], which this field has no {componentName} for");
                     }
                 }
             }

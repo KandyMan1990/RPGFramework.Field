@@ -1228,7 +1228,11 @@ namespace RPGFramework.Field
         [FieldOpCode("WAIT_FOR_SCROLLING", ArgumentLayout.Sequential, Summary = "Wait until the view has arrived where a script scrolled it", StopsInit = true)]
         WaitForScrolling = 0x0707,
 
-        SetCamera = 0x0708, // byte cameraId - which of the field's cameras to look through
+        [FieldOpCode("SET_CAMERA", ArgumentLayout.Sequential, Summary = "Look through another of the field's cameras, cutting to it or blending over seconds")]
+        [Argument(0, "camera",  ArgumentType.CameraId, Description = "the id on a FieldCamera in this field")]
+        [Argument(1, "seconds", ArgumentType.Float, Description = "how long the blend takes; 0 cuts at once")]
+        [Argument(2, "easing",  ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether a blend eases in and out")]
+        SetCamera = 0x0708,
 
         // Audio (0x0800)
 

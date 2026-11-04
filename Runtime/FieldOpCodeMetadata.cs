@@ -132,6 +132,11 @@ namespace RPGFramework.Field
         /// </summary>
         BlockerId,
 
+        /// <summary>
+        /// A camera in this field, encoded as the id on its <c>FieldCamera</c> component.
+        /// </summary>
+        CameraId,
+
         /// <summary>A localisation key, authored as text and encoded as its 64-bit hash.</summary>
         LocalisationKey,
 
@@ -336,6 +341,7 @@ namespace RPGFramework.Field
                 case ArgumentType.EntityId:
                 case ArgumentType.Priority:
                 case ArgumentType.BlockerId:
+                case ArgumentType.CameraId:
                     width = VariableWidth.Byte;
                     return true;
 

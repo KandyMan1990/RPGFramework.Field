@@ -85,6 +85,8 @@ namespace RPGFramework.Field
         private TransformHandle                        m_CameraTransformHandle;
         private CinemachineBrain                       m_CinemachineBrain;
         private FollowPlayer[]                         m_PlayerCameras;
+        private FieldCamera[]                          m_Cameras;
+        private byte                                   m_StartingCamera;
         private Transform                              m_CameraFocus;
         private VisualElement                          m_RootElement;
         private InputAdapter                           m_InputAdapter;
@@ -437,6 +439,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestScrollScreenToPosition      += OnRequestScrollScreenToPosition;
             m_FieldContext.VM.RequestScrollScreenToEntity        += OnRequestScrollScreenToEntity;
             m_FieldContext.VM.IsScreenScrolling                  =  IsScreenScrolling;
+            m_FieldContext.VM.RequestSetCamera                   += OnRequestSetCamera;
             m_FieldContext.VM.RequestSetInteractionRange         += OnRequestSetInteractionRange;
             m_FieldContext.VM.RequestInputLock                   += OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetEntityPosition           += OnRequestSetEntityPosition;
@@ -523,6 +526,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityPosition           -= OnRequestSetEntityPosition;
             m_FieldContext.VM.RequestInputLock                   -= OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= OnRequestSetInteractionRange;
+            m_FieldContext.VM.RequestSetCamera                   -= OnRequestSetCamera;
             m_FieldContext.VM.IsScreenScrolling                  =  null;
             m_FieldContext.VM.RequestScrollScreenToEntity        -= OnRequestScrollScreenToEntity;
             m_FieldContext.VM.RequestScrollScreenToPosition      -= OnRequestScrollScreenToPosition;
@@ -675,7 +679,17 @@ namespace RPGFramework.Field
             m_Dimension       = fieldEntities.Dimension;
             m_WalkableTilemap = FindWalkableTilemap(fieldGameObject);
             m_PlayerCameras   = fieldGameObject.GetComponentsInChildren<FollowPlayer>(true);
+            m_Cameras         = fieldGameObject.GetComponentsInChildren<FieldCamera>(true);
+            m_StartingCamera  = byte.MaxValue;
             m_Entities        = new Dictionary<int, FieldEntityComponents>(fieldEntities.Compiled.Count);
+
+            for (int i = 0; i < m_Cameras.Length; i++)
+            {
+                if (m_Cameras[i].Id < m_StartingCamera)
+                {
+                    m_StartingCamera = m_Cameras[i].Id;
+                }
+            }
             m_AnimationNames  = BuildAnimationNames(fieldEntities);
 
             for (int i = 0; i < fieldEntities.Compiled.Count; i++)
@@ -786,7 +800,7 @@ namespace RPGFramework.Field
                 blockerIds[i] = m_Blockers[i].Id;
             }
 
-            m_FieldContext = new FieldContext(vm, entities, blockerIds);
+            m_FieldContext = new FieldContext(vm, entities, blockerIds, m_StartingCamera);
 
             SubscribeVm();
 
@@ -956,6 +970,7 @@ namespace RPGFramework.Field
         private void PostFieldLoad()
         {
             PointCamerasAtFocus();
+            ShowLiveCamera();
 
             m_CinemachineBrain.ManualUpdate(Time.frameCount, -1f);
 
@@ -1513,6 +1528,27 @@ namespace RPGFramework.Field
         }
 
         private bool IsScreenScrolling() => m_FieldContext.CameraFocus.IsScrolling;
+
+        // The Brain takes the blend from the change it sees at the end of the tick; a field being set up always cuts.
+        private void OnRequestSetCamera(byte cameraId, float seconds, Easing easing)
+        {
+            m_FieldContext.SetLiveCamera(cameraId);
+
+            m_CinemachineBrain.DefaultBlend = seconds > 0f
+                ? new CinemachineBlendDefinition(easing == Easing.Smooth ? CinemachineBlendDefinition.Styles.EaseInOut : CinemachineBlendDefinition.Styles.Linear, seconds)
+                : new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.Cut, 0f);
+
+            ShowLiveCamera();
+        }
+
+        // Only the live camera is on, so nothing else can take the view.
+        private void ShowLiveCamera()
+        {
+            for (int i = 0; i < m_Cameras.Length; i++)
+            {
+                m_Cameras[i].SetLive(m_Cameras[i].Id == m_FieldContext.LiveCamera);
+            }
+        }
 
         private void OnGatewayEntered(int entityId, int eventId)
         {

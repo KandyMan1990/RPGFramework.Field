@@ -2,7 +2,7 @@ using NUnit.Framework;
 
 namespace RPGFramework.Field.Tests.Cameras
 {
-    /// <summary>Nothing chooses between a field's cameras yet.</summary>
+    /// <summary>Two cameras, each named by an id of its own, for scripts to cut between.</summary>
     internal sealed class WhenAFieldHasTwoCameras
     {
         private CameraField m_Field;
@@ -11,8 +11,8 @@ namespace RPGFramework.Field.Tests.Cameras
         public void SetUp()
         {
             m_Field = new CameraField();
-            m_Field.AddCamera("Hall");
-            m_Field.AddCamera("Stairs");
+            m_Field.AddCamera("Hall", 0);
+            m_Field.AddCamera("Stairs", 1);
         }
 
         [TearDown]
@@ -22,9 +22,17 @@ namespace RPGFramework.Field.Tests.Cameras
         }
 
         [Test]
-        public void ThenExportRefusesIt()
+        public void ThenExportAcceptsIt()
         {
-            Assert.AreEqual(1, m_Field.Export().Count);
+            CollectionAssert.IsEmpty(m_Field.Export());
+        }
+
+        [Test]
+        public void ThenScriptsCanNameBoth()
+        {
+            m_Field.Export();
+
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, m_Field.CameraIds);
         }
     }
 }

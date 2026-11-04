@@ -19,6 +19,7 @@ namespace RPGFramework.Field.Editor
         InteractableObject,
         ExaminePoint,
         Area,
+        CameraZone,
         SavePoint,
         Plain
     }
@@ -77,6 +78,7 @@ namespace RPGFramework.Field.Editor
 
                 case FieldBodyPreset.Gateway:
                 case FieldBodyPreset.Area:
+                case FieldBodyPreset.CameraZone:
                 case FieldBodyPreset.SavePoint:
                     AddTrigger(bodyObject, dimension);
                     break;
@@ -131,6 +133,7 @@ namespace RPGFramework.Field.Editor
                                      FieldBodyPreset.InteractableObject => "Seen, talked to, and walked into rather than through: a chest, a sign, something dropped.",
                                      FieldBodyPreset.ExaminePoint       => "Talked to and nothing else: a poster, a window, a place worth examining that is part of the scenery.",
                                      FieldBodyPreset.Area               => "An area the player walks into and out of, for enter and leave scripts that are not a way out.",
+                                     FieldBodyPreset.CameraZone         => "An area that changes the camera as the player walks in: its enter script names the camera, the newest one to start. Give each part of the field a zone of its own, overlapping where they meet.",
                                      FieldBodyPreset.SavePoint          => "An area where the player can save: entering it allows saving and leaving it stops it. For a game that saves only at save points.",
                                      FieldBodyPreset.Plain              => "Seen and moved by scripts, but nothing touches it: a bird overhead, a prop in a cutscene. Add colliders of your own for anything more.",
                                      _                                  => string.Empty
@@ -234,10 +237,11 @@ namespace RPGFramework.Field.Editor
 
         /// <summary>
         /// The scripts a body of this kind cannot do without: a gateway's script is what takes the player out of the
-        /// field, and a save point is only its enter and leave scripts. Written only where the entity has none of that
+        /// field, a save point is only its enter and leave scripts, and a camera zone its enter script, naming the
+        /// newest of the cameras under <paramref name="fieldRoot" />. Written only where the entity has none of that
         /// type, so nothing an author wrote is touched.
         /// </summary>
-        internal static void WritePresetScripts(FieldEntityRecord entity, FieldBodyPreset preset, bool hasVisuals)
+        internal static void WritePresetScripts(FieldEntityRecord entity, FieldBodyPreset preset, bool hasVisuals, Transform fieldRoot)
         {
             if (preset == FieldBodyPreset.Gateway)
             {
@@ -248,6 +252,16 @@ namespace RPGFramework.Field.Editor
             {
                 AddScriptIfMissing(entity, FieldScriptType.OnEnter, "SAVE_ACCESSIBILITY true\n"  + NEW_SCRIPT_TEXT);
                 AddScriptIfMissing(entity, FieldScriptType.OnLeave, "SAVE_ACCESSIBILITY false\n" + NEW_SCRIPT_TEXT);
+            }
+
+            // Every zone sets its own camera on the way in and none on the way out: the physics reports a step from one
+            // zone into the next in either order.
+            if (preset == FieldBodyPreset.CameraZone)
+            {
+                byte next   = FieldCamera.NextId(fieldRoot, null);
+                int  newest = next > 0 ? next - 1 : 0;
+
+                AddScriptIfMissing(entity, FieldScriptType.OnEnter, $"SET_CAMERA {newest} 0 0\n" + NEW_SCRIPT_TEXT);
             }
 
             WriteInitScript(entity, preset, hasVisuals);
@@ -318,6 +332,9 @@ namespace RPGFramework.Field.Editor
         [MenuItem(MENU + "Entity/Area", false, MENU_PRIORITY)]
         private static void CreateArea(MenuCommand command) => CreateEntity(command, FieldBodyPreset.Area);
 
+        [MenuItem(MENU + "Entity/Camera Zone", false, MENU_PRIORITY)]
+        private static void CreateCameraZone(MenuCommand command) => CreateEntity(command, FieldBodyPreset.CameraZone);
+
         [MenuItem(MENU + "Entity/Save Point", false, MENU_PRIORITY)]
         private static void CreateSavePoint(MenuCommand command) => CreateEntity(command, FieldBodyPreset.SavePoint);
 
@@ -381,6 +398,7 @@ namespace RPGFramework.Field.Editor
         [MenuItem(MENU + "Entity/Interactable Object", true)]
         [MenuItem(MENU + "Entity/Examine Point",      true)]
         [MenuItem(MENU + "Entity/Area",               true)]
+        [MenuItem(MENU + "Entity/Camera Zone",        true)]
         [MenuItem(MENU + "Entity/Save Point",         true)]
         [MenuItem(MENU + "Entity/Plain",              true)]
         [MenuItem(MENU + "Blocker",                   true)]
@@ -404,7 +422,7 @@ namespace RPGFramework.Field.Editor
             FieldEntity       body   = Build(field.gameObject, field.Dimension, preset, entity.Name, visuals);
 
             entity.SetBody(body);
-            WritePresetScripts(entity, preset, visuals != null);
+            WritePresetScripts(entity, preset, visuals != null, field.transform);
 
             EditorUtility.SetDirty(field);
 

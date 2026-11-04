@@ -613,15 +613,43 @@ namespace RPGFramework.Field.Editor
             return field;
         }
 
-        /// <summary>
-        /// The field's blockers by name, writing the id. With none in the field yet the id is typed, and an id no
-        /// blocker has is shown as written rather than quietly changed.
-        /// </summary>
         private VisualElement BlockerDropdown(FieldScriptBlock block, int argumentIndex, string label, string current)
         {
             FieldBlocker[] blockers = m_Field.GetComponentsInChildren<FieldBlocker>(true);
+            string[]       names    = new string[blockers.Length];
+            byte[]         ids      = new byte[blockers.Length];
 
-            if (blockers.Length == 0)
+            for (int i = 0; i < blockers.Length; i++)
+            {
+                names[i] = blockers[i].name;
+                ids[i]   = blockers[i].Id;
+            }
+
+            return IdDropdown(block, argumentIndex, label, current, names, ids);
+        }
+
+        private VisualElement CameraDropdown(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            FieldCamera[] cameras = m_Field.GetComponentsInChildren<FieldCamera>(true);
+            string[]      names   = new string[cameras.Length];
+            byte[]        ids     = new byte[cameras.Length];
+
+            for (int i = 0; i < cameras.Length; i++)
+            {
+                names[i] = cameras[i].name;
+                ids[i]   = cameras[i].Id;
+            }
+
+            return IdDropdown(block, argumentIndex, label, current, names, ids);
+        }
+
+        /// <summary>
+        /// The field's blockers or cameras by name, writing the id. With none in the field yet the id is typed, and an id
+        /// none has is shown as written rather than quietly changed.
+        /// </summary>
+        private VisualElement IdDropdown(FieldScriptBlock block, int argumentIndex, string label, string current, string[] names, byte[] ids)
+        {
+            if (ids.Length == 0)
             {
                 IntegerField typed = new IntegerField(label) { value = ParseInt(current) };
                 typed.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue.ToString(System.Globalization.CultureInfo.InvariantCulture)));
@@ -629,31 +657,26 @@ namespace RPGFramework.Field.Editor
                 return typed;
             }
 
-            List<string> labels = new List<string>(blockers.Length);
+            List<string> labels = new List<string>(ids.Length);
             string       shown  = current;
 
-            for (int i = 0; i < blockers.Length; i++)
+            for (int i = 0; i < ids.Length; i++)
             {
-                FieldBlocker blocker = blockers[i];
+                string id          = ids[i].ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string choiceLabel = $"{names[i]} ({id})";
 
-                string blockerLabel = $"{blocker.name} ({blocker.Id})";
+                labels.Add(choiceLabel);
 
-                labels.Add(blockerLabel);
-
-                if (blocker.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) == current)
+                if (id == current)
                 {
-                    shown = blockerLabel;
+                    shown = choiceLabel;
                 }
             }
 
             DropdownField field = new DropdownField(label, labels, 0);
             field.SetValueWithoutNotify(shown);
 
-            field.RegisterValueChangedCallback(e =>
-                                               {
-                                                   FieldBlocker chosen = blockers[labels.IndexOf(e.newValue)];
-                                                   Set(block, argumentIndex, chosen.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                                               });
+            field.RegisterValueChangedCallback(e => Set(block, argumentIndex, ids[labels.IndexOf(e.newValue)].ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
             return field;
         }
@@ -786,6 +809,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.BlockerId:
                     return BlockerDropdown(block, argumentIndex, label, current);
+
+                case ArgumentType.CameraId:
+                    return CameraDropdown(block, argumentIndex, label, current);
 
                 case ArgumentType.EventId when TryGetEventOwner(block, out FieldEntityRecord owner):
                     return IndexDropdown(block, argumentIndex, label, current, owner.Scripts.Count, i => DescribeScript(owner.Scripts[i], i));

@@ -2505,6 +2505,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1061398331573486727}
   - component: {fileID: 5147905946917103532}
+  - component: {fileID: 6354789397147899670}
   m_Layer: 0
   m_Name: Fixed Camera
   m_TagString: Untagged
@@ -2570,6 +2571,19 @@ MonoBehaviour:
       BarrelClipping: 0.25
       Anamorphism: 0
   BlendHint: 0
+--- !u!114 &6354789397147899670
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8894972129723671095}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cd14483c6274df3ac6de0791599aa06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGFramework.Field::RPGFramework.Field.FieldCamera
+  m_Id: 0
 --- !u!1001 &4853521845863573703
 PrefabInstance:
   m_ObjectHideFlags: 0

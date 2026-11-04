@@ -18,6 +18,7 @@ namespace RPGFramework.Field
         internal bool                                  IsInputLockedByScript => m_IsInputLockedByScript;
         internal IReadOnlyList<ButtonWaitInputContext> ButtonWaits           => m_ButtonWaits;
         internal CameraFocus                           CameraFocus           => m_CameraFocus;
+        internal byte                                  LiveCamera            => m_LiveCamera;
 
         private readonly FieldVM                      m_VM;
         private readonly FieldEntityRuntime[]         m_Entities;
@@ -31,8 +32,9 @@ namespace RPGFramework.Field
         private          bool                         m_GatewaysActive;
         private          bool                         m_MainMenuAccessible;
         private          bool                         m_IsInputLockedByScript;
+        private          byte                         m_LiveCamera;
 
-        internal FieldContext(FieldVM vm, FieldEntityRuntime[] entities, byte[] blockerIds)
+        internal FieldContext(FieldVM vm, FieldEntityRuntime[] entities, byte[] blockerIds, byte liveCamera)
         {
             m_VM                 = vm;
             m_Entities           = entities;
@@ -44,6 +46,7 @@ namespace RPGFramework.Field
             m_CameraFocus        = new CameraFocus();
             m_GatewaysActive     = true;
             m_MainMenuAccessible = true;
+            m_LiveCamera         = liveCamera;
 
             for (int i = 0; i < entities.Length; i++)
             {
@@ -75,6 +78,8 @@ namespace RPGFramework.Field
         internal void SetMainMenuAccessible(bool accessible) => m_MainMenuAccessible = accessible;
 
         internal void SetInputLockedByScript(bool locked) => m_IsInputLockedByScript = locked;
+
+        internal void SetLiveCamera(byte cameraId) => m_LiveCamera = cameraId;
 
         /// <summary>A script waiting for a button, kept so the wait is offered input again after a battle.</summary>
         internal void AddButtonWait(ButtonWaitInputContext wait) => m_ButtonWaits.Add(wait);

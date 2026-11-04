@@ -9240,6 +9240,7 @@ GameObject:
   - component: {fileID: 4233575532910137088}
   - component: {fileID: 8875435823705600226}
   - component: {fileID: 3833860431127437014}
+  - component: {fileID: 3654716365644293681}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -9368,6 +9369,19 @@ MonoBehaviour:
     MaxWindowSize: 0
     Padding: 0
   m_LegacyMaxWindowSize: -2
+--- !u!114 &3654716365644293681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6350853523207558092}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cd14483c6274df3ac6de0791599aa06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGFramework.Field::RPGFramework.Field.FieldCamera
+  m_Id: 0
 --- !u!1 &6903277374514616975
 GameObject:
   m_ObjectHideFlags: 0

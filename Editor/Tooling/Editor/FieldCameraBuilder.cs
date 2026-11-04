@@ -7,7 +7,8 @@ namespace RPGFramework.Field.Editor
 {
     /// <summary>
     /// The GameObject menu's field cameras, one for each way a field is seen: fixed, or following the player within
-    /// bounds. Each is a Cinemachine camera, whose view the field module scene's camera takes.
+    /// bounds. Each is a Cinemachine camera, whose view the field module scene's camera takes, with a
+    /// <see cref="FieldCamera" /> naming it.
     /// </summary>
     internal static class FieldCameraBuilder
     {
@@ -27,7 +28,7 @@ namespace RPGFramework.Field.Editor
             GameObject        context = command.context as GameObject;
             FieldEntities     field   = FieldEntityBodyBuilder.FindField(context);
             Bounds            area    = Area2D(field);
-            CinemachineCamera camera  = NewCamera("Fixed Camera", null);
+            CinemachineCamera camera  = NewCamera("Fixed Camera", null, field);
 
             camera.Lens.OrthographicSize = ORTHOGRAPHIC_SIZE_2D;
 
@@ -48,7 +49,7 @@ namespace RPGFramework.Field.Editor
             bounds.isTrigger = true;
             bounds.size      = area.size;
 
-            CinemachineCamera camera = NewCamera("Camera", group);
+            CinemachineCamera camera = NewCamera("Camera", group, field);
             camera.Lens.OrthographicSize = ORTHOGRAPHIC_SIZE_2D;
 
             FollowPlayerWithoutLag(camera, DISTANCE_2D);
@@ -69,7 +70,7 @@ namespace RPGFramework.Field.Editor
         {
             GameObject        context = command.context as GameObject;
             FieldEntities     field   = FieldEntityBodyBuilder.FindField(context);
-            CinemachineCamera camera  = NewCamera("Fixed Camera", null);
+            CinemachineCamera camera  = NewCamera("Fixed Camera", null, field);
 
             FieldEntityBodyBuilder.Place(camera.gameObject, context, field, "Create 3D Fixed Camera");
 
@@ -87,7 +88,7 @@ namespace RPGFramework.Field.Editor
             bounds.isTrigger = true;
             bounds.size      = m_Bounds3D;
 
-            CinemachineCamera camera = NewCamera("Camera", group);
+            CinemachineCamera camera = NewCamera("Camera", group, field);
 
             SceneView sceneView = SceneView.lastActiveSceneView;
 
@@ -125,11 +126,15 @@ namespace RPGFramework.Field.Editor
             return field != null && field.Dimension == dimension;
         }
 
-        private static CinemachineCamera NewCamera(string name, GameObject parent)
+        /// <summary>A Cinemachine camera named for scripts by the next id free in the field.</summary>
+        private static CinemachineCamera NewCamera(string name, GameObject parent, FieldEntities field)
         {
-            GameObject cameraObject = parent != null ? NewChild(name, parent) : new GameObject(name);
+            GameObject        cameraObject = parent != null ? NewChild(name, parent) : new GameObject(name);
+            CinemachineCamera camera       = cameraObject.AddComponent<CinemachineCamera>();
 
-            return cameraObject.AddComponent<CinemachineCamera>();
+            cameraObject.AddComponent<FieldCamera>().SetId(FieldCamera.NextId(field.transform, null));
+
+            return camera;
         }
 
         private static GameObject NewChild(string name, GameObject parent)

@@ -8,14 +8,38 @@ namespace RPGFramework.Field.Tests.Cameras
     /// <summary>A field's root, for a test to give cameras and then check as export does.</summary>
     internal sealed class CameraField
     {
-        private readonly GameObject m_Root;
+        private readonly GameObject   m_Root;
+        private readonly HashSet<int> m_CameraIds;
+        private          byte         m_NextId;
 
         internal CameraField()
         {
-            m_Root = new GameObject("Field");
+            m_Root      = new GameObject("Field");
+            m_CameraIds = new HashSet<int>();
+            m_NextId    = 0;
         }
 
+        internal Transform Root => m_Root.transform;
+
+        /// <summary>The ids export found, for scripts to name.</summary>
+        internal IReadOnlyCollection<int> CameraIds => m_CameraIds;
+
+        /// <summary>A camera named by the next id.</summary>
         internal CinemachineCamera AddCamera(string name)
+        {
+            return AddCamera(name, m_NextId++);
+        }
+
+        internal CinemachineCamera AddCamera(string name, byte id)
+        {
+            CinemachineCamera camera = AddCameraWithoutId(name);
+
+            camera.gameObject.AddComponent<FieldCamera>().SetId(id);
+
+            return camera;
+        }
+
+        internal CinemachineCamera AddCameraWithoutId(string name)
         {
             GameObject cameraObject = new GameObject(name);
             cameraObject.transform.SetParent(m_Root.transform, false);
@@ -59,7 +83,8 @@ namespace RPGFramework.Field.Tests.Cameras
         {
             List<string> problems = new List<string>();
 
-            FieldDatabase.ValidateCamera(m_Root, problems);
+            m_CameraIds.Clear();
+            FieldDatabase.ValidateCamera(m_Root, m_CameraIds, problems);
 
             return problems;
         }

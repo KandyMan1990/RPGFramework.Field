@@ -639,7 +639,7 @@ namespace RPGFramework.Field.Editor
 
             m_SelectedEntity.SetBody(body);
 
-            FieldEntityBodyBuilder.WritePresetScripts(m_SelectedEntity, preset, visuals != null);
+            FieldEntityBodyBuilder.WritePresetScripts(m_SelectedEntity, preset, visuals != null, m_CurrentlyOpenPrefab.transform);
 
             OnBodyChanged();
         }
