@@ -8990,6 +8990,20 @@ MonoBehaviour:
       m_Name: Talk
       m_Text: 'SET_DIRECTION_TO_FACE_ENTITY 0
 
+        LOCK_INPUT true
+
+        SCROLL_SCREEN_TO_POSITION -24 0 0 2 1
+
+        WAIT_FOR_SCROLLING
+
+        WAIT_SECONDS 1
+
+        SCROLL_SCREEN_TO_ENTITY 0 2 1
+
+        WAIT_FOR_SCROLLING
+
+        LOCK_INPUT false
+
         RETURN'
       m_Slot: 0
   - m_EntityId: 2

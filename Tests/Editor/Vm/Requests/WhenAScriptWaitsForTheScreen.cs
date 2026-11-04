@@ -20,11 +20,13 @@ namespace RPGFramework.Field.Tests.Vm.Requests
 
             m_Field.Vm.IsScreenFading       = IsChanging;
             m_Field.Vm.IsScreenColourFading = IsChanging;
+            m_Field.Vm.IsScreenScrolling    = IsChanging;
             m_Field.Vm.RequestScreenFade    += OnFade;
         }
 
         [TestCase(FieldScriptOpCode.WaitForFade)]
         [TestCase(FieldScriptOpCode.WaitForScreenColour)]
+        [TestCase(FieldScriptOpCode.WaitForScrolling)]
         public void ThenItWaitsWhileTheScreenChanges(FieldScriptOpCode opCode)
         {
             FieldEntityRuntime entity = m_Field.Start(new Script().Op(opCode).Count(AFTER, 40).Return());
@@ -36,6 +38,7 @@ namespace RPGFramework.Field.Tests.Vm.Requests
 
         [TestCase(FieldScriptOpCode.WaitForFade)]
         [TestCase(FieldScriptOpCode.WaitForScreenColour)]
+        [TestCase(FieldScriptOpCode.WaitForScrolling)]
         public void ThenItCarriesOnOnceTheScreenHasChanged(FieldScriptOpCode opCode)
         {
             FieldEntityRuntime entity = m_Field.Start(new Script().Op(opCode).Count(AFTER, 40).Return());

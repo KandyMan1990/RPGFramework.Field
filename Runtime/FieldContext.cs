@@ -17,6 +17,7 @@ namespace RPGFramework.Field
         internal bool                                  MainMenuAccessible    => m_MainMenuAccessible;
         internal bool                                  IsInputLockedByScript => m_IsInputLockedByScript;
         internal IReadOnlyList<ButtonWaitInputContext> ButtonWaits           => m_ButtonWaits;
+        internal CameraFocus                           CameraFocus           => m_CameraFocus;
 
         private readonly FieldVM                      m_VM;
         private readonly FieldEntityRuntime[]         m_Entities;
@@ -25,6 +26,7 @@ namespace RPGFramework.Field
         private readonly FieldBlockerState[]          m_Blockers;
         private readonly Dictionary<byte, int>        m_BlockerIndices;
         private readonly List<ButtonWaitInputContext> m_ButtonWaits;
+        private readonly CameraFocus                  m_CameraFocus;
         private          FieldEntityRuntime           m_PlayerEntity;
         private          bool                         m_GatewaysActive;
         private          bool                         m_MainMenuAccessible;
@@ -39,6 +41,7 @@ namespace RPGFramework.Field
             m_Blockers           = new FieldBlockerState[blockerIds.Length];
             m_BlockerIndices     = new Dictionary<byte, int>(blockerIds.Length);
             m_ButtonWaits        = new List<ButtonWaitInputContext>();
+            m_CameraFocus        = new CameraFocus();
             m_GatewaysActive     = true;
             m_MainMenuAccessible = true;
 

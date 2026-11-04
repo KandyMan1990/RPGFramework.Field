@@ -32,6 +32,7 @@ namespace RPGFramework.Field.Tests.Catalogue
             m_Field.Vm.IsMusicVolumeFading   = Never;
             m_Field.Vm.IsScreenFading        = Never;
             m_Field.Vm.IsScreenColourFading  = Never;
+            m_Field.Vm.IsScreenScrolling     = Never;
             m_Field.Vm.IsEntityRotating      = Never;
             m_Field.Vm.IsEntityMoving        = Never;
             m_Field.Vm.IsEntityAnimating     = Never;

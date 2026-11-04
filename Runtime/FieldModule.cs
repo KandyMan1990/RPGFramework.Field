@@ -85,6 +85,7 @@ namespace RPGFramework.Field
         private TransformHandle                        m_CameraTransformHandle;
         private CinemachineBrain                       m_CinemachineBrain;
         private FollowPlayer[]                         m_PlayerCameras;
+        private Transform                              m_CameraFocus;
         private VisualElement                          m_RootElement;
         private InputAdapter                           m_InputAdapter;
         private FieldContext                           m_FieldContext;
@@ -204,6 +205,9 @@ namespace RPGFramework.Field
 
             m_CinemachineBrain              = m_FieldModuleMonoBehaviour.CinemachineBrain;
             m_CinemachineBrain.UpdateMethod = CinemachineBrain.UpdateMethods.ManualUpdate;
+
+            m_CameraFocus = new GameObject("Camera Focus").transform;
+            m_CameraFocus.SetParent(m_FieldModuleMonoBehaviour.transform, false);
 
             FieldContext fieldContext = m_FieldResumeDataStore.Get<FieldContext>();
             bool         musicPaused  = m_PausedMusicStore.TryTake(out MusicSnapshot pausedMusic);
@@ -346,6 +350,7 @@ namespace RPGFramework.Field
                 }
             }
 
+            MoveCameraFocus(deltaTime);
             m_CinemachineBrain.ManualUpdate();
 
             m_Countdown.Tick(Time.unscaledDeltaTime);
@@ -429,6 +434,9 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsScreenFading                     =  IsScreenFading;
             m_FieldContext.VM.RequestScreenColour                += OnRequestScreenColour;
             m_FieldContext.VM.IsScreenColourFading               =  IsScreenColourFading;
+            m_FieldContext.VM.RequestScrollScreenToPosition      += OnRequestScrollScreenToPosition;
+            m_FieldContext.VM.RequestScrollScreenToEntity        += OnRequestScrollScreenToEntity;
+            m_FieldContext.VM.IsScreenScrolling                  =  IsScreenScrolling;
             m_FieldContext.VM.RequestSetInteractionRange         += OnRequestSetInteractionRange;
             m_FieldContext.VM.RequestInputLock                   += OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetEntityPosition           += OnRequestSetEntityPosition;
@@ -515,6 +523,9 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityPosition           -= OnRequestSetEntityPosition;
             m_FieldContext.VM.RequestInputLock                   -= OnRequestScriptInputLock;
             m_FieldContext.VM.RequestSetInteractionRange         -= OnRequestSetInteractionRange;
+            m_FieldContext.VM.IsScreenScrolling                  =  null;
+            m_FieldContext.VM.RequestScrollScreenToEntity        -= OnRequestScrollScreenToEntity;
+            m_FieldContext.VM.RequestScrollScreenToPosition      -= OnRequestScrollScreenToPosition;
             m_FieldContext.VM.IsScreenColourFading               =  null;
             m_FieldContext.VM.RequestScreenColour                -= OnRequestScreenColour;
             m_FieldContext.VM.IsScreenFading                     =  null;
@@ -944,7 +955,7 @@ namespace RPGFramework.Field
 
         private void PostFieldLoad()
         {
-            PointCamerasAtPlayer();
+            PointCamerasAtFocus();
 
             m_CinemachineBrain.ManualUpdate(Time.frameCount, -1f);
 
@@ -1116,16 +1127,42 @@ namespace RPGFramework.Field
             m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
 
             SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
-            PointCamerasAtPlayer();
         }
 
-        private void PointCamerasAtPlayer()
+        /// <summary>
+        /// Every follow camera follows one marker, which the field moves each tick to where the camera focus is: on
+        /// the player, unless a script has scrolled it.
+        /// </summary>
+        private void PointCamerasAtFocus()
         {
-            Transform player = m_PlayerEntityId != FieldEntity.NO_ENTITY ? m_Entities[m_PlayerEntityId].Entity.transform : null;
+            MoveCameraFocus(0f);
 
             for (int i = 0; i < m_PlayerCameras.Length; i++)
             {
-                m_PlayerCameras[i].Follow(player);
+                m_PlayerCameras[i].Follow(m_CameraFocus);
+            }
+        }
+
+        private void MoveCameraFocus(float deltaTime)
+        {
+            CameraFocus focus = m_FieldContext.CameraFocus;
+
+            focus.Tick(deltaTime, CameraFocusTargetPosition(focus));
+            m_CameraFocus.position = focus.Position;
+        }
+
+        private Vector3 CameraFocusTargetPosition(CameraFocus focus)
+        {
+            switch (focus.Target)
+            {
+                case CameraFocusTarget.Point:
+                    return focus.Point;
+                case CameraFocusTarget.Entity:
+                    return m_Entities[focus.EntityId].Entity.transform.position;
+                default:
+                    return m_PlayerEntityId != FieldEntity.NO_ENTITY
+                        ? m_Entities[m_PlayerEntityId].Entity.transform.position
+                        : focus.Position;
             }
         }
 
@@ -1456,6 +1493,26 @@ namespace RPGFramework.Field
 
             return fading;
         }
+
+        private void OnRequestScrollScreenToPosition(Vector3 point, float seconds, Easing easing)
+        {
+            m_FieldContext.CameraFocus.ScrollToPoint(point, seconds, easing);
+        }
+
+        // Onto the player is back to following the player, whoever a script makes it after.
+        private void OnRequestScrollScreenToEntity(int entityId, float seconds, Easing easing)
+        {
+            if (entityId == m_PlayerEntityId)
+            {
+                m_FieldContext.CameraFocus.ScrollToPlayer(seconds, easing);
+            }
+            else
+            {
+                m_FieldContext.CameraFocus.ScrollToEntity(entityId, seconds, easing);
+            }
+        }
+
+        private bool IsScreenScrolling() => m_FieldContext.CameraFocus.IsScrolling;
 
         private void OnGatewayEntered(int entityId, int eventId)
         {

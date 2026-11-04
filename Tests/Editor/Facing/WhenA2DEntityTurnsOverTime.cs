@@ -80,7 +80,7 @@ namespace RPGFramework.Field.Tests.Facing
 
         private void TurnToLeft(RotationDirection direction)
         {
-            m_Facing.StartTurn(new SetEntityRotationAsyncArgs(Quaternion.Euler(0f, 0f, 90f), direction, 1f, RotationInterpolation.Linear));
+            m_Facing.StartTurn(new SetEntityRotationAsyncArgs(Quaternion.Euler(0f, 0f, 90f), direction, 1f, Easing.Linear));
         }
     }
 }

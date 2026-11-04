@@ -29,15 +29,5 @@ namespace RPGFramework.Field.Utils
 
             return Quaternion.Euler(t);
         }
-
-        internal static float ApplyInterpolation(float t, RotationInterpolation type)
-        {
-            if (type == RotationInterpolation.Smooth)
-            {
-                return Mathf.SmoothStep(0, 1, t);
-            }
-
-            return t;
-        }
     }
 }

@@ -4,8 +4,8 @@ using UnityEngine;
 namespace RPGFramework.Field
 {
     /// <summary>
-    /// Keeps the Cinemachine camera it is on following whoever is the player: from when the field loads, and onto
-    /// another entity when a script makes that one the player.
+    /// Keeps the Cinemachine camera it is on following the field's camera focus: whoever is the player, unless a
+    /// script has scrolled the view to a point or onto another entity.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CinemachineCamera))]
@@ -18,9 +18,9 @@ namespace RPGFramework.Field
             m_Camera = GetComponent<CinemachineCamera>();
         }
 
-        internal void Follow(Transform player)
+        internal void Follow(Transform focus)
         {
-            m_Camera.Follow = player;
+            m_Camera.Follow = focus;
         }
     }
 }

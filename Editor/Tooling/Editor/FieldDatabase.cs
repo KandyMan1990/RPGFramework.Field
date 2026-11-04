@@ -26,6 +26,12 @@ namespace RPGFramework.Field.Editor
             NoTile
         }
 
+        private static readonly FieldScriptOpCode[] m_Scrolls =
+        {
+            FieldScriptOpCode.ScrollScreenToPosition,
+            FieldScriptOpCode.ScrollScreenToEntity
+        };
+
         private static readonly FieldScriptOpCode[] m_MovesToAPoint =
         {
             FieldScriptOpCode.MoveEntityAndWait,
@@ -231,6 +237,7 @@ namespace RPGFramework.Field.Editor
 
                 ValidateTileField(prefab, fieldEntities, problems);
                 ValidateCamera(prefab, problems);
+                ValidateScrolls(prefab, fieldEntities, problems);
 
                 List<FieldEntityRecord> fieldEntityRecords = fieldEntities.Entities;
 
@@ -816,6 +823,49 @@ namespace RPGFramework.Field.Editor
             }
         }
 
+        /// <summary>
+        /// A scroll moves what a follow camera follows; a field whose camera does not follow shows what it shows,
+        /// and a scroll there would do nothing.
+        /// </summary>
+        private static void ValidateScrolls(GameObject prefab, FieldEntities fieldEntities, List<string> problems)
+        {
+            bool                    cameraFollows = prefab.GetComponentInChildren<FollowPlayer>(true) != null;
+            List<FieldEntityRecord> records       = fieldEntities.Entities;
+
+            for (int i = 0; i < records.Count; i++)
+            {
+                FieldEntityRecord record = records[i];
+
+                for (int j = 0; j < record.Scripts.Count; j++)
+                {
+                    FieldScriptRecord script = record.Scripts[j];
+
+                    string   scriptDescription = $"{prefab.name} / '{record.Name}' script [{j}] ({script.Type})";
+                    string[] lines             = (script.Text ?? string.Empty).Split('\n');
+
+                    ValidateScrollLines(cameraFollows, scriptDescription, lines, problems);
+                }
+            }
+        }
+
+        internal static void ValidateScrollLines(bool cameraFollows, string scriptDescription, string[] lines, List<string> problems)
+        {
+            if (cameraFollows)
+            {
+                return;
+            }
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string name = FieldScriptLine.Split(lines[i])[0];
+
+                if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && Array.IndexOf(m_Scrolls, opCode.OpCode) >= 0)
+                {
+                    problems.Add($"{scriptDescription} uses {name}, but the field's camera does not follow, so there is nothing to scroll. Give the field a follow camera from GameObject > RPG Framework > Field > Camera");
+                }
+            }
+        }
+
         private static void ValidateCameraBounds(GameObject field, CinemachineCamera camera, Component bounds, bool isTrigger, List<string> problems)
         {
             if (bounds == null)
@@ -903,7 +953,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsBody)
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !(opCode.NeedsBody || opCode.TargetsBody))
                 {
                     continue;
                 }
@@ -925,7 +975,7 @@ namespace RPGFramework.Field.Editor
                     }
                     else if (!withBodies.Contains(targetEntityId))
                     {
-                        problems.Add($"{scriptDescription} uses {parts[0]} toward entity [{targetEntityId}], which has no body to face or walk up to. Give it one in the Field Designer");
+                        problems.Add($"{scriptDescription} uses {parts[0]} toward entity [{targetEntityId}], which has no body to face, walk up to or scroll to. Give it one in the Field Designer");
                     }
                 }
             }

@@ -42,6 +42,9 @@ namespace RPGFramework.Field
         internal Func<bool>                                       IsScreenFading;
         internal event Action<Color, bool, float>                 RequestScreenColour;
         internal Func<bool>                                       IsScreenColourFading;
+        internal event Action<Vector3, float, Easing>             RequestScrollScreenToPosition;
+        internal event Action<int, float, Easing>                 RequestScrollScreenToEntity;
+        internal Func<bool>                                       IsScreenScrolling;
         internal event Action<int, float>                         RequestSetInteractionRange;
         internal event Action<bool>                               RequestInputLock;
         internal event Action<int, Vector3>                       RequestSetEntityPosition;
@@ -425,10 +428,10 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.FadeScreenWait, FadeScreenAndWaitOpcodeHandler },
                        { FieldScriptOpCode.WaitForFade, WaitForFadeOpcodeHandler },
                        // { FieldScriptOpCode.ShakeScreen, ShakeScreenOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollScreenToPosition, ScrollScreenToPositionOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
+                       { FieldScriptOpCode.ScrollScreenToPosition, ScrollScreenToPositionOpcodeHandler },
+                       { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
                        // { FieldScriptOpCode.ScrollToPartyMember, ScrollToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForScrolling, WaitForScrollingOpcodeHandler },
+                       { FieldScriptOpCode.WaitForScrolling, WaitForScrollingOpcodeHandler },
                        // { FieldScriptOpCode.SetCamera, SetCameraOpcodeHandler },
 
                        // Audio
@@ -2131,13 +2134,13 @@ namespace RPGFramework.Field
         /// </summary>
         private void SetEntityRotationOverTimeOpcodeHandler(ScriptExecutionContext ctx)
         {
-            SequentialSources     sources      = default;
-            float                 x            = ReadArgumentFloat(ctx, ref sources);
-            float                 y            = ReadArgumentFloat(ctx, ref sources);
-            float                 z            = ReadArgumentFloat(ctx, ref sources);
-            RotationDirection     direction    = (RotationDirection)ReadArgumentByte(ctx, ref sources);
-            float                 duration     = ReadArgumentFloat(ctx, ref sources);
-            RotationInterpolation rotationType = (RotationInterpolation)ReadArgumentByte(ctx, ref sources);
+            SequentialSources sources      = default;
+            float             x            = ReadArgumentFloat(ctx, ref sources);
+            float             y            = ReadArgumentFloat(ctx, ref sources);
+            float             z            = ReadArgumentFloat(ctx, ref sources);
+            RotationDirection direction    = (RotationDirection)ReadArgumentByte(ctx, ref sources);
+            float             duration     = ReadArgumentFloat(ctx, ref sources);
+            Easing            rotationType = (Easing)ReadArgumentByte(ctx, ref sources);
 
             SetEntityRotationAsyncArgs args = new SetEntityRotationAsyncArgs(Quaternion.Euler(x, y, z), direction, duration, rotationType);
 
@@ -2379,6 +2382,42 @@ namespace RPGFramework.Field
         private void WaitForFadeOpcodeHandler(ScriptExecutionContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsScreenFading()));
+        }
+
+        /// <summary>
+        /// Move the view onto a point, where it stays until another scroll.
+        /// </summary>
+        private void ScrollScreenToPositionOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources = default;
+            float             x       = ReadArgumentFloat(ctx, ref sources);
+            float             y       = ReadArgumentFloat(ctx, ref sources);
+            float             z       = ReadArgumentFloat(ctx, ref sources);
+            float             seconds = ReadArgumentFloat(ctx, ref sources);
+            Easing            easing  = (Easing)ReadArgumentByte(ctx, ref sources);
+
+            RequestScrollScreenToPosition?.Invoke(new Vector3(x, y, z), seconds, easing);
+        }
+
+        /// <summary>
+        /// Move the view onto an entity, and follow it; onto the player, the view follows the player again.
+        /// </summary>
+        private void ScrollScreenToEntityOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            SequentialSources sources        = default;
+            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
+            float             seconds        = ReadArgumentFloat(ctx, ref sources);
+            Easing            easing         = (Easing)ReadArgumentByte(ctx, ref sources);
+
+            RequestScrollScreenToEntity?.Invoke(targetEntityId, seconds, easing);
+        }
+
+        /// <summary>
+        /// Wait until the view has arrived where a script scrolled it.
+        /// </summary>
+        private void WaitForScrollingOpcodeHandler(ScriptExecutionContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsScreenScrolling()));
         }
 
         /// <summary>

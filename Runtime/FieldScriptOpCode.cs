@@ -1062,7 +1062,7 @@ namespace RPGFramework.Field
         [Argument(2, "z",            ArgumentType.Float)]
         [Argument(3, "direction",    ArgumentType.Byte, EnumType = typeof(RotationDirection),     Description = "which way round it turns")]
         [Argument(4, "duration",     ArgumentType.Float)]
-        [Argument(5, "rotationType", ArgumentType.Byte, EnumType = typeof(RotationInterpolation), Description = "whether it eases in and out")]
+        [Argument(5, "rotationType", ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
         SetEntityRotationOverTime = 0x0522,
 
         [FieldOpCode("SET_DIRECTION_TO_FACE_ENTITY", ArgumentLayout.Sequential, Summary = "Face this entity towards another", NeedsBody = true)]
@@ -1207,12 +1207,28 @@ namespace RPGFramework.Field
         [FieldOpCode("WAIT_FOR_FADE", ArgumentLayout.Sequential, Summary = "Wait until the screen has faded out or back in", StopsInit = true)]
         WaitForFade = 0x0702,
 
-        ShakeScreen            = 0x0703,
+        ShakeScreen = 0x0703,
+
+        [FieldOpCode("SCROLL_SCREEN_TO_POSITION", ArgumentLayout.Sequential, Summary = "Move the view onto a point, where it stays until another scroll; only a camera that follows scrolls")]
+        [Argument(0, "x",       ArgumentType.Float)]
+        [Argument(1, "y",       ArgumentType.Float)]
+        [Argument(2, "z",       ArgumentType.Float)]
+        [Argument(3, "seconds", ArgumentType.Float, Description = "how long the scroll takes; 0 moves the view at once")]
+        [Argument(4, "easing",  ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
         ScrollScreenToPosition = 0x0704,
-        ScrollScreenToEntity   = 0x0705,
-        ScrollToPartyMember    = 0x0706,
-        WaitForScrolling       = 0x0707,
-        SetCamera              = 0x0708, // byte cameraId - which of the field's cameras to look through
+
+        [FieldOpCode("SCROLL_SCREEN_TO_ENTITY", ArgumentLayout.Sequential, Summary = "Move the view onto an entity and follow it; onto the player, the view follows the player again", TargetsBody = true)]
+        [Argument(0, "targetEntityId", ArgumentType.EntityId)]
+        [Argument(1, "seconds",        ArgumentType.Float, Description = "how long the scroll takes; 0 moves the view at once")]
+        [Argument(2, "easing",         ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        ScrollScreenToEntity = 0x0705,
+
+        ScrollToPartyMember = 0x0706,
+
+        [FieldOpCode("WAIT_FOR_SCROLLING", ArgumentLayout.Sequential, Summary = "Wait until the view has arrived where a script scrolled it", StopsInit = true)]
+        WaitForScrolling = 0x0707,
+
+        SetCamera = 0x0708, // byte cameraId - which of the field's cameras to look through
 
         // Audio (0x0800)
 

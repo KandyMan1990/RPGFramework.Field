@@ -81,7 +81,7 @@ namespace RPGFramework.Field
             m_Turn.Elapsed += deltaTime;
 
             float t = math.clamp(m_Turn.Elapsed / m_Turn.Duration, 0f, 1f);
-            t = RotationUtility.ApplyInterpolation(t, m_Turn.Interpolation);
+            t = EasingCurve.Apply(t, m_Turn.Interpolation);
 
             m_Facing = DirectionOf(math.lerp(m_Turn.StartAngle, m_Turn.TargetAngle, t));
 

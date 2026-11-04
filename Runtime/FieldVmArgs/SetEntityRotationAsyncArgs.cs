@@ -9,20 +9,14 @@ namespace RPGFramework.Field.FieldVmArgs
         Closest
     }
 
-    internal enum RotationInterpolation
-    {
-        Linear,
-        Smooth
-    }
-
     internal readonly struct SetEntityRotationAsyncArgs
     {
-        internal readonly Quaternion            Rotation;
-        internal readonly RotationDirection     RotationDirection;
-        internal readonly float                 Duration;
-        internal readonly RotationInterpolation RotationType;
+        internal readonly Quaternion        Rotation;
+        internal readonly RotationDirection RotationDirection;
+        internal readonly float             Duration;
+        internal readonly Easing            RotationType;
 
-        internal SetEntityRotationAsyncArgs(Quaternion rotation, RotationDirection rotationDirection, float duration, RotationInterpolation rotationType)
+        internal SetEntityRotationAsyncArgs(Quaternion rotation, RotationDirection rotationDirection, float duration, Easing rotationType)
         {
             Rotation          = rotation;
             RotationDirection = rotationDirection;

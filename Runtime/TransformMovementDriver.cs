@@ -212,7 +212,7 @@ namespace RPGFramework.Field
             m_RotationState.Elapsed += deltaTime;
 
             float t = math.clamp(m_RotationState.Elapsed / m_RotationState.Duration, 0f, 1f);
-            t = RotationUtility.ApplyInterpolation(t, m_RotationState.Interpolation);
+            t = EasingCurve.Apply(t, m_RotationState.Interpolation);
 
             m_Transform.rotation = Quaternion.Slerp(m_RotationState.Start, m_RotationState.Target, t);
 

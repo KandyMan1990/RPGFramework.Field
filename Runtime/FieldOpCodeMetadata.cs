@@ -215,6 +215,12 @@ namespace RPGFramework.Field
         public bool NeedsBody { get; set; }
 
         /// <summary>
+        /// True when the entity the opcode names, rather than its own, must be in the scene — a scroll's view moving
+        /// onto it. Export refuses one naming an entity with no body.
+        /// </summary>
+        public bool TargetsBody { get; set; }
+
+        /// <summary>
         /// True when the opcode drives the entity's animation. The Animator belongs to the visuals a game supplies,
         /// not to the body the framework builds, so export refuses one of these on an entity whose visuals have none.
         /// </summary>
