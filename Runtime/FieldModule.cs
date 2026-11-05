@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -313,7 +313,7 @@ namespace RPGFramework.Field
             m_Suspended    = false;
         }
 
-        private void RequestMenuModule(byte menuId)
+        private void RequestMenuModule(ulong menuId)
         {
             MenuArgs args = new MenuArgs(menuId);
             m_MenuArgsStore.Set(args);
@@ -1398,9 +1398,7 @@ namespace RPGFramework.Field
                 return;
             }
 
-            byte type = (byte)MenuType.Party;
-
-            RequestMenuModule(type);
+            RequestMenuModule(MenuIds.Party);
         }
 
         private void StoreToTempMemory()
@@ -1836,7 +1834,7 @@ namespace RPGFramework.Field
 
         private void OnRequestOpenSaveMenu()
         {
-            RequestMenuModule((byte)MenuType.Save);
+            RequestMenuModule(MenuIds.Save);
         }
 
         private void OnRequestCreateDialogueWindow(DialogueWindowArgs args)
