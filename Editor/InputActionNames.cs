@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine.InputSystem;
 
 namespace RPGFramework.Field.Editor
@@ -10,13 +11,14 @@ namespace RPGFramework.Field.Editor
     internal static class InputActionNames
     {
         private const string UI_MAP = "UI";
+        private const string PROJECT_WIDE_ACTIONS = "com.unity.input.settings.actions";
 
         internal static List<string> Gather()
         {
-            List<string>     names   = new List<string>();
-            InputActionAsset actions = InputSystem.actions;
+            List<string> names = new List<string>();
 
-            if (actions == null)
+            // The project's setting, where the Input System finds them in the editor.
+            if (!EditorBuildSettings.TryGetConfigObject(PROJECT_WIDE_ACTIONS, out InputActionAsset actions) || actions == null)
             {
                 return names;
             }
