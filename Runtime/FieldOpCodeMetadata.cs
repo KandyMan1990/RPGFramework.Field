@@ -99,6 +99,12 @@ namespace RPGFramework.Field
         MusicStateName,
 
         /// <summary>
+        /// A button action in the game's input actions, authored by name and encoded as that name's 64-bit hash, as the
+        /// input adapter routes it.
+        /// </summary>
+        ActionName,
+
+        /// <summary>
         /// A transition in the game's transition database, authored by asset name and encoded as that name's 64-bit
         /// hash. Left empty, or left off the end of a line, it is <c>0</c>: whatever the router chooses.
         /// </summary>

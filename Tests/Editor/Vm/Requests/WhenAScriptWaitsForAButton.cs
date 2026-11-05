@@ -1,6 +1,6 @@
 using System;
 using NUnit.Framework;
-using RPGFramework.Core.Input;
+using RPGFramework.Hashing;
 
 namespace RPGFramework.Field.Tests.Vm.Requests
 {
@@ -10,27 +10,27 @@ namespace RPGFramework.Field.Tests.Vm.Requests
 
         private TestField          m_Field;
         private FieldEntityRuntime m_Entity;
-        private ControlSlot        m_Listened;
+        private ulong              m_Listened;
         private bool               m_Pressed;
 
         [SetUp]
         public void SetUp()
         {
             m_Field    = new TestField();
-            m_Listened = ControlSlot.Select;
+            m_Listened = 0;
             m_Pressed  = false;
 
             m_Field.Vm.StartWaitingForButton = Listen;
 
-            m_Entity = m_Field.Start(new Script().Op(FieldScriptOpCode.WaitForButton).Sources(Source.Immediate, Source.Immediate)
-                                                 .Byte((byte)ControlSlot.Primary).Count(AFTER, 40).Return());
+            m_Entity = m_Field.Start(new Script().Op(FieldScriptOpCode.WaitForButton).ULong(Fnv1a64.Hash("Card"))
+                                                 .Count(AFTER, 40).Return());
             m_Field.Tick(m_Entity, 3);
         }
 
         [Test]
         public void ThenTheFieldListensForThatButton()
         {
-            Assert.AreEqual(ControlSlot.Primary, m_Listened);
+            Assert.AreEqual(Fnv1a64.Hash("Card"), m_Listened);
         }
 
         [Test]
@@ -48,7 +48,7 @@ namespace RPGFramework.Field.Tests.Vm.Requests
             Assert.Greater(m_Field.CountAt(AFTER), 0);
         }
 
-        private Func<bool> Listen(ControlSlot button)
+        private Func<bool> Listen(ulong button)
         {
             m_Listened = button;
 

@@ -141,7 +141,7 @@ namespace RPGFramework.Field.Tests.Catalogue
             return 0;
         }
 
-        private static Func<bool> AlreadyPressed(ControlSlot button)
+        private static Func<bool> AlreadyPressed(ulong button)
         {
             return Pressed;
         }

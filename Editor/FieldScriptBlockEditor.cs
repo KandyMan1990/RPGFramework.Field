@@ -38,6 +38,7 @@ namespace RPGFramework.Field.Editor
         private List<string>     m_FieldNames;
         private AudioNames       m_AudioNames;
         private List<string>     m_TransitionNames;
+        private List<string>     m_ActionNames;
 
         public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, IReadOnlyList<LocalisationSheetAsset> sheets, Action<string> onChanged)
         {
@@ -877,6 +878,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicStateName:
                 case ArgumentType.TransitionName:
                 case ArgumentType.AnimationName:
+                case ArgumentType.ActionName:
                 case ArgumentType.LocalisationKey:
                 {
                     // Offered as a list so a name cannot be mistyped. A field name is checked when the
@@ -1130,6 +1132,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.AnimationName:
                     return m_AnimationNames ??= GatherAnimationNames();
+
+                case ArgumentType.ActionName:
+                    return m_ActionNames ??= InputActionNames.Gather();
 
                 case ArgumentType.LocalisationKey:
                     return m_DialogueKeys ??= GatherDialogueKeys();

@@ -2118,7 +2118,7 @@ namespace RPGFramework.Field
         }
 
         // Above the script's input lock, which would otherwise swallow the press, as it may be locked before or after.
-        private Func<bool> StartWaitingForButton(ControlSlot button)
+        private Func<bool> StartWaitingForButton(ulong button)
         {
             ButtonWaitInputContext wait = new ButtonWaitInputContext(button, OnButtonWaitPressed);
 

@@ -84,7 +84,7 @@ namespace RPGFramework.Field
         internal event Action<int, int>                           RequestShowCountdown;
         internal event Action                                     RequestHideCountdown;
         internal Func<int>                                        GetCountdown;
-        internal Func<ControlSlot, Func<bool>>                    StartWaitingForButton;
+        internal Func<ulong, Func<bool>>                          StartWaitingForButton;
 
         private delegate void OpcodeHandler(ScriptExecutionContext ctx);
 
@@ -2619,12 +2619,11 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Wait until the player presses a button, counting only a press made after the wait began.
+        /// Wait until the player presses a button, named by its action, counting only a press made after the wait began.
         /// </summary>
         private void WaitForButtonOpcodeHandler(ScriptExecutionContext ctx)
         {
-            SequentialSources sources = default;
-            ControlSlot       button  = (ControlSlot)ReadArgumentByte(ctx, ref sources);
+            ulong button = ReadUlong(ctx);
 
             Func<bool> pressed = StartWaitingForButton(button);
 

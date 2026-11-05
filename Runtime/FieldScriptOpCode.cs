@@ -1326,7 +1326,7 @@ namespace RPGFramework.Field
         SetVibration = 0x0B00, // float lowFrequency, float highFrequency, float duration
 
         [FieldOpCode("WAIT_FOR_BUTTON", ArgumentLayout.Sequential, Summary = "Wait until the player presses a button", StopsInit = true)]
-        [Argument(0, "button", ArgumentType.Byte, EnumType = typeof(ControlSlot))]
+        [Argument(0, "action", ArgumentType.ActionName, Description = "a button action in the game's input actions, by name")]
         WaitForButton = 0x0B01,
     }
 

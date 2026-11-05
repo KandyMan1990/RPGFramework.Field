@@ -444,17 +444,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 21dc0e2425a1418cae022ad447c36590, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RPGFramework.Core::RPGFramework.Core.Input.InputAdapter
-  m_Movement: {fileID: 4996514241871901805, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_Primary: {fileID: 6438269785086155836, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_Secondary: {fileID: 280846340149843547, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_Tertiary: {fileID: 4045375870043221942, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_Quaternary: {fileID: -3794013205710138630, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_ShoulderLeft: {fileID: -2418207752841883335, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_ShoulderRight: {fileID: -684755396697000669, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_TriggerLeft: {fileID: 1462124991844667294, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_TriggerRight: {fileID: -8627885734780718877, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_Start: {fileID: 4315006538807585791, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
-  m_Select: {fileID: 3573152381904898886, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
+  m_Actions: {fileID: -944628639613478452, guid: ba2d33101c9d747aa89caeedabf63294, type: 3}
+  m_Map: Player
+  m_Movement: Movement
 --- !u!114 &449652879
 MonoBehaviour:
   m_ObjectHideFlags: 0

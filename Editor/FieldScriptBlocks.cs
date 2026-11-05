@@ -217,6 +217,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicNameHint:
                 case ArgumentType.MusicStateName:
                 case ArgumentType.AnimationName:
+                case ArgumentType.ActionName:
                 case ArgumentType.LocalisationKey:
                 case ArgumentType.SpawnId:
                     return true;
@@ -266,6 +267,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicNameHint:
                 case ArgumentType.MusicStateName:
                 case ArgumentType.AnimationName:
+                case ArgumentType.ActionName:
                 case ArgumentType.LocalisationKey:
                 case ArgumentType.LocalisationKeyList:
                 case ArgumentType.Label:

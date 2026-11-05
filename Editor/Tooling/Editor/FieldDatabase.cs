@@ -193,6 +193,7 @@ namespace RPGFramework.Field.Editor
 
             HashSet<string> localisationKeys = new HashSet<string>(AllLocalisationKeys(), StringComparer.Ordinal);
             AudioNames      audioNames       = AudioNames.FromProject();
+            List<string>    actionNames      = InputActionNames.Gather();
 
             for (int i = 0; i < m_Fields.Count; i++)
             {
@@ -258,7 +259,7 @@ namespace RPGFramework.Field.Editor
                 {
                     FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, dialogueChannels, audioNames, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, dialogueChannels, audioNames, actionNames, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -407,6 +408,7 @@ namespace RPGFramework.Field.Editor
                                     HashSet<int>         cameraIds,
                                     DialogueChannelUse   dialogueChannels,
                                     AudioNames           audioNames,
+                                    List<string>         actionNames,
                                     List<string>         problems)
         {
             string      entityName = $"{prefab.name} / '{fieldEntityRecord.Name}'";
@@ -482,6 +484,7 @@ namespace RPGFramework.Field.Editor
                 ValidateIdTargets(ArgumentType.CameraId, cameraIds, "camera", nameof(FieldCamera), scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
+                ValidateActionNames(actionNames, scriptDescription, lines, problems);
                 ValidateScriptRequests(fieldEntityRecord, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
                 ValidateMapJumps(scriptDescription, lines, problems);
@@ -1053,6 +1056,32 @@ namespace RPGFramework.Field.Editor
                             }
 
                             break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// An action is hashed as written, so a name the project's input actions lack compiles and the wait never ends.
+        /// </summary>
+        internal static void ValidateActionNames(List<string> actionNames, string scriptDescription, string[] lines, List<string> problems)
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = FieldScriptLine.Split(lines[i]);
+
+                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                for (int argument = 0; argument < opCode.Arguments.Count; argument++)
+                {
+                    string name = ArgumentOf(parts, argument);
+
+                    if (opCode.Arguments[argument].Type == ArgumentType.ActionName && !actionNames.Contains(name))
+                    {
+                        problems.Add($"{scriptDescription} uses {parts[0]} on action [{name}], which no map of the project's input actions but the UI map, which the field never sees, has as a button action. Pick one the block editor offers");
                     }
                 }
             }

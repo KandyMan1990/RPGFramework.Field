@@ -24,7 +24,8 @@ on.
    - the **Cinemachine Brain** on the scene's camera, set to cut: it takes its view from each field's own camera
      (Cameras, below);
    - the `UIDocument` dialogue windows are drawn in;
-   - the scene's `InputAdapter`;
+   - the scene's `InputAdapter`, on your gameplay map: the field reads its `Confirm` (talking, and a dialogue window's
+     pages), `Cancel` and `Menu` (the party menu), and moves with the action you name;
    - the game's up direction, `0,1,0` for a 3D field and `0,0,1` for a 2D one;
    - how wide the player's interaction angle is, 180° by default, and how far above or below them someone can be
      talked to, 2 by default.
@@ -285,6 +286,8 @@ What a script can do, by what it acts on. Each block in the palette says what it
   - `SET_CAMERA` looks through another of the field's cameras: at once, or blending over seconds, steadily or easing in
     and out. A blend cut short by a battle comes back finished.
   - Every follow camera follows the same view, so a scroll carries on across a change between them.
+- **Input:** `WAIT_FOR_BUTTON` waits for a press of a button action, picked by name from your input actions,
+  made after the wait began — through a script's input lock, as a game-over screen waits for confirm.
 - **The screen:**
   - Scripts fade the screen out and back in beneath the message windows, so a message can show over a black screen,
     through any transition or the field's own exit and entry transitions, or at once.
@@ -345,7 +348,7 @@ drawn with Unity's built-in sprites:
 
 The characters share an Animator controller whose blend tree reads `FacingX` and `FacingY` and moves a marker to the
 side they face, as a sprite sheet's frames would. Its scene installer binds the `FieldDatabase` the Field Designer's
-export wrote, and its input adapter uses the RPG Framework Starter sample's actions: it runs as the field of the
+export wrote, and its input adapter uses the `Player` map of the RPG Framework Starter sample's actions: it runs as the field of the
 Starter's game, whose README says how to set it up, exporting the fields among the steps.
 
 ---

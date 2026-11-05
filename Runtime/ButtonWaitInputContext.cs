@@ -4,17 +4,17 @@ using RPGFramework.Core.Input;
 namespace RPGFramework.Field
 {
     /// <summary>
-    /// A script waiting for the player to press a button: takes that button once, and lets every other press and the
+    /// A script waiting for the player to press a button, named by its action: takes that action once, and lets every other press and the
     /// move input through to whatever is under it.
     /// </summary>
     internal sealed class ButtonWaitInputContext : IInputContext
     {
-        private readonly ControlSlot                    m_Button;
+        private readonly ulong                          m_Button;
         private readonly Action<ButtonWaitInputContext> m_OnPressed;
 
         private bool m_Pressed;
 
-        internal ButtonWaitInputContext(ControlSlot button, Action<ButtonWaitInputContext> onPressed)
+        internal ButtonWaitInputContext(ulong button, Action<ButtonWaitInputContext> onPressed)
         {
             m_Button    = button;
             m_OnPressed = onPressed;
@@ -23,9 +23,9 @@ namespace RPGFramework.Field
 
         internal bool Pressed => m_Pressed;
 
-        bool IInputContext.Handle(ControlSlot slot)
+        bool IInputContext.Handle(ulong action)
         {
-            if (m_Pressed || slot != m_Button)
+            if (m_Pressed || action != m_Button)
             {
                 return false;
             }

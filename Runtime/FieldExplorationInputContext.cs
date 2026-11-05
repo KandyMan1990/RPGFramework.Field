@@ -16,23 +16,20 @@ namespace RPGFramework.Field
 
         bool IInputContext.TakesMovement => true;
 
-        bool IInputContext.Handle(ControlSlot slot)
+        bool IInputContext.Handle(ulong action)
         {
-            switch (slot)
+            if (action == CoreActions.Confirm)
             {
-                case ControlSlot.Primary:
-                    FieldInteractionTrigger triggerEntity = m_GetBestInteractionTrigger();
+                FieldInteractionTrigger triggerEntity = m_GetBestInteractionTrigger();
 
-                    if (triggerEntity != null)
-                    {
-                        triggerEntity.TryInteract();
-                    }
-
-                    break;
-                case ControlSlot.Tertiary:
-                    m_OpenConfigMenu();
-
-                    break;
+                if (triggerEntity != null)
+                {
+                    triggerEntity.TryInteract();
+                }
+            }
+            else if (action == FieldActions.Menu)
+            {
+                m_OpenConfigMenu();
             }
 
             return true;
