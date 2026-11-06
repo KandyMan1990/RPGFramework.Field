@@ -44,7 +44,7 @@ namespace RPGFramework.Field
         private readonly IInputRouter               m_InputRouter;
         private readonly IMusicPlayer               m_MusicPlayer;
         private readonly ISfxPlayer                 m_SfxPlayer;
-        private readonly IAudioIntentPlayer         m_AudioIntentPlayer;
+        private readonly ISystemSoundConfig         m_SystemSounds;
         private readonly IFieldDatabase             m_FieldDatabase;
         private readonly IFieldPresentation         m_FieldPresentation;
         private readonly ILocalisationService       m_LocalisationService;
@@ -116,7 +116,7 @@ namespace RPGFramework.Field
                              IInputRouter              inputRouter,
                              IMusicPlayer              musicPlayer,
                              ISfxPlayer                sfxPlayer,
-                             IAudioIntentPlayer        audioIntentPlayer,
+                             ISystemSoundConfig        systemSounds,
                              IFieldDatabase            fieldDatabase,
                              IFieldPresentation        fieldPresentation,
                              ILocalisationService      localisationService,
@@ -148,7 +148,7 @@ namespace RPGFramework.Field
             m_InputRouter              = inputRouter;
             m_MusicPlayer              = musicPlayer;
             m_SfxPlayer                = sfxPlayer;
-            m_AudioIntentPlayer        = audioIntentPlayer;
+            m_SystemSounds             = systemSounds;
             m_FieldDatabase            = fieldDatabase;
             m_FieldPresentation        = fieldPresentation;
             m_LocalisationService      = localisationService;
@@ -1918,7 +1918,7 @@ namespace RPGFramework.Field
                 dialogues[i] = m_LocalisationService.Get(question.AnswerIds[i - 1]);
             }
 
-            ChoiceDialogueFlow flow    = new ChoiceDialogueFlow(m_AudioIntentPlayer, AudioContext.Field, question.StartingAnswer, question.CancelAnswer);
+            ChoiceDialogueFlow flow    = new ChoiceDialogueFlow(m_SfxPlayer, m_SystemSounds, question.StartingAnswer, question.CancelAnswer);
             Task               running = RunDialogueAsync(question.Channel, window, flow, dialogues, true, storeChoice);
 
             m_DialogueChannels[question.Channel].Running = running;
