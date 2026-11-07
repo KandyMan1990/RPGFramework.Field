@@ -28,7 +28,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }

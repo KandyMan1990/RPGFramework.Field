@@ -50,6 +50,9 @@ namespace RPGFramework.Field.Editor
         [SerializeField]
         private ulong m_ExportedLayoutHash;
 
+        [SerializeField]
+        private ulong m_ExportedOpCodeHash;
+
         internal FieldDatabase()
         {
             m_AssetBundlesPath = Path.Combine(Application.streamingAssetsPath, "Field");
@@ -61,6 +64,9 @@ namespace RPGFramework.Field.Editor
         /// <see cref="FieldExport.LayoutHash" /> of the variable map the fields were last exported against.
         /// </summary>
         internal ulong ExportedLayoutHash => m_ExportedLayoutHash;
+
+        /// <summary><see cref="FieldExport.OpCodeHash" /> of the opcodes the fields were last exported with.</summary>
+        internal ulong ExportedOpCodeHash => m_ExportedOpCodeHash;
 
         public void BuildScriptFile(string path, string filename, string namespaceForScript)
         {
@@ -182,7 +188,7 @@ namespace RPGFramework.Field.Editor
             List<string> problems = new List<string>();
 
             // Everything the block editor and compiler know about an opcode comes from these attributes.
-            string[] opCodeProblems = FieldOpCodeCatalogue.Validate();
+            string[] opCodeProblems = FieldOpCodeCatalogue.Project.Validate();
 
             for (int i = 0; i < opCodeProblems.Length; i++)
             {
@@ -569,7 +575,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }
@@ -759,7 +765,7 @@ namespace RPGFramework.Field.Editor
             {
                 string[] parts = FieldScriptLine.Split(lines[i]);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) ||
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) ||
                     Array.IndexOf(m_MovesToAPoint, opCode.OpCode) < 0                  || parts.Length < 4                      ||
                     !TryParseFloat(parts[1], out float x)                              || !TryParseFloat(parts[2], out float y) ||
                     !TryParseFloat(parts[3], out float z))
@@ -872,7 +878,7 @@ namespace RPGFramework.Field.Editor
             {
                 string name = FieldScriptLine.Split(lines[i])[0];
 
-                if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && Array.IndexOf(m_Scrolls, opCode.OpCode) >= 0)
+                if (FieldOpCodeCatalogue.Project.TryGet(name, out FieldOpCodeInfo opCode) && Array.IndexOf(m_Scrolls, opCode.OpCode) >= 0)
                 {
                     problems.Add($"{scriptDescription} uses {name}, but the field's camera does not follow, so there is nothing to scroll. Give the field a follow camera from GameObject > RPG Framework > Field > Camera");
                 }
@@ -936,7 +942,7 @@ namespace RPGFramework.Field.Editor
             {
                 string[] parts = FieldScriptLine.Split(lines[i]);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }
@@ -967,7 +973,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !(opCode.NeedsBody || opCode.TargetsBody))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) || !(opCode.NeedsBody || opCode.TargetsBody))
                 {
                     continue;
                 }
@@ -1006,7 +1012,7 @@ namespace RPGFramework.Field.Editor
             {
                 string[] parts = FieldScriptLine.Split(lines[i]);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }
@@ -1070,7 +1076,7 @@ namespace RPGFramework.Field.Editor
             {
                 string[] parts = FieldScriptLine.Split(lines[i]);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }
@@ -1109,7 +1115,7 @@ namespace RPGFramework.Field.Editor
 
                 string name = FieldScriptLine.Split(line)[0];
 
-                if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.NeedsBody)
+                if (FieldOpCodeCatalogue.Project.TryGet(name, out FieldOpCodeInfo opCode) && opCode.NeedsBody)
                 {
                     problems.Add($"{scriptDescription} uses {name}, which acts on the entity's presence in the field, but the entity has no body. Give it one in the Field Designer, or move the opcode to an entity that has one");
                 }
@@ -1136,7 +1142,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsAnimator)
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsAnimator)
                 {
                     continue;
                 }
@@ -1346,7 +1352,7 @@ namespace RPGFramework.Field.Editor
 
                 string name = FieldScriptLine.Split(line)[0];
 
-                if (FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode) && opCode.StopsInit)
+                if (FieldOpCodeCatalogue.Project.TryGet(name, out FieldOpCodeInfo opCode) && opCode.StopsInit)
                 {
                     problems.Add($"{scriptDescription} uses {name}, which waits or gives up the frame. Init runs straight through before the field is shown, so nothing after it would run — move it, and whatever follows it, into a {nameof(FieldScriptType.Default)} script");
                 }
@@ -1368,7 +1374,7 @@ namespace RPGFramework.Field.Editor
 
                 string name = FieldScriptLine.Split(line)[0];
 
-                if (!FieldOpCodeCatalogue.TryGet(name, out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(name, out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }
@@ -1411,7 +1417,7 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            FieldOpCodeCatalogue.TryGet(FieldScriptOpCode.JumpToAnotherMap, out FieldOpCodeInfo jump);
+            FieldOpCodeCatalogue.Project.TryGet(FieldScriptOpCode.JumpToAnotherMap, out FieldOpCodeInfo jump);
 
             if (isGateway)
             {
@@ -1428,7 +1434,7 @@ namespace RPGFramework.Field.Editor
             {
                 string line = lines[i];
 
-                if (FieldOpCodeCatalogue.TryGet(FieldScriptLine.Split(line)[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.JumpToAnotherMap)
+                if (FieldOpCodeCatalogue.Project.TryGet(FieldScriptLine.Split(line)[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.JumpToAnotherMap)
                 {
                     return true;
                 }
@@ -1450,7 +1456,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode) || opCode.OpCode != FieldScriptOpCode.JumpToAnotherMap)
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) || opCode.OpCode != FieldScriptOpCode.JumpToAnotherMap)
                 {
                     continue;
                 }
@@ -1581,7 +1587,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }
@@ -1763,6 +1769,7 @@ namespace RPGFramework.Field.Editor
                 BuildPipeline.BuildAssetBundles(m_AssetBundlesPath, fieldsToBuild, options, EditorUserBuildSettings.activeBuildTarget);
 
                 m_ExportedLayoutHash = FieldExport.LayoutHash(FieldScriptCompiler.LoadVariableMap());
+                m_ExportedOpCodeHash = FieldExport.OpCodeHash(FieldOpCodeCatalogue.Project);
             }
             finally
             {

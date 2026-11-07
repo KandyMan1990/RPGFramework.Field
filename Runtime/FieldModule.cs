@@ -46,6 +46,7 @@ namespace RPGFramework.Field
         private readonly ISfxPlayer                 m_SfxPlayer;
         private readonly ISystemSoundConfig         m_SystemSounds;
         private readonly IFieldDatabase             m_FieldDatabase;
+        private readonly IFieldGameOpCodeDatabase   m_OpCodeDatabase;
         private readonly IFieldPresentation         m_FieldPresentation;
         private readonly ILocalisationService       m_LocalisationService;
         private readonly FieldDialogueChannel[]     m_DialogueChannels;
@@ -110,6 +111,7 @@ namespace RPGFramework.Field
         private bool                                   m_ExitFades;
         private bool                                   m_ClosingAllDialogueWindows;
         private bool                                   m_Revealed;
+        private FieldVM                                m_VM;
 
         internal FieldModule(ICoreModule               coreModule,
                              IDIResolver               diResolver,
@@ -118,6 +120,7 @@ namespace RPGFramework.Field
                              ISfxPlayer                sfxPlayer,
                              ISystemSoundConfig        systemSounds,
                              IFieldDatabase            fieldDatabase,
+                             IFieldGameOpCodeDatabase  opCodeDatabase,
                              IFieldPresentation        fieldPresentation,
                              ILocalisationService      localisationService,
                              IMemoryService            memoryService,
@@ -150,6 +153,7 @@ namespace RPGFramework.Field
             m_SfxPlayer                = sfxPlayer;
             m_SystemSounds             = systemSounds;
             m_FieldDatabase            = fieldDatabase;
+            m_OpCodeDatabase           = opCodeDatabase;
             m_FieldPresentation        = fieldPresentation;
             m_LocalisationService      = localisationService;
             m_MemoryService            = memoryService;
@@ -197,6 +201,10 @@ namespace RPGFramework.Field
             m_InputAdapter = m_FieldModuleMonoBehaviour.InputAdapter;
             m_DIResolver.InjectInto(m_InputAdapter);
 
+#if UNITY_EDITOR
+            FieldGameOpCodeDatabaseCheck.Log(m_OpCodeDatabase);
+#endif
+
             UIDocument uiDoc = m_FieldModuleMonoBehaviour.UIDocument;
             m_RootElement = uiDoc.rootVisualElement.Q("Root");
 
@@ -221,6 +229,7 @@ namespace RPGFramework.Field
             else
             {
                 m_FieldContext = fieldContext;
+                m_VM           = fieldContext.VM;
 
                 if (musicPaused)
                 {
@@ -690,7 +699,8 @@ namespace RPGFramework.Field
                     m_StartingCamera = m_Cameras[i].Id;
                 }
             }
-            m_AnimationNames  = BuildAnimationNames(fieldEntities);
+
+            m_AnimationNames = BuildAnimationNames(fieldEntities);
 
             for (int i = 0; i < fieldEntities.Compiled.Count; i++)
             {
@@ -767,7 +777,11 @@ namespace RPGFramework.Field
             m_SaveEnabledStore.ResetSaveEnabled();
             m_LocationNameStore.SetLocationName(m_FieldDefinition.LocationName);
 
-            FieldVM              vm       = new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes);
+            // One VM for the module's fields, made with the first: a field returned to after a battle brings its own.
+            m_VM ??= new FieldVM(m_MemoryService, m_TempMemoryArgs.TempBytes, m_OpCodeDatabase);
+            m_VM.Reset();
+
+            FieldVM              vm       = m_VM;
             FieldEntityRuntime[] entities = new FieldEntityRuntime[fieldEntities.Compiled.Count];
 
             for (int j = 0; j < fieldEntities.Compiled.Count; j++)
@@ -1176,8 +1190,8 @@ namespace RPGFramework.Field
                     return m_Entities[focus.EntityId].Entity.transform.position;
                 default:
                     return m_PlayerEntityId != FieldEntity.NO_ENTITY
-                        ? m_Entities[m_PlayerEntityId].Entity.transform.position
-                        : focus.Position;
+                               ? m_Entities[m_PlayerEntityId].Entity.transform.position
+                               : focus.Position;
             }
         }
 
@@ -1533,8 +1547,8 @@ namespace RPGFramework.Field
             m_FieldContext.SetLiveCamera(cameraId);
 
             m_CinemachineBrain.DefaultBlend = seconds > 0f
-                ? new CinemachineBlendDefinition(easing == Easing.Smooth ? CinemachineBlendDefinition.Styles.EaseInOut : CinemachineBlendDefinition.Styles.Linear, seconds)
-                : new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.Cut, 0f);
+                                                  ? new CinemachineBlendDefinition(easing == Easing.Smooth ? CinemachineBlendDefinition.Styles.EaseInOut : CinemachineBlendDefinition.Styles.Linear, seconds)
+                                                  : new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.Cut,                                                                            0f);
 
             ShowLiveCamera();
         }

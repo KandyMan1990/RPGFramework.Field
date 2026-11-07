@@ -59,7 +59,7 @@ namespace RPGFramework.Field.Tests.Catalogue
 
         private static FieldOpCodeInfo Described(string scriptName)
         {
-            Assert.IsTrue(FieldOpCodeCatalogue.TryGet(scriptName, out FieldOpCodeInfo info), $"{scriptName} is not in the catalogue");
+            Assert.IsTrue(FieldOpCodeCatalogue.Project.TryGet(scriptName, out FieldOpCodeInfo info), $"{scriptName} is not in the catalogue");
 
             return info;
         }

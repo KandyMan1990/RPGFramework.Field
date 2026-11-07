@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core.Memory;
 
@@ -16,14 +16,15 @@ namespace RPGFramework.Field
 
     /// <summary>
     /// How an opcode's arguments are laid out in bytecode. The enum's argument list says what an author
-    /// supplies; the layout says how those values become bytes.
+    /// supplies; the layout says how those values become bytes. A game's opcodes are <see cref="Sequential" />.
     /// </summary>
-    internal enum ArgumentLayout
+    public enum ArgumentLayout
     {
         /// <summary>
         /// Arguments written in order. Every argument that can come from a variable is preceded by a sources
         /// byte shared with the next such argument, high nibble first, and is written as an immediate at its
-        /// type's width or as a ushort bank address.
+        /// type's width or as a ushort bank address. A <see cref="ArgumentType.Variable" /> takes a nibble the same way,
+        /// always a bank, then its address.
         /// </summary>
         Sequential,
 
@@ -57,7 +58,7 @@ namespace RPGFramework.Field
     /// semantic types encode identically to their underlying width but tell the field editor to show a
     /// dropdown rather than a bare number field.
     /// </summary>
-    internal enum ArgumentType
+    public enum ArgumentType
     {
         Byte,
         UShort,
@@ -187,15 +188,17 @@ namespace RPGFramework.Field
     /// Marks an opcode as one an author can use, and gives the field editor what it needs to offer it:
     /// the scriptName the compiler accepts and a description for the block.<br /><br />
     /// An opcode without this attribute is a declaration of intent — it has no handler and no encoder,
-    /// and the editor will not show it. Left out of a player build: only the editor reads it.
+    /// and the editor will not show it. Left out of a player build: only the editor reads it.<br /><br />
+    /// A game describes its own opcodes with it, on a <c>ushort</c> enum of its own whose values start at <c>0x8000</c>,
+    /// the framework's being below.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field)]
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    internal sealed class FieldOpCodeAttribute : Attribute
+    public sealed class FieldOpCodeAttribute : Attribute
     {
 #if UNITY_EDITOR
-        public string         ScriptName { get; }
-        public ArgumentLayout Layout     { get; }
+        internal string         ScriptName { get; }
+        internal ArgumentLayout Layout     { get; }
 #endif
 
         /// <summary>
@@ -261,14 +264,14 @@ namespace RPGFramework.Field
     /// </summary>
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    internal sealed class ArgumentAttribute : Attribute
+    public sealed class ArgumentAttribute : Attribute
     {
 #if UNITY_EDITOR
-        public int           Index    { get; }
-        public string        Name     { get; }
-        public ArgumentType  Type     { get; }
-        public VariableWidth Width    { get; }
-        public bool          HasWidth { get; }
+        internal int           Index    { get; }
+        internal string        Name     { get; }
+        internal ArgumentType  Type     { get; }
+        internal VariableWidth Width    { get; }
+        internal bool          HasWidth { get; }
 #endif
 
         /// <summary>
@@ -386,6 +389,65 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// What a game's opcode handler reads for an argument of this type through <see cref="FieldScriptContext" />, or
+        /// false for a type it cannot read: a jump, a comparison, a bank layout's value, or one of dialogue's literals.
+        /// A destination's width must be one the context writes.
+        /// </summary>
+        internal static bool TryGetGameRead(ArgumentType type, VariableWidth width, out GameArgumentRead read)
+        {
+            switch (type)
+            {
+                case ArgumentType.Bool:
+                    read = GameArgumentRead.Bool;
+                    return true;
+
+                case ArgumentType.Byte:
+                case ArgumentType.EntityId:
+                case ArgumentType.Priority:
+                case ArgumentType.BlockerId:
+                case ArgumentType.CameraId:
+                    read = GameArgumentRead.Byte;
+                    return true;
+
+                case ArgumentType.UShort:
+                case ArgumentType.EventId:
+                    read = GameArgumentRead.UShort;
+                    return true;
+
+                case ArgumentType.Int:
+                case ArgumentType.Seconds:
+                case ArgumentType.SpawnId:
+                    read = GameArgumentRead.Int;
+                    return true;
+
+                case ArgumentType.Float:
+                    read = GameArgumentRead.Float;
+                    return true;
+
+                case ArgumentType.FieldName:
+                case ArgumentType.MusicName:
+                case ArgumentType.SoundName:
+                case ArgumentType.MusicStateName:
+                case ArgumentType.ActionName:
+                case ArgumentType.TransitionName:
+                case ArgumentType.AnimationName:
+                case ArgumentType.LocalisationKey:
+                    read = GameArgumentRead.Name;
+                    return true;
+
+                case ArgumentType.Variable when width == VariableWidth.Bool  || width == VariableWidth.Byte ||
+                                                width == VariableWidth.UShort || width == VariableWidth.Int  ||
+                                                width == VariableWidth.Float:
+                    read = GameArgumentRead.Destination;
+                    return true;
+
+                default:
+                    read = default;
+                    return false;
+            }
+        }
+
+        /// <summary>
         /// Whether a <see cref="ArgumentType.Value" /> of <paramref name="argumentWidth" /> can read a variable of
         /// <paramref name="variableWidth" />. A bool reads only a bool. An integer reads any integer no wider than
         /// itself, converted as a cast would convert it. A float reads a float or an integer of up to four bytes.
@@ -404,6 +466,20 @@ namespace RPGFramework.Field
         }
 #endif
     }
+
+#if UNITY_EDITOR
+    /// <summary>The read a game's opcode handler makes for one of its arguments, as its attribute describes it.</summary>
+    internal enum GameArgumentRead
+    {
+        Bool,
+        Byte,
+        UShort,
+        Int,
+        Float,
+        Name,
+        Destination
+    }
+#endif
 
     /// <summary>Which battle flags each battle opcode reads, for the editor to offer and the compiler to check.</summary>
     internal static class BattleFlagMasks

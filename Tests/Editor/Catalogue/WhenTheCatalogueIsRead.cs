@@ -9,19 +9,19 @@ namespace RPGFramework.Field.Tests.Catalogue
         [Test]
         public void ThenItsAttributesHaveNoProblems()
         {
-            CollectionAssert.IsEmpty(FieldOpCodeCatalogue.Validate());
+            CollectionAssert.IsEmpty(FieldOpCodeCatalogue.Project.Validate());
         }
 
         [Test]
         public void ThenAnOpcodeIsFoundByItsScriptName()
         {
-            Assert.IsTrue(FieldOpCodeCatalogue.TryGet("ADD_BYTE", out _));
+            Assert.IsTrue(FieldOpCodeCatalogue.Project.TryGet("ADD_BYTE", out _));
         }
 
         [Test]
         public void ThenAnOpcodeDeclaresItsArguments()
         {
-            FieldOpCodeCatalogue.TryGet("ADD_BYTE", out FieldOpCodeInfo info);
+            FieldOpCodeCatalogue.Project.TryGet("ADD_BYTE", out FieldOpCodeInfo info);
 
             Assert.AreEqual(2, info.Arguments.Count);
         }
@@ -29,7 +29,7 @@ namespace RPGFramework.Field.Tests.Catalogue
         [Test]
         public void ThenAnOpcodeHasASummaryForItsBlock()
         {
-            FieldOpCodeCatalogue.TryGet("ADD_BYTE", out FieldOpCodeInfo info);
+            FieldOpCodeCatalogue.Project.TryGet("ADD_BYTE", out FieldOpCodeInfo info);
 
             Assert.IsNotEmpty(info.Summary);
         }

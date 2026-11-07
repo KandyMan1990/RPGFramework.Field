@@ -906,7 +906,7 @@ namespace RPGFramework.Field
         [Argument(0, "enabled", ArgumentType.Bool)]
         MainMenuAccessibility = 0x0309,
 
-        OpenMainMenu     = 0x030A,
+        OpenMainMenu = 0x030A,
 
         [FieldOpCode("OPEN_SAVE_MENU", ArgumentLayout.Sequential, Summary = "Open the save menu, whether or not saving is allowed. The script carries on once it closes", StopsInit = true)]
         OpenSaveMenu = 0x030B,
@@ -959,7 +959,7 @@ namespace RPGFramework.Field
         [Argument(0, "isVisible", ArgumentType.Bool)]
         Visibility = 0x0507,
 
-        SetEntityActive           = 0x0508, // bool active - inactive stops its scripts, hides it and removes its collision
+        SetEntityActive = 0x0508, // bool active - inactive stops its scripts, hides it and removes its collision
 
         [FieldOpCode("SOLIDITY", ArgumentLayout.Sequential, Summary = "Let other entities walk through this one, or block them again", NeedsBody = true)]
         [Argument(0, "isSolid", ArgumentType.Bool)]
@@ -969,7 +969,7 @@ namespace RPGFramework.Field
         [Argument(0, "enabled", ArgumentType.Bool)]
         PushScriptActivation = 0x050A,
 
-        SetCollisionRadius        = 0x050B,
+        SetCollisionRadius = 0x050B,
 
         [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
@@ -1060,7 +1060,7 @@ namespace RPGFramework.Field
         [Argument(0, "x",            ArgumentType.Float)]
         [Argument(1, "y",            ArgumentType.Float)]
         [Argument(2, "z",            ArgumentType.Float)]
-        [Argument(3, "direction",    ArgumentType.Byte, EnumType = typeof(RotationDirection),     Description = "which way round it turns")]
+        [Argument(3, "direction",    ArgumentType.Byte, EnumType = typeof(RotationDirection), Description = "which way round it turns")]
         [Argument(4, "duration",     ArgumentType.Float)]
         [Argument(5, "rotationType", ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
         SetEntityRotationOverTime = 0x0522,
@@ -1069,10 +1069,11 @@ namespace RPGFramework.Field
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         SetDirectionToFaceEntity = 0x0523,
 
-        SetDirectionToPosition           = 0x0524, // float x, float y, float z
-        SetDirectionToPartyMember        = 0x0525, // byte partySlot
-        TurnEntityToAnotherEntity        = 0x0526, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SET_ENTITY_ROTATION_OVER_TIME with smooth)
-        TurnToPartyMember                = 0x0527,
+        SetDirectionToPosition    = 0x0524, // float x, float y, float z
+        SetDirectionToPartyMember = 0x0525, // byte partySlot
+        TurnEntityToAnotherEntity = 0x0526, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SET_ENTITY_ROTATION_OVER_TIME with smooth)
+        TurnToPartyMember         = 0x0527,
+
         [FieldOpCode("SET_BASE_ANIMATION", ArgumentLayout.Sequential, Summary = "Set what this entity does when no script is animating it", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "state", ArgumentType.AnimationName, Description = "the state it rests in; a locomotion blend tree reads the entity's speed from there")]
         SetBaseAnimation = 0x0528,
@@ -1101,32 +1102,32 @@ namespace RPGFramework.Field
 
         [FieldOpCode("PLAY_PART_OF_ANIMATION_AND_WAIT", ArgumentLayout.Sequential, Summary = "Play part of an animation, wait for it, then go back to the base", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
-        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
-        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        [Argument(1, "from",      ArgumentType.Float,         Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",        ArgumentType.Float,         Description = "where to stop, 0 the beginning and 1 the end")]
         PlayPartialAnimationAndWait = 0x052F,
 
         [FieldOpCode("PLAY_PART_OF_ANIMATION_AND_HOLD", ArgumentLayout.Sequential, Summary = "Play part of an animation, wait for it, then hold its last frame", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
-        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
-        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        [Argument(1, "from",      ArgumentType.Float,         Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",        ArgumentType.Float,         Description = "where to stop, 0 the beginning and 1 the end")]
         PlayPartialAnimationAndHold = 0x0530,
 
         [FieldOpCode("PLAY_PART_OF_ANIMATION", ArgumentLayout.Sequential, Summary = "Start part of an animation and carry on; it returns to the base", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
-        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
-        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        [Argument(1, "from",      ArgumentType.Float,         Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",        ArgumentType.Float,         Description = "where to stop, 0 the beginning and 1 the end")]
         PlayPartialAnimationAsync = 0x0531,
 
         [FieldOpCode("PLAY_PART_OF_ANIMATION_HOLDING", ArgumentLayout.Sequential, Summary = "Start part of an animation and carry on; it holds its last frame", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
-        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
-        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        [Argument(1, "from",      ArgumentType.Float,         Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",        ArgumentType.Float,         Description = "where to stop, 0 the beginning and 1 the end")]
         PlayPartialAnimationHoldingAsync = 0x0532,
 
         [FieldOpCode("PLAY_PART_OF_ANIMATION_LOOPING", ArgumentLayout.Sequential, Summary = "Start part of an animation looping and carry on", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
-        [Argument(1, "from", ArgumentType.Float, Description = "where to start, 0 the beginning and 1 the end")]
-        [Argument(2, "to",   ArgumentType.Float, Description = "where to stop, 0 the beginning and 1 the end")]
+        [Argument(1, "from",      ArgumentType.Float,         Description = "where to start, 0 the beginning and 1 the end")]
+        [Argument(2, "to",        ArgumentType.Float,         Description = "where to stop, 0 the beginning and 1 the end")]
         PlayPartialAnimationLooping = 0x0533,
 
         [FieldOpCode("SET_ANIMATION_SPEED", ArgumentLayout.Sequential, Summary = "Scale how fast this entity's animation plays", NeedsBody = true, NeedsAnimator = true)]
@@ -1145,22 +1146,22 @@ namespace RPGFramework.Field
         [FieldOpCode("POP_ANIMATION_STATE", ArgumentLayout.Sequential, Summary = "Put back what PUSH_ANIMATION_STATE remembered", NeedsBody = true, NeedsAnimator = true)]
         PopAnimationState = 0x0538,
 
-        InitialiseHeadFacing             = 0x0539, // begin head tracking on this entity, before any SetHeadFacing*
-        SetHeadFacingEntity              = 0x053A, // int targetEntityId, int frameCount - turn the head only, body unchanged
-        SetHeadFacingPlayer              = 0x053B, // int frameCount - track the player entity with the head only
-        SetHeadFacingLimit               = 0x053C, // byte yawLimit, byte pitchLimit, byte rollLimit - stop the head over-rotating
-        SetHeadPose                      = 0x053D, // byte pose (0 neutral, 1 up, 2 down)
-        StopHeadFacing                   = 0x053E, // return the head to neutral and leave tracking
-        WaitForHeadFacing                = 0x053F, // wait until the head has reached where it was sent
-        SetFootstepSound                 = 0x0540, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
-        SetFootstepsEnabled              = 0x0541, // bool enabled
-        SetEntityShadeLevel              = 0x0542, // float level
-        GetEntityPosition                = 0x0543,
-        GetEntityDirection               = 0x0544,
-        GetPartyMemberPosition           = 0x0545,
-        GetPartyMemberDirection          = 0x0546,
-        CopyEntityInfo                   = 0x0547, // int sourceEntityId - take another entity's position and facing
-        IsEntityTouching                 = 0x0548, // int otherEntityId, ushort destination
+        InitialiseHeadFacing    = 0x0539, // begin head tracking on this entity, before any SetHeadFacing*
+        SetHeadFacingEntity     = 0x053A, // int targetEntityId, int frameCount - turn the head only, body unchanged
+        SetHeadFacingPlayer     = 0x053B, // int frameCount - track the player entity with the head only
+        SetHeadFacingLimit      = 0x053C, // byte yawLimit, byte pitchLimit, byte rollLimit - stop the head over-rotating
+        SetHeadPose             = 0x053D, // byte pose (0 neutral, 1 up, 2 down)
+        StopHeadFacing          = 0x053E, // return the head to neutral and leave tracking
+        WaitForHeadFacing       = 0x053F, // wait until the head has reached where it was sent
+        SetFootstepSound        = 0x0540, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
+        SetFootstepsEnabled     = 0x0541, // bool enabled
+        SetEntityShadeLevel     = 0x0542, // float level
+        GetEntityPosition       = 0x0543,
+        GetEntityDirection      = 0x0544,
+        GetPartyMemberPosition  = 0x0545,
+        GetPartyMemberDirection = 0x0546,
+        CopyEntityInfo          = 0x0547, // int sourceEntityId - take another entity's position and facing
+        IsEntityTouching        = 0x0548, // int otherEntityId, ushort destination
 
         [FieldOpCode("COLLISION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's collision trigger on or off, and with it the entity's enter and leave scripts", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
@@ -1193,14 +1194,14 @@ namespace RPGFramework.Field
 
         // Camera and screen movement (0x0700)
         [FieldOpCode("FADE_SCREEN", ArgumentLayout.Sequential, Summary = "Fade the screen beneath the message windows out or back in, kept until another fade or a colour")]
-        [Argument(0, "fadeOut",    ArgumentType.Bool, Description = "true covers the screen, false uncovers it", Default = "true")]
-        [Argument(1, "atOnce",     ArgumentType.Bool, Description = "true covers or clears it in this frame, with no transition playing")]
+        [Argument(0, "fadeOut",    ArgumentType.Bool,           Description = "true covers the screen, false uncovers it", Default = "true")]
+        [Argument(1, "atOnce",     ArgumentType.Bool,           Description = "true covers or clears it in this frame, with no transition playing")]
         [Argument(2, "transition", ArgumentType.TransitionName, Description = "what covers or uncovers it; empty for this field's exit transition fading out, its entry transition fading in")]
         FadeScreen = 0x0700,
 
         [FieldOpCode("FADE_SCREEN_AND_WAIT", ArgumentLayout.Sequential, Summary = "Fade the screen beneath the message windows out or back in, and wait until it has", StopsInit = true)]
-        [Argument(0, "fadeOut",    ArgumentType.Bool, Description = "true covers the screen, false uncovers it", Default = "true")]
-        [Argument(1, "atOnce",     ArgumentType.Bool, Description = "true covers or clears it in this frame, with no transition playing")]
+        [Argument(0, "fadeOut",    ArgumentType.Bool,           Description = "true covers the screen, false uncovers it", Default = "true")]
+        [Argument(1, "atOnce",     ArgumentType.Bool,           Description = "true covers or clears it in this frame, with no transition playing")]
         [Argument(2, "transition", ArgumentType.TransitionName, Description = "what covers or uncovers it; empty for this field's exit transition fading out, its entry transition fading in")]
         FadeScreenWait = 0x0701,
 
@@ -1214,13 +1215,13 @@ namespace RPGFramework.Field
         [Argument(1, "y",       ArgumentType.Float)]
         [Argument(2, "z",       ArgumentType.Float)]
         [Argument(3, "seconds", ArgumentType.Float, Description = "how long the scroll takes; 0 moves the view at once")]
-        [Argument(4, "easing",  ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        [Argument(4, "easing",  ArgumentType.Byte,  EnumType = typeof(Easing), Description = "whether it eases in and out")]
         ScrollScreenToPosition = 0x0704,
 
         [FieldOpCode("SCROLL_SCREEN_TO_ENTITY", ArgumentLayout.Sequential, Summary = "Move the view onto an entity and follow it; onto the player, the view follows the player again", TargetsBody = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         [Argument(1, "seconds",        ArgumentType.Float, Description = "how long the scroll takes; 0 moves the view at once")]
-        [Argument(2, "easing",         ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        [Argument(2, "easing",         ArgumentType.Byte,  EnumType = typeof(Easing), Description = "whether it eases in and out")]
         ScrollScreenToEntity = 0x0705,
 
         ScrollToPartyMember = 0x0706,
@@ -1230,8 +1231,8 @@ namespace RPGFramework.Field
 
         [FieldOpCode("SET_CAMERA", ArgumentLayout.Sequential, Summary = "Look through another of the field's cameras, cutting to it or blending over seconds")]
         [Argument(0, "camera",  ArgumentType.CameraId, Description = "the id on a FieldCamera in this field")]
-        [Argument(1, "seconds", ArgumentType.Float, Description = "how long the blend takes; 0 cuts at once")]
-        [Argument(2, "easing",  ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether a blend eases in and out")]
+        [Argument(1, "seconds", ArgumentType.Float,    Description = "how long the blend takes; 0 cuts at once")]
+        [Argument(2, "easing",  ArgumentType.Byte,     EnumType = typeof(Easing), Description = "whether a blend eases in and out")]
         SetCamera = 0x0708,
 
         // Audio (0x0800)
@@ -1331,26 +1332,23 @@ namespace RPGFramework.Field
     }
 
     /// <summary>
-    /// Where the engine's opcode range ends and a game's begins.
+    /// Where the framework's opcodes end and a game's begin. A game's opcode enum starts at <see cref="GAME_BASE" />.
     /// </summary>
-    internal static class FieldScriptOpCodeRanges
+    public static class FieldScriptOpCodeRanges
     {
         /// <summary>
-        /// Highest value the framework will ever assign to one of its own opcodes.
-        /// </summary>
-        public const ushort ENGINE_MAX = 0x7FFF;
-
-        /// <summary>
         /// First value available to a game, so the framework's opcodes and a game's can never collide or renumber
-        /// each other. Reserved only: nothing dispatches on it yet, and a game cannot register a handler.
+        /// each other. Every framework opcode is below it.
         /// </summary>
         public const ushort GAME_BASE = 0x8000;
 
-        public static bool IsGameOpCode(ushort opCode)
+#if UNITY_EDITOR
+        internal static bool IsGameOpCode(ushort opCode)
         {
             bool isGameOpCode = opCode >= GAME_BASE;
 
             return isGameOpCode;
         }
+#endif
     }
 }

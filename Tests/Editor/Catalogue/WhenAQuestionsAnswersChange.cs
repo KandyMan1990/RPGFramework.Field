@@ -11,7 +11,7 @@ namespace RPGFramework.Field.Tests.Catalogue
         [SetUp]
         public void SetUp()
         {
-            FieldOpCodeCatalogue.TryGet("ASK_PLAYER_TO_MAKE_A_CHOICE", out FieldOpCodeInfo info);
+            FieldOpCodeCatalogue.Project.TryGet("ASK_PLAYER_TO_MAKE_A_CHOICE", out FieldOpCodeInfo info);
 
             m_Block = FieldScriptBlock.CreateEmpty(info);
             m_Block.SetArgument(3, "2");

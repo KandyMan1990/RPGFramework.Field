@@ -67,7 +67,7 @@ namespace RPGFramework.Field.Tests.Catalogue
 
         private static IEnumerable<string> Runnable()
         {
-            IReadOnlyList<FieldOpCodeInfo> all      = FieldOpCodeCatalogue.All;
+            IReadOnlyList<FieldOpCodeInfo> all      = FieldOpCodeCatalogue.Project.All;
             List<string>                   runnable = new List<string>();
 
             for (int i = 0; i < all.Count; i++)
@@ -83,7 +83,8 @@ namespace RPGFramework.Field.Tests.Catalogue
 
         private static bool IsRunnable(FieldOpCodeInfo info)
         {
-            if (info.Layout != ArgumentLayout.Sequential)
+            // A game's opcodes run through the handlers it adds, which a test of the framework's cannot know.
+            if (info.Layout != ArgumentLayout.Sequential || info.IsGame)
             {
                 return false;
             }
@@ -108,7 +109,7 @@ namespace RPGFramework.Field.Tests.Catalogue
 
         private static string NewLine(string scriptName)
         {
-            FieldOpCodeCatalogue.TryGet(scriptName, out FieldOpCodeInfo info);
+            FieldOpCodeCatalogue.Project.TryGet(scriptName, out FieldOpCodeInfo info);
 
             FieldScriptBlock block = FieldScriptBlock.CreateEmpty(info);
             block.PickFirstChoices(new OneChoiceEach());

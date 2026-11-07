@@ -14,10 +14,15 @@ namespace RPGFramework.Field.Tests.Vm
         private int m_NextScriptId;
         private int m_NextEntityId;
 
-        internal TestField()
+        internal TestField() : this(new NullFieldGameOpCodeDatabase())
+        {
+        }
+
+        /// <summary>A field whose VM also runs a game's own opcodes.</summary>
+        internal TestField(IFieldGameOpCodeDatabase gameOpCodes)
         {
             Memory = new FakeMemoryService(1024, 256);
-            Vm     = new FieldVM(Memory, TEMP_BYTES);
+            Vm     = new FieldVM(Memory, TEMP_BYTES, gameOpCodes);
 
             m_NextScriptId = 1;
             m_NextEntityId = 100;

@@ -11,7 +11,7 @@ namespace RPGFramework.Field.Tests.Catalogue
         [Test]
         public void ThenItsNamesStayEmpty()
         {
-            FieldOpCodeCatalogue.TryGet("PLAY_MUSIC", out FieldOpCodeInfo info);
+            FieldOpCodeCatalogue.Project.TryGet("PLAY_MUSIC", out FieldOpCodeInfo info);
 
             FieldScriptBlock block = FieldScriptBlock.CreateEmpty(info);
             block.PickFirstChoices(new NothingOffered());

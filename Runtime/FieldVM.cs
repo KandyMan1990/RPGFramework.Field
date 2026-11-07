@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using RPGFramework.Battle.SharedTypes;
 using RPGFramework.Core;
 using RPGFramework.Core.Dialogue;
-using RPGFramework.Core.Input;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Field.BlockState;
@@ -16,104 +15,142 @@ namespace RPGFramework.Field
 {
     internal sealed class FieldVM
     {
-        internal event Action<FieldArgs>                          RequestFieldTransition;
-        internal event Action<ulong, ulong>                       RequestMusic;
-        internal event Action<ulong, ulong, float, float>         RequestMusicCrossfade;
-        internal event Action                                     RequestStopMusic;
-        internal Func<bool>                                       IsMusicPlaying;
-        internal event Action<float, float>                       RequestMusicVolume;
-        internal event Action<float, float, float>                RequestMusicVolumeFrom;
-        internal Func<bool>                                       IsMusicVolumeFading;
-        internal event Action<ulong, float>                       RequestMusicStemState;
-        internal event Action<ulong>                              RequestBattleMusic;
-        internal event Action<ulong>                              RequestSfx;
-        internal event Action<byte>                               RequestReverbPreset;
-        internal event Action<float>                              RequestReverbVolume;
-        internal event Action<FieldEntityRuntime>                 RequestSetPlayerEntity;
-        internal event Action<int, bool>                          RequestSetEntityVisible;
-        internal event Action<int, bool>                          RequestSetEntitySolid;
-        internal event Action<int, bool>                          RequestSetPushScriptActive;
-        internal event Action<bool>                               RequestSetGatewayTriggersActive;
-        internal event Action<int, bool>                          RequestSetInteractionTriggerActive;
-        internal event Action<int, bool>                          RequestSetCollisionTriggerActive;
-        internal event Action<byte, bool>                         RequestSetBlockerActive;
-        internal event Action<bool>                               RequestFieldExitFade;
-        internal event Action<bool, bool, ulong>                  RequestScreenFade;
-        internal Func<bool>                                       IsScreenFading;
-        internal event Action<Color, bool, float>                 RequestScreenColour;
-        internal Func<bool>                                       IsScreenColourFading;
-        internal event Action<Vector3, float, Easing>             RequestScrollScreenToPosition;
-        internal event Action<int, float, Easing>                 RequestScrollScreenToEntity;
-        internal Func<bool>                                       IsScreenScrolling;
-        internal event Action<byte, float, Easing>                RequestSetCamera;
-        internal event Action<int, float>                         RequestSetInteractionRange;
-        internal event Action<bool>                               RequestInputLock;
-        internal event Action<int, Vector3>                       RequestSetEntityPosition;
-        internal event Action<int, Quaternion>                    RequestSetEntityRotation;
-        internal event Action<int, SetEntityRotationAsyncArgs>    RequestSetEntityRotationAsync;
-        internal Func<int, bool>                                  IsEntityRotating;
-        internal event Action<int, int>                           RequestSetEntityToFaceEntity;
-        internal event Action<int, float>                         RequestSetEntityMovementSpeed;
-        internal event Action<int, MoveEntityArgs>                RequestMoveEntity;
-        internal Func<int, bool>                                  IsEntityMoving;
-        internal event Action<int>                                RequestStopMovement;
-        internal event Action<int, ulong>                         RequestSetBaseAnimation;
-        internal event Action<int, PlayAnimationArgs>             RequestPlayAnimation;
-        internal Func<int, bool>                                  IsEntityAnimating;
-        internal event Action<int>                                RequestPushAnimationState;
-        internal event Action<int>                                RequestPopAnimationState;
-        internal event Action<int, float>                         RequestSetAnimationSpeed;
-        internal event Action<int>                                RequestStopAnimation;
-        internal event Action<bool>                               RequestSetMainMenuAccessibility;
-        internal event Action<bool>                               RequestSetSaveEnabled;
-        internal event Action                                     RequestOpenSaveMenu;
-        internal event Action<DialogueWindowArgs>                 RequestCreateDialogueWindow;
-        internal event Action<byte, ulong, bool>                  RequestShowDialogueWindow;
-        internal event Action<byte, ulong, bool>                  RequestShowDialogueWindowNoWait;
-        internal event Action<byte>                               RequestCloseDialogueWindow;
-        internal event Action<byte>                               RequestWaitForDialogueWindow;
-        internal Func<byte, bool>                                 IsDialogueWindowOpen;
-        internal event Action<QuestionArgs, Action<byte>>         RequestAskPlayerToMakeAChoice;
-        internal event Action<byte, DialogueWindowStyle>          RequestSetDialogueWindowStyle;
-        internal event Action<byte, int>                          RequestSetMessageVariable;
-        internal event Action<BattleFlags>                        RequestSetBattleMode;
-        internal event Action<BattleArgs>                         RequestStartBattle;
-        internal Func<BattleCompleteState>                        GetLastBattleResult;
-        internal event Action                                     RequestGameOver;
-        internal event Action<int>                                RequestSetCountdown;
-        internal event Action<int, int>                           RequestShowCountdown;
-        internal event Action                                     RequestHideCountdown;
-        internal Func<int>                                        GetCountdown;
-        internal Func<ulong, Func<bool>>                          StartWaitingForButton;
+        internal event Action<FieldArgs>                       RequestFieldTransition;
+        internal event Action<ulong, ulong>                    RequestMusic;
+        internal event Action<ulong, ulong, float, float>      RequestMusicCrossfade;
+        internal event Action                                  RequestStopMusic;
+        internal Func<bool>                                    IsMusicPlaying;
+        internal event Action<float, float>                    RequestMusicVolume;
+        internal event Action<float, float, float>             RequestMusicVolumeFrom;
+        internal Func<bool>                                    IsMusicVolumeFading;
+        internal event Action<ulong, float>                    RequestMusicStemState;
+        internal event Action<ulong>                           RequestBattleMusic;
+        internal event Action<ulong>                           RequestSfx;
+        internal event Action<byte>                            RequestReverbPreset;
+        internal event Action<float>                           RequestReverbVolume;
+        internal event Action<FieldEntityRuntime>              RequestSetPlayerEntity;
+        internal event Action<int, bool>                       RequestSetEntityVisible;
+        internal event Action<int, bool>                       RequestSetEntitySolid;
+        internal event Action<int, bool>                       RequestSetPushScriptActive;
+        internal event Action<bool>                            RequestSetGatewayTriggersActive;
+        internal event Action<int, bool>                       RequestSetInteractionTriggerActive;
+        internal event Action<int, bool>                       RequestSetCollisionTriggerActive;
+        internal event Action<byte, bool>                      RequestSetBlockerActive;
+        internal event Action<bool>                            RequestFieldExitFade;
+        internal event Action<bool, bool, ulong>               RequestScreenFade;
+        internal Func<bool>                                    IsScreenFading;
+        internal event Action<Color, bool, float>              RequestScreenColour;
+        internal Func<bool>                                    IsScreenColourFading;
+        internal event Action<Vector3, float, Easing>          RequestScrollScreenToPosition;
+        internal event Action<int, float, Easing>              RequestScrollScreenToEntity;
+        internal Func<bool>                                    IsScreenScrolling;
+        internal event Action<byte, float, Easing>             RequestSetCamera;
+        internal event Action<int, float>                      RequestSetInteractionRange;
+        internal event Action<bool>                            RequestInputLock;
+        internal event Action<int, Vector3>                    RequestSetEntityPosition;
+        internal event Action<int, Quaternion>                 RequestSetEntityRotation;
+        internal event Action<int, SetEntityRotationAsyncArgs> RequestSetEntityRotationAsync;
+        internal Func<int, bool>                               IsEntityRotating;
+        internal event Action<int, int>                        RequestSetEntityToFaceEntity;
+        internal event Action<int, float>                      RequestSetEntityMovementSpeed;
+        internal event Action<int, MoveEntityArgs>             RequestMoveEntity;
+        internal Func<int, bool>                               IsEntityMoving;
+        internal event Action<int>                             RequestStopMovement;
+        internal event Action<int, ulong>                      RequestSetBaseAnimation;
+        internal event Action<int, PlayAnimationArgs>          RequestPlayAnimation;
+        internal Func<int, bool>                               IsEntityAnimating;
+        internal event Action<int>                             RequestPushAnimationState;
+        internal event Action<int>                             RequestPopAnimationState;
+        internal event Action<int, float>                      RequestSetAnimationSpeed;
+        internal event Action<int>                             RequestStopAnimation;
+        internal event Action<bool>                            RequestSetMainMenuAccessibility;
+        internal event Action<bool>                            RequestSetSaveEnabled;
+        internal event Action                                  RequestOpenSaveMenu;
+        internal event Action<DialogueWindowArgs>              RequestCreateDialogueWindow;
+        internal event Action<byte, ulong, bool>               RequestShowDialogueWindow;
+        internal event Action<byte, ulong, bool>               RequestShowDialogueWindowNoWait;
+        internal event Action<byte>                            RequestCloseDialogueWindow;
+        internal event Action<byte>                            RequestWaitForDialogueWindow;
+        internal Func<byte, bool>                              IsDialogueWindowOpen;
+        internal event Action<QuestionArgs, Action<byte>>      RequestAskPlayerToMakeAChoice;
+        internal event Action<byte, DialogueWindowStyle>       RequestSetDialogueWindowStyle;
+        internal event Action<byte, int>                       RequestSetMessageVariable;
+        internal event Action<BattleFlags>                     RequestSetBattleMode;
+        internal event Action<BattleArgs>                      RequestStartBattle;
+        internal Func<BattleCompleteState>                     GetLastBattleResult;
+        internal event Action                                  RequestGameOver;
+        internal event Action<int>                             RequestSetCountdown;
+        internal event Action<int, int>                        RequestShowCountdown;
+        internal event Action                                  RequestHideCountdown;
+        internal Func<int>                                     GetCountdown;
+        internal Func<ulong, Func<bool>>                       StartWaitingForButton;
 
-        private delegate void OpcodeHandler(ScriptExecutionContext ctx);
-
-        private readonly Dictionary<SlotKey, ScriptExecutionContext> m_Contexts;
-        private readonly Dictionary<int, FieldEntityRuntime>                               m_Entities;
-        private readonly Dictionary<FieldScriptOpCode, OpcodeHandler>                      m_OpcodeHandlers;
-        private readonly Dictionary<int, byte[]>                                           m_Scripts;
-
-        private readonly IMemoryService m_MemoryService;
-        private readonly int            m_TempBytes;
+        private readonly Dictionary<SlotKey, FieldScriptContext> m_Contexts;
+        private readonly Dictionary<int, FieldEntityRuntime>     m_Entities;
+        private readonly Dictionary<int, byte[]>                 m_Scripts;
+        private readonly FieldOpCodeHandler[]                    m_OpcodeHandlers;
+        private readonly IMemoryService                          m_MemoryService;
+        private readonly int                                     m_TempBytes;
 
         private System.Random m_Random;
 
-        internal FieldVM(IMemoryService memoryService, int tempBytes)
+        internal FieldVM(IMemoryService memoryService, int tempBytes, IFieldGameOpCodeDatabase gameOpCodes)
         {
-            m_Contexts       = new Dictionary<SlotKey, ScriptExecutionContext>();
-            m_Entities       = new Dictionary<int, FieldEntityRuntime>();
-            m_OpcodeHandlers = BuildOpcodeHandlersArray();
-            m_Scripts        = new Dictionary<int, byte[]>();
+            m_Contexts = new Dictionary<SlotKey, FieldScriptContext>();
+            m_Entities = new Dictionary<int, FieldEntityRuntime>();
+            m_Scripts  = new Dictionary<int, byte[]>();
 
-            m_MemoryService = memoryService;
-            m_TempBytes     = tempBytes;
-            m_Random        = new System.Random();
+            m_MemoryService  = memoryService;
+            m_TempBytes      = tempBytes;
+            m_Random         = new System.Random();
+            m_OpcodeHandlers = BuildOpcodeHandlers(gameOpCodes.Handlers);
         }
 
-        // TODO: once op codes are implemented, convert from dictionary to an array
-        private Dictionary<FieldScriptOpCode, OpcodeHandler> BuildOpcodeHandlersArray()
+        /// <summary>
+        /// Drops the field's scripts, its entities and the scripts running on them, as the field is left for another,
+        /// keeping the table of handlers and the random numbers: the next field registers its own into the same VM.
+        /// </summary>
+        internal void Reset()
         {
-            return new Dictionary<FieldScriptOpCode, OpcodeHandler>
+            m_Contexts.Clear();
+            m_Entities.Clear();
+            m_Scripts.Clear();
+        }
+
+        private FieldOpCodeHandler[] BuildOpcodeHandlers(IReadOnlyDictionary<ushort, FieldOpCodeHandler> game)
+        {
+            Dictionary<FieldScriptOpCode, FieldOpCodeHandler> engine = EngineHandlers();
+
+            int length = 0;
+
+            foreach (FieldScriptOpCode opCode in engine.Keys)
+            {
+                length = Math.Max(length, (ushort)opCode + 1);
+            }
+
+            foreach (ushort opCode in game.Keys)
+            {
+                length = Math.Max(length, opCode + 1);
+            }
+
+            FieldOpCodeHandler[] handlers = new FieldOpCodeHandler[length];
+
+            foreach (KeyValuePair<FieldScriptOpCode, FieldOpCodeHandler> handler in engine)
+            {
+                handlers[(ushort)handler.Key] = handler.Value;
+            }
+
+            foreach (KeyValuePair<ushort, FieldOpCodeHandler> handler in game)
+            {
+                handlers[handler.Key] = handler.Value;
+            }
+
+            return handlers;
+        }
+
+        private Dictionary<FieldScriptOpCode, FieldOpCodeHandler> EngineHandlers()
+        {
+            return new Dictionary<FieldScriptOpCode, FieldOpCodeHandler>
                    {
                        // Script flow and control
                        { FieldScriptOpCode.Return, ReturnOpcodeHandler },
@@ -546,7 +583,7 @@ namespace RPGFramework.Field
 
             // A slot outlives the scripts that pass through it, so a context is reused only while it is
             // still running the script the slot currently holds.
-            if (!m_Contexts.TryGetValue(key, out ScriptExecutionContext ctx) || ctx.ScriptId != scriptId)
+            if (!m_Contexts.TryGetValue(key, out FieldScriptContext ctx) || ctx.ScriptId != scriptId)
             {
                 if (!m_Scripts.TryGetValue(scriptId, out byte[] bytecode))
                 {
@@ -554,14 +591,7 @@ namespace RPGFramework.Field
                     return ScriptRunOutcome.Ended;
                 }
 
-                ctx = new ScriptExecutionContext
-                      {
-                          EntityId           = entityId,
-                          Priority           = priority,
-                          ScriptId           = scriptId,
-                          InstructionPointer = 0,
-                          Bytecode           = bytecode
-                      };
+                ctx             = new FieldScriptContext(entityId, priority, scriptId, bytecode, m_MemoryService, m_TempBytes);
                 m_Contexts[key] = ctx;
             }
 
@@ -581,16 +611,26 @@ namespace RPGFramework.Field
 
                 instructionBudget--;
 
-                FieldScriptOpCode opcode = FetchOpcode(ctx);
+                FieldScriptOpCode  opcode        = FetchOpcode(ctx);
+                FieldOpCodeHandler opcodeHandler = m_OpcodeHandlers[(ushort)opcode];
 
-                if (!m_OpcodeHandlers.TryGetValue(opcode, out OpcodeHandler opcodeHandler))
+                if (opcodeHandler == null)
                 {
                     m_Contexts.Remove(key);
                     entity.ClearSlot(priority);
                     return ScriptRunOutcome.Ended;
                 }
 
+                ctx.BeginInstruction((ushort)opcode);
+
                 opcodeHandler(ctx);
+
+#if UNITY_EDITOR
+                if (!ctx.ReadAsDescribed())
+                {
+                    ctx.Block(new WaitUntilBlock(() => false));
+                }
+#endif
 
                 if (opcode == FieldScriptOpCode.Return)
                 {
@@ -606,7 +646,7 @@ namespace RPGFramework.Field
                 }
 
                 // The slot was handed to another script, which runs next on what is left of the budget.
-                if (!m_Contexts.TryGetValue(key, out ScriptExecutionContext current) || current != ctx)
+                if (!m_Contexts.TryGetValue(key, out FieldScriptContext current) || current != ctx)
                 {
                     return ScriptRunOutcome.Ended;
                 }
@@ -620,376 +660,38 @@ namespace RPGFramework.Field
             return ScriptRunOutcome.Waiting;
         }
 
-        private static FieldScriptOpCode FetchOpcode(ScriptExecutionContext ctx)
+        private static FieldScriptOpCode FetchOpcode(FieldScriptContext ctx)
         {
-            FieldScriptOpCode opcode = (FieldScriptOpCode)ReadUshort(ctx);
+            FieldScriptOpCode opcode = (FieldScriptOpCode)ctx.NextUshort();
 
             return opcode;
-        }
-
-        // Argument sources are packed two to a byte: the high nibble selects where the first argument
-        // (the destination, for anything that writes) comes from, the low nibble the second.
-        //
-        //   0 = immediate, the value follows inline in the bytecode
-        //   1 = Persistent bank  2 = Session bank      3 = Temp
-        //
-        // Bank addresses are ushort, matching IMemoryService, so a script can reach any variable the
-        // variable map declares.
-        private const byte ARGUMENT_IMMEDIATE = 0;
-
-        private static byte GetFirstArgumentSource(byte sources)
-        {
-            byte source = (byte)(sources >> 4);
-
-            return source;
-        }
-
-        private static byte GetSecondArgumentSource(byte sources)
-        {
-            byte source = (byte)(sources & 0x0F);
-
-            return source;
-        }
-
-        private static MemoryBank ToMemoryBank(byte source)
-        {
-            if (source == ARGUMENT_IMMEDIATE)
-            {
-                throw new InvalidOperationException($"{nameof(FieldVM)}::{nameof(ToMemoryBank)} Argument source [{source}] is an immediate value, not a bank. A destination argument must name a bank");
-            }
-
-            MemoryBank bank = (MemoryBank)(source - 1);
-
-            return bank;
-        }
-
-        /// <summary>
-        /// Read an 8 bit argument: either an inline literal byte, or a ushort address into a bank.
-        /// </summary>
-        private byte ReadArgumentByte(ScriptExecutionContext ctx, byte source)
-        {
-            if (source == ARGUMENT_IMMEDIATE)
-            {
-                byte immediate = ReadByte(ctx);
-
-                return immediate;
-            }
-
-            ushort address = ReadUshort(ctx);
-            byte   value   = ReadVariableByte(ctx, ToMemoryBank(source), address);
-
-            return value;
-        }
-
-        /// <summary>
-        /// Read a 16 bit argument: either an inline literal ushort, or a ushort address into a bank.
-        /// </summary>
-        private ushort ReadArgumentUshort(ScriptExecutionContext ctx, byte source)
-        {
-            if (source == ARGUMENT_IMMEDIATE)
-            {
-                ushort immediate = ReadUshort(ctx);
-
-                return immediate;
-            }
-
-            ushort address = ReadUshort(ctx);
-            ushort value   = ReadVariableUshort(ctx, ToMemoryBank(source), address);
-
-            return value;
-        }
-
-        /// <summary>
-        /// Read an int argument: either an inline literal int, or a ushort address into a bank.
-        /// </summary>
-        private int ReadArgumentInt(ScriptExecutionContext ctx, byte source)
-        {
-            if (source == ARGUMENT_IMMEDIATE)
-            {
-                int immediate = ReadInt(ctx);
-
-                return immediate;
-            }
-
-            ushort address = ReadUshort(ctx);
-            int    value   = ReadVariableInt(ctx, ToMemoryBank(source), address);
-
-            return value;
-        }
-
-        private float ReadArgumentFloat(ScriptExecutionContext ctx, byte source)
-        {
-            if (source == ARGUMENT_IMMEDIATE)
-            {
-                float immediate = ReadFloat(ctx);
-
-                return immediate;
-            }
-
-            ushort address = ReadUshort(ctx);
-            float  value   = ReadVariableFloat(ctx, ToMemoryBank(source), address);
-
-            return value;
-        }
-
-        private bool ReadArgumentBool(ScriptExecutionContext ctx, byte source)
-        {
-            if (source == ARGUMENT_IMMEDIATE)
-            {
-                bool immediate = ReadBool(ctx);
-
-                return immediate;
-            }
-
-            ushort address = ReadUshort(ctx);
-            bool   value   = ReadVariableBool(ctx, ToMemoryBank(source), address);
-
-            return value;
-        }
-
-        /// <summary>
-        /// The sources of a <see cref="ArgumentLayout.Sequential" /> opcode's arguments. A sources byte precedes
-        /// every pair of arguments that can come from a variable, so the second argument of a pair uses the low
-        /// nibble left over from the first.
-        /// </summary>
-        private struct SequentialSources
-        {
-            internal bool HasPending;
-            internal byte Pending;
-        }
-
-        private static byte NextSource(ScriptExecutionContext ctx, ref SequentialSources sources)
-        {
-            if (sources.HasPending)
-            {
-                sources.HasPending = false;
-
-                return sources.Pending;
-            }
-
-            byte packed = ReadByte(ctx);
-
-            sources.Pending    = GetSecondArgumentSource(packed);
-            sources.HasPending = true;
-
-            byte source = GetFirstArgumentSource(packed);
-
-            return source;
-        }
-
-        private byte ReadArgumentByte(ScriptExecutionContext ctx, ref SequentialSources sources)
-        {
-            byte value = ReadArgumentByte(ctx, NextSource(ctx, ref sources));
-
-            return value;
-        }
-
-        private ushort ReadArgumentUshort(ScriptExecutionContext ctx, ref SequentialSources sources)
-        {
-            ushort value = ReadArgumentUshort(ctx, NextSource(ctx, ref sources));
-
-            return value;
-        }
-
-        private int ReadArgumentInt(ScriptExecutionContext ctx, ref SequentialSources sources)
-        {
-            int value = ReadArgumentInt(ctx, NextSource(ctx, ref sources));
-
-            return value;
-        }
-
-        private float ReadArgumentFloat(ScriptExecutionContext ctx, ref SequentialSources sources)
-        {
-            float value = ReadArgumentFloat(ctx, NextSource(ctx, ref sources));
-
-            return value;
-        }
-
-        private bool ReadArgumentBool(ScriptExecutionContext ctx, ref SequentialSources sources)
-        {
-            bool value = ReadArgumentBool(ctx, NextSource(ctx, ref sources));
-
-            return value;
-        }
-
-        private TempMemory TempOf(ScriptExecutionContext ctx)
-        {
-            // Created on first use: most scripts never touch temp memory.
-            TempMemory temp = ctx.Temp ??= new TempMemory(m_TempBytes);
-
-            return temp;
-        }
-
-        // Temp variables live in the running script's own memory; Persistent and Session in the memory service.
-        private byte ReadVariableByte(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
-        {
-            byte value = bank == MemoryBank.Temp ? TempOf(ctx).ReadByte(address) : m_MemoryService.ReadByte(bank, address);
-
-            return value;
-        }
-
-        private void WriteVariableByte(ScriptExecutionContext ctx, MemoryBank bank, ushort address, byte value)
-        {
-            if (bank == MemoryBank.Temp)
-            {
-                TempOf(ctx).WriteByte(address, value);
-                return;
-            }
-
-            m_MemoryService.WriteByte(bank, address, value);
-        }
-
-        private bool ReadVariableBool(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
-        {
-            bool value = bank == MemoryBank.Temp ? TempOf(ctx).ReadBool(address) : m_MemoryService.ReadBool(bank, address);
-
-            return value;
-        }
-
-        private void WriteVariableBool(ScriptExecutionContext ctx, MemoryBank bank, ushort address, bool value)
-        {
-            if (bank == MemoryBank.Temp)
-            {
-                TempOf(ctx).WriteBool(address, value);
-                return;
-            }
-
-            m_MemoryService.WriteBool(bank, address, value);
-        }
-
-        private ushort ReadVariableUshort(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
-        {
-            ushort value = bank == MemoryBank.Temp ? TempOf(ctx).ReadUshort(address) : m_MemoryService.ReadUshort(bank, address);
-
-            return value;
-        }
-
-        private void WriteVariableUshort(ScriptExecutionContext ctx, MemoryBank bank, ushort address, ushort value)
-        {
-            if (bank == MemoryBank.Temp)
-            {
-                TempOf(ctx).WriteUshort(address, value);
-                return;
-            }
-
-            m_MemoryService.WriteUshort(bank, address, value);
-        }
-
-        private int ReadVariableInt(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
-        {
-            int value = bank == MemoryBank.Temp ? TempOf(ctx).ReadInt(address) : m_MemoryService.ReadInt(bank, address);
-
-            return value;
-        }
-
-        private float ReadVariableFloat(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
-        {
-            float value = bank == MemoryBank.Temp ? TempOf(ctx).ReadFloat(address) : m_MemoryService.ReadFloat(bank, address);
-
-            return value;
-        }
-
-        private void WriteVariableInt(ScriptExecutionContext ctx, MemoryBank bank, ushort address, int value)
-        {
-            if (bank == MemoryBank.Temp)
-            {
-                TempOf(ctx).WriteInt(address, value);
-                return;
-            }
-
-            m_MemoryService.WriteInt(bank, address, value);
-        }
-
-        private void WriteVariableFloat(ScriptExecutionContext ctx, MemoryBank bank, ushort address, float value)
-        {
-            if (bank == MemoryBank.Temp)
-            {
-                TempOf(ctx).WriteFloat(address, value);
-                return;
-            }
-
-            m_MemoryService.WriteFloat(bank, address, value);
-        }
-
-        private ulong ReadVariableUlong(ScriptExecutionContext ctx, MemoryBank bank, ushort address)
-        {
-            ulong value = bank == MemoryBank.Temp ? TempOf(ctx).ReadUlong(address) : m_MemoryService.ReadUlong(bank, address);
-
-            return value;
-        }
-
-        private void WriteVariableUlong(ScriptExecutionContext ctx, MemoryBank bank, ushort address, ulong value)
-        {
-            if (bank == MemoryBank.Temp)
-            {
-                TempOf(ctx).WriteUlong(address, value);
-                return;
-            }
-
-            m_MemoryService.WriteUlong(bank, address, value);
-        }
-
-        // A variable's bits at its width, zero-extended.
-        private ulong ReadVariableBits(ScriptExecutionContext ctx, MemoryBank bank, ushort address, VariableWidth width)
-        {
-            ulong bits = width.GetByteCount() switch
-                         {
-                             1 => ReadVariableByte(ctx, bank, address),
-                             2 => ReadVariableUshort(ctx, bank, address),
-                             4 => (uint)ReadVariableInt(ctx, bank, address),
-                             _ => ReadVariableUlong(ctx, bank, address)
-                         };
-
-            return bits;
-        }
-
-        private void WriteVariableBits(ScriptExecutionContext ctx, MemoryBank bank, ushort address, VariableWidth width, ulong bits)
-        {
-            switch (width.GetByteCount())
-            {
-                case 1:
-                    WriteVariableByte(ctx, bank, address, (byte)bits);
-                    return;
-
-                case 2:
-                    WriteVariableUshort(ctx, bank, address, (ushort)bits);
-                    return;
-
-                case 4:
-                    WriteVariableInt(ctx, bank, address, unchecked((int)bits));
-                    return;
-
-                default:
-                    WriteVariableUlong(ctx, bank, address, bits);
-                    return;
-            }
         }
 
         /// <summary>
         /// Decode an opcode that only names a destination, such as an increment.
         /// </summary>
-        private static void ReadDestination(ScriptExecutionContext ctx, out MemoryBank destinationBank, out ushort destinationAddress)
+        private static void ReadDestination(FieldScriptContext ctx, out MemoryBank destinationBank, out ushort destinationAddress)
         {
-            byte sources = ReadByte(ctx);
+            byte sources = ctx.NextByte();
 
-            destinationBank    = ToMemoryBank(GetFirstArgumentSource(sources));
-            destinationAddress = ReadUshort(ctx);
+            destinationBank    = FieldScriptContext.ToMemoryBank(FieldScriptContext.GetFirstArgumentSource(sources));
+            destinationAddress = ctx.NextUshort();
         }
 
         /// <summary>
         /// Decode a bank-layout destination: the sources byte and the destination's address. The value's source is
         /// the sources byte's low nibble.
         /// </summary>
-        private static void DecodeDestination(ScriptExecutionContext ctx, out MemoryBank bank, out ushort address, out byte valueSource)
+        private static void DecodeDestination(FieldScriptContext ctx, out MemoryBank bank, out ushort address, out byte valueSource)
         {
-            byte sources = ReadByte(ctx);
+            byte sources = ctx.NextByte();
 
-            bank        = ToMemoryBank(GetFirstArgumentSource(sources));
-            address     = ReadUshort(ctx);
-            valueSource = GetSecondArgumentSource(sources);
+            bank        = FieldScriptContext.ToMemoryBank(FieldScriptContext.GetFirstArgumentSource(sources));
+            address     = ctx.NextUshort();
+            valueSource = FieldScriptContext.GetSecondArgumentSource(sources);
         }
 
-        private void ApplyBinary(ScriptExecutionContext ctx, VariableWidth width, Func<ulong, ulong, VariableWidth, ulong> integer, Func<float, float, float> real)
+        private void ApplyBinary(FieldScriptContext ctx, VariableWidth width, Func<ulong, ulong, VariableWidth, ulong> integer, Func<float, float, float> real)
         {
             DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
 
@@ -997,31 +699,31 @@ namespace RPGFramework.Field
             {
                 float value = ReadFloatOperand(ctx, valueSource);
 
-                WriteVariableFloat(ctx, bank, address, real(ReadVariableFloat(ctx, bank, address), value));
+                ctx.WriteVariableFloat(bank, address, real(ctx.ReadVariableFloat(bank, address), value));
                 return;
             }
 
             ulong integerValue = ReadIntegerOperand(ctx, valueSource, width);
-            ulong current      = ReadVariableBits(ctx, bank, address, width);
+            ulong current      = ctx.ReadVariableBits(bank, address, width);
 
-            WriteVariableBits(ctx, bank, address, width, integer(current, integerValue, width));
+            ctx.WriteVariableBits(bank, address, width, integer(current, integerValue, width));
         }
 
-        private void ApplyUnary(ScriptExecutionContext ctx, VariableWidth width, Func<ulong, VariableWidth, ulong> integer)
+        private void ApplyUnary(FieldScriptContext ctx, VariableWidth width, Func<ulong, VariableWidth, ulong> integer)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            ulong current = ReadVariableBits(ctx, bank, address, width);
+            ulong current = ctx.ReadVariableBits(bank, address, width);
 
-            WriteVariableBits(ctx, bank, address, width, integer(current, width));
+            ctx.WriteVariableBits(bank, address, width, integer(current, width));
         }
 
-        private void ChangeBit(ScriptExecutionContext ctx, VariableWidth width, bool set, string handlerName)
+        private void ChangeBit(FieldScriptContext ctx, VariableWidth width, bool set, string handlerName)
         {
             DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte indexSource);
 
             ulong index   = ReadIntegerOperand(ctx, indexSource, VariableWidth.Byte);
-            ulong current = ReadVariableBits(ctx, bank, address, width);
+            ulong current = ctx.ReadVariableBits(bank, address, width);
 
             if (!ScriptArithmetic.TrySetBit(current, index, width, set, out ulong result))
             {
@@ -1029,75 +731,75 @@ namespace RPGFramework.Field
                 return;
             }
 
-            WriteVariableBits(ctx, bank, address, width, result);
+            ctx.WriteVariableBits(bank, address, width, result);
         }
 
         // A bank-layout value is an immediate at the argument's width, or the width of the variable it reads followed
         // by that variable's address. A narrower variable is converted as a cast would convert it.
-        private ulong ReadIntegerOperand(ScriptExecutionContext ctx, byte source, VariableWidth width)
+        private ulong ReadIntegerOperand(FieldScriptContext ctx, byte source, VariableWidth width)
         {
-            if (source == ARGUMENT_IMMEDIATE)
+            if (source == FieldScriptContext.ARGUMENT_IMMEDIATE)
             {
                 ulong immediate = ReadImmediateBits(ctx, width);
 
                 return immediate;
             }
 
-            VariableWidth variableWidth = (VariableWidth)ReadByte(ctx);
-            ushort        address       = ReadUshort(ctx);
+            VariableWidth variableWidth = (VariableWidth)ctx.NextByte();
+            ushort        address       = ctx.NextUshort();
 
-            ulong bits  = ReadVariableBits(ctx, ToMemoryBank(source), address, variableWidth);
+            ulong bits  = ctx.ReadVariableBits(FieldScriptContext.ToMemoryBank(source), address, variableWidth);
             ulong value = ScriptArithmetic.Convert(bits, variableWidth, width);
 
             return value;
         }
 
-        private float ReadFloatOperand(ScriptExecutionContext ctx, byte source)
+        private float ReadFloatOperand(FieldScriptContext ctx, byte source)
         {
-            if (source == ARGUMENT_IMMEDIATE)
+            if (source == FieldScriptContext.ARGUMENT_IMMEDIATE)
             {
-                float immediate = ReadFloat(ctx);
+                float immediate = ctx.NextFloat();
 
                 return immediate;
             }
 
-            VariableWidth variableWidth = (VariableWidth)ReadByte(ctx);
-            MemoryBank    bank          = ToMemoryBank(source);
-            ushort        address       = ReadUshort(ctx);
+            VariableWidth variableWidth = (VariableWidth)ctx.NextByte();
+            MemoryBank    bank          = FieldScriptContext.ToMemoryBank(source);
+            ushort        address       = ctx.NextUshort();
 
             float value = variableWidth == VariableWidth.Float
-                              ? ReadVariableFloat(ctx, bank, address)
-                              : ScriptArithmetic.ToFloat(ReadVariableBits(ctx, bank, address, variableWidth), variableWidth);
+                              ? ctx.ReadVariableFloat(bank, address)
+                              : ScriptArithmetic.ToFloat(ctx.ReadVariableBits(bank, address, variableWidth), variableWidth);
 
             return value;
         }
 
-        private bool ReadBoolOperand(ScriptExecutionContext ctx, byte source)
+        private bool ReadBoolOperand(FieldScriptContext ctx, byte source)
         {
-            if (source == ARGUMENT_IMMEDIATE)
+            if (source == FieldScriptContext.ARGUMENT_IMMEDIATE)
             {
-                bool immediate = ReadBool(ctx);
+                bool immediate = ctx.NextBool();
 
                 return immediate;
             }
 
             // The width byte: a bool only ever reads a bool.
-            ReadByte(ctx);
+            ctx.NextByte();
 
-            ushort address = ReadUshort(ctx);
-            bool   value   = ReadVariableBool(ctx, ToMemoryBank(source), address);
+            ushort address = ctx.NextUshort();
+            bool   value   = ctx.ReadVariableBool(FieldScriptContext.ToMemoryBank(source), address);
 
             return value;
         }
 
-        private static ulong ReadImmediateBits(ScriptExecutionContext ctx, VariableWidth width)
+        private static ulong ReadImmediateBits(FieldScriptContext ctx, VariableWidth width)
         {
             ulong bits = width.GetByteCount() switch
                          {
-                             1 => ReadByte(ctx),
-                             2 => ReadUshort(ctx),
-                             4 => (uint)ReadInt(ctx),
-                             _ => ReadUlong(ctx)
+                             1 => ctx.NextByte(),
+                             2 => ctx.NextUshort(),
+                             4 => (uint)ctx.NextInt(),
+                             _ => ctx.NextUlong()
                          };
 
             return bits;
@@ -1136,7 +838,7 @@ namespace RPGFramework.Field
         /// so it runs again once the channel is free.
         /// </summary>
         /// <returns>True when the channel was busy and the instruction is now waiting.</returns>
-        private bool WaitForDialogueChannel(ScriptExecutionContext ctx, byte channel, int instructionStart)
+        private bool WaitForDialogueChannel(FieldScriptContext ctx, byte channel, int instructionStart)
         {
             if (!IsDialogueWindowOpen(channel))
             {
@@ -1152,13 +854,12 @@ namespace RPGFramework.Field
         /// <summary>
         /// Decode the arguments shared by the three request opcodes and resolve the target entity.
         /// </summary>
-        private bool TryReadScriptRequest(ScriptExecutionContext ctx, out byte targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
+        private bool TryReadScriptRequest(FieldScriptContext ctx, out byte targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
         {
-            SequentialSources sources = default;
-            ushort            targetEventId;
+            ushort targetEventId;
 
-            targetEntityId = ReadArgumentByte(ctx, ref sources);
-            targetEventId  = ReadArgumentUshort(ctx, ref sources);
+            targetEntityId = ctx.ReadByte();
+            targetEventId  = ctx.ReadUShort();
 
             targetScriptId = 0;
             priority       = 0;
@@ -1179,65 +880,8 @@ namespace RPGFramework.Field
             return true;
         }
 
-        private static byte ReadByte(ScriptExecutionContext ctx)
-        {
-            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
-
-            byte value = bytecode[ctx.InstructionPointer];
-            ctx.InstructionPointer += sizeof(byte);
-
-            return value;
-        }
-
-        private static bool ReadBool(ScriptExecutionContext ctx)
-        {
-            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
-
-            byte value = bytecode[ctx.InstructionPointer];
-            ctx.InstructionPointer += sizeof(byte);
-
-            return value != 0;
-        }
-
-        private static ushort ReadUshort(ScriptExecutionContext ctx)
-        {
-            ReadOnlySpan<byte> bytecode = ctx.Bytecode.AsSpan();
-
-            ushort value = (ushort)(bytecode[ctx.InstructionPointer] | bytecode[ctx.InstructionPointer + 1] << 8);
-
-            ctx.InstructionPointer += sizeof(ushort);
-
-            return value;
-        }
-
-        private static int ReadInt(ScriptExecutionContext ctx)
-        {
-            int value = BinaryPrimitives.ReadInt32LittleEndian(ctx.Bytecode.AsSpan(ctx.InstructionPointer));
-
-            ctx.InstructionPointer += sizeof(int);
-
-            return value;
-        }
-
-        private static float ReadFloat(ScriptExecutionContext ctx)
-        {
-            int   bits  = ReadInt(ctx);
-            float value = BitConverter.Int32BitsToSingle(bits);
-
-            return value;
-        }
-
-        private static ulong ReadUlong(ScriptExecutionContext ctx)
-        {
-            ulong value = BinaryPrimitives.ReadUInt64LittleEndian(ctx.Bytecode.AsSpan(ctx.InstructionPointer));
-
-            ctx.InstructionPointer += sizeof(ulong);
-
-            return value;
-        }
-
         // Already satisfied: carry on next frame. Otherwise wait, and the frame the wait ends on is spent too.
-        private static void WaitForRequest(ScriptExecutionContext ctx, Func<bool> isSatisfied)
+        private static void WaitForRequest(FieldScriptContext ctx, Func<bool> isSatisfied)
         {
             if (isSatisfied())
             {
@@ -1251,7 +895,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// End the script. Execute frees the slot once this has run, so there is nothing to do here.
         /// </summary>
-        private static void ReturnOpcodeHandler(ScriptExecutionContext ctx)
+        private static void ReturnOpcodeHandler(FieldScriptContext ctx)
         {
             // noop
         }
@@ -1261,7 +905,7 @@ namespace RPGFramework.Field
         /// another entity ends this script's frame. One on this entity for a more urgent slot takes over
         /// straight away.
         /// </summary>
-        private void RunAnotherEntityScriptUnlessBusyOpcodeHandler(ScriptExecutionContext ctx)
+        private void RunAnotherEntityScriptUnlessBusyOpcodeHandler(FieldScriptContext ctx)
         {
             if (TryReadScriptRequest(ctx, out byte targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
             {
@@ -1279,7 +923,7 @@ namespace RPGFramework.Field
         /// running it — or has already run it to its return, which would otherwise leave this waiting for
         /// good.
         /// </summary>
-        private void RunAnotherEntityScriptWaitUntilStartedOpcodeHandler(ScriptExecutionContext ctx)
+        private void RunAnotherEntityScriptWaitUntilStartedOpcodeHandler(FieldScriptContext ctx)
         {
             if (!TryReadScriptRequest(ctx, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
                 !target.TryRequestScript(targetScriptId, priority))
@@ -1297,7 +941,7 @@ namespace RPGFramework.Field
         /// Request a script once. If the slot is busy, carry on. If it is accepted, wait until the entity is
         /// running something less urgent than it — the requested script has returned.
         /// </summary>
-        private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(ScriptExecutionContext ctx)
+        private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(FieldScriptContext ctx)
         {
             if (!TryReadScriptRequest(ctx, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
                 !target.TryRequestScript(targetScriptId, priority))
@@ -1315,10 +959,9 @@ namespace RPGFramework.Field
         /// Hand this slot over to another script. The script being replaced is the one asking, so unlike
         /// a request from outside this replaces rather than being refused.
         /// </summary>
-        private void ReturnToAnotherScriptOpcodeHandler(ScriptExecutionContext ctx)
+        private void ReturnToAnotherScriptOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources       = default;
-            ushort            targetEventId = ReadArgumentUshort(ctx, ref sources);
+            ushort targetEventId = ctx.ReadUShort();
 
             FieldEntityRuntime entity = m_Entities[ctx.EntityId];
 
@@ -1335,29 +978,29 @@ namespace RPGFramework.Field
         /// <summary>
         /// Move the instruction pointer by a signed offset, counted from the end of this instruction.
         /// </summary>
-        private static void GotoOpcodeHandler(ScriptExecutionContext ctx)
+        private static void GotoOpcodeHandler(FieldScriptContext ctx)
         {
-            int offset = ReadInt(ctx);
+            int offset = ctx.NextInt();
             ctx.InstructionPointer += offset;
         }
 
         /// <summary>
         /// Move the instruction pointer to an absolute position in the script.
         /// </summary>
-        private static void GotoDirectlyOpcodeHandler(ScriptExecutionContext ctx)
+        private static void GotoDirectlyOpcodeHandler(FieldScriptContext ctx)
         {
-            int target = ReadInt(ctx);
+            int target = ctx.NextInt();
             ctx.InstructionPointer = target;
         }
 
         /// <summary>
         /// Compare two values, skipping the IF body when the comparison fails.
         /// </summary>
-        private void CompareOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void CompareOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
-            byte sources = ReadByte(ctx);
-            byte aSource = GetFirstArgumentSource(sources);
-            byte bSource = GetSecondArgumentSource(sources);
+            byte sources = ctx.NextByte();
+            byte aSource = FieldScriptContext.GetFirstArgumentSource(sources);
+            byte bSource = FieldScriptContext.GetSecondArgumentSource(sources);
 
             bool result;
 
@@ -1368,7 +1011,7 @@ namespace RPGFramework.Field
                     bool a = ReadBoolOperand(ctx, aSource);
                     bool b = ReadBoolOperand(ctx, bSource);
 
-                    result = CompareBools(a, b, (ScriptComparison)ReadByte(ctx));
+                    result = CompareBools(a, b, (ScriptComparison)ctx.NextByte());
                     break;
                 }
 
@@ -1377,7 +1020,7 @@ namespace RPGFramework.Field
                     float a = ReadFloatOperand(ctx, aSource);
                     float b = ReadFloatOperand(ctx, bSource);
 
-                    result = CompareFloats(a, b, (ScriptComparison)ReadByte(ctx));
+                    result = CompareFloats(a, b, (ScriptComparison)ctx.NextByte());
                     break;
                 }
 
@@ -1386,12 +1029,12 @@ namespace RPGFramework.Field
                     ulong a = ReadIntegerOperand(ctx, aSource, width);
                     ulong b = ReadIntegerOperand(ctx, bSource, width);
 
-                    result = ScriptArithmetic.Compare(a, b, width, (ScriptComparison)ReadByte(ctx));
+                    result = ScriptArithmetic.Compare(a, b, width, (ScriptComparison)ctx.NextByte());
                     break;
                 }
             }
 
-            int jumpDistance = ReadInt(ctx);
+            int jumpDistance = ctx.NextInt();
 
             if (!result)
             {
@@ -1403,7 +1046,7 @@ namespace RPGFramework.Field
         /// Stop running this script for the rest of the frame; it carries on from the next instruction next
         /// frame.
         /// </summary>
-        private static void YieldOpcodeHandler(ScriptExecutionContext ctx)
+        private static void YieldOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.YieldRequested = true;
         }
@@ -1411,17 +1054,16 @@ namespace RPGFramework.Field
         /// <summary>
         /// Block this script for a number of seconds.
         /// </summary>
-        private void WaitSecondsOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitSecondsOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             seconds = ReadArgumentFloat(ctx, ref sources);
+            float seconds = ctx.ReadFloat();
             ctx.Block(new WaitSecondsBlock(seconds));
         }
 
         /// <summary>
         /// Do nothing.
         /// </summary>
-        private static void DoNothingOpcodeHandler(ScriptExecutionContext ctx)
+        private static void DoNothingOpcodeHandler(FieldScriptContext ctx)
         {
             // noop
         }
@@ -1430,11 +1072,10 @@ namespace RPGFramework.Field
         /// Ask for a transition to another field, entering at one of its spawn points. The script stops here:
         /// nothing after a map jump runs.
         /// </summary>
-        private void JumpToAnotherMapOpcodeHandler(ScriptExecutionContext ctx)
+        private void JumpToAnotherMapOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources       = default;
-            ulong             fieldNameHash = ReadUlong(ctx);
-            int               spawnId       = ReadArgumentInt(ctx, ref sources);
+            ulong fieldNameHash = ctx.ReadName();
+            int   spawnId       = ctx.ReadInt();
 
             FieldArgs args = new FieldArgs(fieldNameHash, spawnId);
             RequestFieldTransition?.Invoke(args);
@@ -1446,10 +1087,9 @@ namespace RPGFramework.Field
         /// Let the player leave the field through its gateways, or stop them: only entities' Gateway scripts
         /// listen. A script's own map jump, and every other collision trigger script, carry on regardless.
         /// </summary>
-        private void GatewayTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        private void GatewayTriggerActivationOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            bool enabled = ctx.ReadBool();
             RequestSetGatewayTriggersActive?.Invoke(enabled);
         }
 
@@ -1457,10 +1097,9 @@ namespace RPGFramework.Field
         /// Set whether leaving for another field covers the screen with this field's exit transition, kept until set
         /// again: a script that has faded the screen itself turns it off.
         /// </summary>
-        private void SetFieldExitFadeOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetFieldExitFadeOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              fades   = ReadArgumentBool(ctx, ref sources);
+            bool fades = ctx.ReadBool();
 
             RequestFieldExitFade?.Invoke(fades);
         }
@@ -1469,10 +1108,9 @@ namespace RPGFramework.Field
         /// Set the battle mode: the flags every random battle is fought with, and whether losing a battle or a countdown
         /// running out ends the game.
         /// </summary>
-        private void SetBattleModeOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetBattleModeOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            ushort            mode    = ReadArgumentUshort(ctx, ref sources);
+            ushort mode = ctx.ReadUShort();
 
             RequestSetBattleMode?.Invoke((BattleFlags)mode);
         }
@@ -1481,14 +1119,13 @@ namespace RPGFramework.Field
         /// Ask for a battle to begin, with its arena, enemy group, flags, enemy level and the transition that starts it,
         /// and end the frame, so the rest of the script runs after the battle rather than before it.
         /// </summary>
-        private void StartBattleOpcodeHandler(ScriptExecutionContext ctx)
+        private void StartBattleOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources     = default;
-            ushort            arena       = ReadArgumentUshort(ctx, ref sources);
-            ushort            enemyGroup  = ReadArgumentUshort(ctx, ref sources);
-            ushort            battleFlags = ReadArgumentUshort(ctx, ref sources);
-            byte              enemyLevel  = ReadArgumentByte(ctx, ref sources);
-            ulong             transition  = ReadUlong(ctx);
+            ushort arena       = ctx.ReadUShort();
+            ushort enemyGroup  = ctx.ReadUShort();
+            ushort battleFlags = ctx.ReadUShort();
+            byte   enemyLevel  = ctx.ReadByte();
+            ulong  transition  = ctx.ReadName();
 
             BattleArgs args = new BattleArgs(arena, enemyGroup, (BattleFlags)battleFlags, enemyLevel, transition);
 
@@ -1500,19 +1137,19 @@ namespace RPGFramework.Field
         /// <summary>
         /// Store how the last battle ended, as its <see cref="BattleCompleteState" />.
         /// </summary>
-        private void GetLastBattleResultOpcodeHandler(ScriptExecutionContext ctx)
+        private void GetLastBattleResultOpcodeHandler(FieldScriptContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
             byte result = (byte)GetLastBattleResult();
 
-            WriteVariableByte(ctx, bank, address, result);
+            ctx.WriteVariableByte(bank, address, result);
         }
 
         /// <summary>
         /// Ask for the game to end, and end the frame, as the field is about to go.
         /// </summary>
-        private void GameOverOpcodeHandler(ScriptExecutionContext ctx)
+        private void GameOverOpcodeHandler(FieldScriptContext ctx)
         {
             RequestGameOver?.Invoke();
 
@@ -1522,32 +1159,31 @@ namespace RPGFramework.Field
         /// <summary>
         /// Allow or block saving from the party menu.
         /// </summary>
-        private void SaveAccessibilityOpcodeHandler(ScriptExecutionContext ctx)
+        private void SaveAccessibilityOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            bool enabled = ctx.ReadBool();
             RequestSetSaveEnabled?.Invoke(enabled);
         }
 
         /// <summary>
         /// Set a variable to a value.
         /// </summary>
-        private void SetOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void SetOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
 
             switch (width)
             {
                 case VariableWidth.Bool:
-                    WriteVariableBool(ctx, bank, address, ReadBoolOperand(ctx, valueSource));
+                    ctx.WriteVariableBool(bank, address, ReadBoolOperand(ctx, valueSource));
                     return;
 
                 case VariableWidth.Float:
-                    WriteVariableFloat(ctx, bank, address, ReadFloatOperand(ctx, valueSource));
+                    ctx.WriteVariableFloat(bank, address, ReadFloatOperand(ctx, valueSource));
                     return;
 
                 default:
-                    WriteVariableBits(ctx, bank, address, width, ReadIntegerOperand(ctx, valueSource, width));
+                    ctx.WriteVariableBits(bank, address, width, ReadIntegerOperand(ctx, valueSource, width));
                     return;
             }
         }
@@ -1555,7 +1191,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Add a value to a variable, wrapping if it overflows.
         /// </summary>
-        private void AddOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void AddOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.Add(current, value, w), (current, value) => current + value);
         }
@@ -1563,7 +1199,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Add a value to a variable, stopping at its limit.
         /// </summary>
-        private void AddClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void AddClampedOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.AddClamped(current, value, w), null);
         }
@@ -1571,7 +1207,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Subtract a value from a variable, wrapping if it overflows.
         /// </summary>
-        private void SubtractOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void SubtractOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.Subtract(current, value, w), (current, value) => current - value);
         }
@@ -1579,7 +1215,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Subtract a value from a variable, stopping at its limit.
         /// </summary>
-        private void SubtractClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void SubtractClampedOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.SubtractClamped(current, value, w), null);
         }
@@ -1587,7 +1223,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Multiply a variable by a value, wrapping if it overflows.
         /// </summary>
-        private void MultiplyOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void MultiplyOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.Multiply(current, value, w), (current, value) => current * value);
         }
@@ -1595,7 +1231,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Divide a variable by a value. Dividing by zero is logged and the variable left unchanged.
         /// </summary>
-        private void DivideOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void DivideOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
 
@@ -1609,12 +1245,12 @@ namespace RPGFramework.Field
                     return;
                 }
 
-                WriteVariableFloat(ctx, bank, address, ReadVariableFloat(ctx, bank, address) / divisor);
+                ctx.WriteVariableFloat(bank, address, ctx.ReadVariableFloat(bank, address) / divisor);
                 return;
             }
 
             ulong value   = ReadIntegerOperand(ctx, valueSource, width);
-            ulong current = ReadVariableBits(ctx, bank, address, width);
+            ulong current = ctx.ReadVariableBits(bank, address, width);
 
             if (!ScriptArithmetic.TryDivide(current, value, width, out ulong quotient))
             {
@@ -1622,18 +1258,18 @@ namespace RPGFramework.Field
                 return;
             }
 
-            WriteVariableBits(ctx, bank, address, width, quotient);
+            ctx.WriteVariableBits(bank, address, width, quotient);
         }
 
         /// <summary>
         /// Replace a variable with its remainder after dividing by a value. Dividing by zero is logged and the variable left unchanged.
         /// </summary>
-        private void RemainderOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void RemainderOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             DecodeDestination(ctx, out MemoryBank bank, out ushort address, out byte valueSource);
 
             ulong value   = ReadIntegerOperand(ctx, valueSource, width);
-            ulong current = ReadVariableBits(ctx, bank, address, width);
+            ulong current = ctx.ReadVariableBits(bank, address, width);
 
             if (!ScriptArithmetic.TryRemainder(current, value, width, out ulong remainder))
             {
@@ -1641,13 +1277,13 @@ namespace RPGFramework.Field
                 return;
             }
 
-            WriteVariableBits(ctx, bank, address, width, remainder);
+            ctx.WriteVariableBits(bank, address, width, remainder);
         }
 
         /// <summary>
         /// Add one to a variable, wrapping if it overflows.
         /// </summary>
-        private void IncrementOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void IncrementOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.Add(current, 1, w));
         }
@@ -1655,7 +1291,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Add one to a variable, stopping at its limit.
         /// </summary>
-        private void IncrementClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void IncrementClampedOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.AddClamped(current, 1, w));
         }
@@ -1663,7 +1299,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Subtract one from a variable, wrapping if it overflows.
         /// </summary>
-        private void DecrementOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void DecrementOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.Subtract(current, 1, w));
         }
@@ -1671,7 +1307,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Subtract one from a variable, stopping at its limit.
         /// </summary>
-        private void DecrementClampedOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void DecrementClampedOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.SubtractClamped(current, 1, w));
         }
@@ -1679,7 +1315,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Bitwise AND a variable with a value.
         /// </summary>
-        private void BitwiseAndOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void BitwiseAndOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.BitwiseAnd(current, value, w), null);
         }
@@ -1687,7 +1323,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Bitwise OR a variable with a value.
         /// </summary>
-        private void BitwiseOrOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void BitwiseOrOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.BitwiseOr(current, value, w), null);
         }
@@ -1695,7 +1331,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Bitwise XOR a variable with a value.
         /// </summary>
-        private void BitwiseXorOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void BitwiseXorOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ApplyBinary(ctx, width, (current, value, w) => ScriptArithmetic.BitwiseXor(current, value, w), null);
         }
@@ -1703,7 +1339,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set one bit of a variable. An index past its last bit is logged and the variable left unchanged.
         /// </summary>
-        private void SetBitOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void SetBitOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ChangeBit(ctx, width, true, nameof(SetBitOpcodeHandler));
         }
@@ -1711,7 +1347,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Clear one bit of a variable. An index past its last bit is logged and the variable left unchanged.
         /// </summary>
-        private void UnsetBitOpcodeHandler(ScriptExecutionContext ctx, VariableWidth width)
+        private void UnsetBitOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
         {
             ChangeBit(ctx, width, false, nameof(UnsetBitOpcodeHandler));
         }
@@ -1719,22 +1355,22 @@ namespace RPGFramework.Field
         /// <summary>
         /// Write a random byte, 0 to 255, to the destination.
         /// </summary>
-        private void GetRandomNumberOpcodeHandler(ScriptExecutionContext ctx)
+        private void GetRandomNumberOpcodeHandler(FieldScriptContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
             byte result = (byte)m_Random.Next(0, byte.MaxValue + 1);
 
-            WriteVariableByte(ctx, bank, address, result);
+            ctx.WriteVariableByte(bank, address, result);
         }
 
         /// <summary>
         /// Reseed the VM's random sequence, so a script can be made deterministic.
         /// </summary>
-        private void RandomNumberSeedOpcodeHandler(ScriptExecutionContext ctx)
+        private void RandomNumberSeedOpcodeHandler(FieldScriptContext ctx)
         {
-            byte sources = ReadByte(ctx);
-            int  seed    = unchecked((int)ReadIntegerOperand(ctx, GetSecondArgumentSource(sources), VariableWidth.Int));
+            byte sources = ctx.NextByte();
+            int  seed    = unchecked((int)ReadIntegerOperand(ctx, FieldScriptContext.GetSecondArgumentSource(sources), VariableWidth.Int));
 
             m_Random = new System.Random(seed);
         }
@@ -1742,15 +1378,14 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set where a dialogue channel's window appears and how big it is.
         /// </summary>
-        private void CreateDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
+        private void CreateDialogueWindowOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            byte              channel = ReadByte(ctx);
-            int               x       = ReadArgumentInt(ctx, ref sources);
-            int               y       = ReadArgumentInt(ctx, ref sources);
-            int               width   = ReadArgumentInt(ctx, ref sources);
-            int               height  = ReadArgumentInt(ctx, ref sources);
-            RectInt           rect    = new RectInt(x, y, width, height);
+            byte    channel = ctx.NextByte();
+            int     x       = ctx.ReadInt();
+            int     y       = ctx.ReadInt();
+            int     width   = ctx.ReadInt();
+            int     height  = ctx.ReadInt();
+            RectInt rect    = new RectInt(x, y, width, height);
             RequestCreateDialogueWindow?.Invoke(new DialogueWindowArgs(channel, rect));
         }
 
@@ -1758,13 +1393,12 @@ namespace RPGFramework.Field
         /// Show a line of dialogue on a channel and block until the player dismisses it. A channel already
         /// showing something is waited for, and this instruction runs again once it is free.
         /// </summary>
-        private void ShowDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
+        private void ShowDialogueWindowOpcodeHandler(FieldScriptContext ctx)
         {
-            int               instructionStart = ctx.InstructionPointer - sizeof(ushort);
-            SequentialSources sources          = default;
-            byte              channel          = ReadByte(ctx);
-            ulong             dialogueId       = ReadUlong(ctx);
-            bool              blockMovement    = ReadArgumentBool(ctx, ref sources);
+            int   instructionStart = ctx.InstructionPointer - sizeof(ushort);
+            byte  channel          = ctx.NextByte();
+            ulong dialogueId       = ctx.ReadName();
+            bool  blockMovement    = ctx.ReadBool();
 
             if (WaitForDialogueChannel(ctx, channel, instructionStart))
             {
@@ -1781,16 +1415,16 @@ namespace RPGFramework.Field
         /// <c>CLOSE_DIALOGUE_WINDOW</c>. A channel already showing something is waited for. Showing it ends this
         /// entity's frame, as the reference's non-waiting message does.
         /// </summary>
-        private void ShowDialogueWindowNoWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void ShowDialogueWindowNoWaitOpcodeHandler(FieldScriptContext ctx)
         {
             ShowDialogueWindowWithoutWaiting(ctx, false);
         }
 
-        private void ShowDialogueWindowWithoutWaiting(ScriptExecutionContext ctx, bool dismissible)
+        private void ShowDialogueWindowWithoutWaiting(FieldScriptContext ctx, bool dismissible)
         {
             int   instructionStart = ctx.InstructionPointer - sizeof(ushort);
-            byte  channel          = ReadByte(ctx);
-            ulong dialogueId       = ReadUlong(ctx);
+            byte  channel          = ctx.NextByte();
+            ulong dialogueId       = ctx.NextUlong();
 
             if (WaitForDialogueChannel(ctx, channel, instructionStart))
             {
@@ -1806,9 +1440,9 @@ namespace RPGFramework.Field
         /// Wait until nothing is showing on a dialogue channel. The field is told, as a window left up in the background
         /// then closes on a press once it has finished.
         /// </summary>
-        private void WaitForDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForDialogueWindowOpcodeHandler(FieldScriptContext ctx)
         {
-            byte channel = ReadByte(ctx);
+            byte channel = ctx.NextByte();
 
             if (IsDialogueWindowOpen(channel))
             {
@@ -1822,9 +1456,9 @@ namespace RPGFramework.Field
         /// Close whatever is showing on a dialogue channel. A script waiting on that window carries on as if it had
         /// been dismissed; a question closed this way stores no answer.
         /// </summary>
-        private void CloseDialogueWindowOpcodeHandler(ScriptExecutionContext ctx)
+        private void CloseDialogueWindowOpcodeHandler(FieldScriptContext ctx)
         {
-            byte channel = ReadByte(ctx);
+            byte channel = ctx.NextByte();
 
             RequestCloseDialogueWindow?.Invoke(channel);
         }
@@ -1832,10 +1466,10 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set how a dialogue channel's window looks, for every message shown on it from now on.
         /// </summary>
-        private void SetDialogueWindowStyleOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetDialogueWindowStyleOpcodeHandler(FieldScriptContext ctx)
         {
-            byte                channel = ReadByte(ctx);
-            DialogueWindowStyle style   = (DialogueWindowStyle)ReadByte(ctx);
+            byte                channel = ctx.NextByte();
+            DialogueWindowStyle style   = (DialogueWindowStyle)ctx.NextByte();
 
             RequestSetDialogueWindowStyle?.Invoke(channel, style);
         }
@@ -1843,11 +1477,10 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set a value dialogue shows in place of <c>{Var n}</c>.
         /// </summary>
-        private void SetMessageVariableOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetMessageVariableOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            byte              slot    = ReadByte(ctx);
-            int               value   = ReadArgumentInt(ctx, ref sources);
+            byte slot  = ctx.NextByte();
+            int  value = ctx.ReadInt();
 
             RequestSetMessageVariable?.Invoke(slot, value);
         }
@@ -1856,21 +1489,21 @@ namespace RPGFramework.Field
         /// Ask the player to pick one of several answers on a channel and block until they have. The listener
         /// stores the answer through the callback, so a temp destination is this script's own.
         /// </summary>
-        private void AskPlayerToMakeAChoiceOpcodeHandler(ScriptExecutionContext ctx)
+        private void AskPlayerToMakeAChoiceOpcodeHandler(FieldScriptContext ctx)
         {
             int     instructionStart     = ctx.InstructionPointer - sizeof(ushort);
-            byte    bank                 = ReadByte(ctx);
-            ushort  addressToStoreChoice = ReadUshort(ctx);
-            byte    channel              = ReadByte(ctx);
-            ulong   dialogueId           = ReadUlong(ctx);
-            byte    startingAnswer       = ReadByte(ctx);
-            byte    cancelAnswer         = ReadByte(ctx);
-            byte    answerCount          = ReadByte(ctx);
+            byte    bank                 = ctx.NextByte();
+            ushort  addressToStoreChoice = ctx.NextUshort();
+            byte    channel              = ctx.NextByte();
+            ulong   dialogueId           = ctx.ReadName();
+            byte    startingAnswer       = ctx.NextByte();
+            byte    cancelAnswer         = ctx.NextByte();
+            byte    answerCount          = ctx.NextByte();
             ulong[] answerIds            = new ulong[answerCount];
 
             for (int i = 0; i < answerCount; i++)
             {
-                answerIds[i] = ReadUlong(ctx);
+                answerIds[i] = ctx.ReadName();
             }
 
             if (WaitForDialogueChannel(ctx, channel, instructionStart))
@@ -1882,7 +1515,7 @@ namespace RPGFramework.Field
 
             QuestionArgs question = new QuestionArgs(channel, dialogueId, answerIds, startingAnswer, cancelAnswer);
 
-            RequestAskPlayerToMakeAChoice?.Invoke(question, choice => WriteVariableByte(ctx, choiceBank, addressToStoreChoice, choice));
+            RequestAskPlayerToMakeAChoice?.Invoke(question, choice => ctx.WriteVariableByte(choiceBank, addressToStoreChoice, choice));
 
             ctx.Block(new WaitUntilBlock(() => !IsDialogueWindowOpen(channel)));
         }
@@ -1890,17 +1523,16 @@ namespace RPGFramework.Field
         /// <summary>
         /// Allow or block opening the main menu.
         /// </summary>
-        private void MainMenuAccessibilityOpcodeHandler(ScriptExecutionContext ctx)
+        private void MainMenuAccessibilityOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            bool enabled = ctx.ReadBool();
             RequestSetMainMenuAccessibility?.Invoke(enabled);
         }
 
         /// <summary>
         /// Open the save menu, and end the frame, so the rest of the script runs once it has closed.
         /// </summary>
-        private void OpenSaveMenuOpcodeHandler(ScriptExecutionContext ctx)
+        private void OpenSaveMenuOpcodeHandler(FieldScriptContext ctx)
         {
             RequestOpenSaveMenu?.Invoke();
 
@@ -1911,7 +1543,7 @@ namespace RPGFramework.Field
         /// As <c>SHOW_DIALOGUE_WINDOW_NO_WAIT</c>, but a press closes the window once it has typed, as one a script
         /// waits for.
         /// </summary>
-        private void ShowDialogueWindowNoWaitDismissibleOpcodeHandler(ScriptExecutionContext ctx)
+        private void ShowDialogueWindowNoWaitDismissibleOpcodeHandler(FieldScriptContext ctx)
         {
             ShowDialogueWindowWithoutWaiting(ctx, true);
         }
@@ -1919,7 +1551,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Make this entity the player character.
         /// </summary>
-        private void SetPlayerEntityOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetPlayerEntityOpcodeHandler(FieldScriptContext ctx)
         {
             RequestSetPlayerEntity?.Invoke(m_Entities[ctx.EntityId]);
         }
@@ -1927,87 +1559,79 @@ namespace RPGFramework.Field
         /// <summary>
         /// Lock or unlock player input.
         /// </summary>
-        private void LockInputOpcodeHandler(ScriptExecutionContext ctx)
+        private void LockInputOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources     = default;
-            bool              inputLocked = ReadArgumentBool(ctx, ref sources);
+            bool inputLocked = ctx.ReadBool();
             RequestInputLock?.Invoke(inputLocked);
         }
 
         /// <summary>
         /// Show or hide this entity.
         /// </summary>
-        private void VisibilityOpcodeHandler(ScriptExecutionContext ctx)
+        private void VisibilityOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources   = default;
-            bool              isVisible = ReadArgumentBool(ctx, ref sources);
+            bool isVisible = ctx.ReadBool();
             RequestSetEntityVisible?.Invoke(ctx.EntityId, isVisible);
         }
 
         /// <summary>
         /// Let other entities walk through this one, or block them again.
         /// </summary>
-        private void EntitySolidityOpcodeHandler(ScriptExecutionContext ctx)
+        private void EntitySolidityOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              isSolid = ReadArgumentBool(ctx, ref sources);
+            bool isSolid = ctx.ReadBool();
             RequestSetEntitySolid?.Invoke(ctx.EntityId, isSolid);
         }
 
         /// <summary>
         /// Let walking into this entity run its push script, or stop it.
         /// </summary>
-        private void PushScriptActivationOpcodeHandler(ScriptExecutionContext ctx)
+        private void PushScriptActivationOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            bool enabled = ctx.ReadBool();
             RequestSetPushScriptActive?.Invoke(ctx.EntityId, enabled);
         }
 
         /// <summary>
         /// Turn this entity's interaction trigger on or off.
         /// </summary>
-        private void InteractabilityOpcodeHandler(ScriptExecutionContext ctx)
+        private void InteractabilityOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            bool enabled = ctx.ReadBool();
             RequestSetInteractionTriggerActive?.Invoke(ctx.EntityId, enabled);
         }
 
         /// <summary>
         /// Set the radius around this entity within which the player can interact with it.
         /// </summary>
-        private void SetInteractionRangeOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetInteractionRangeOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             radius  = ReadArgumentFloat(ctx, ref sources);
+            float radius = ctx.ReadFloat();
             RequestSetInteractionRange?.Invoke(ctx.EntityId, radius);
         }
 
         /// <summary>
         /// Place this entity at a position immediately.
         /// </summary>
-        private void SetEntityPositionOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetEntityPositionOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources  = default;
-            Vector3           position = new Vector3(ReadArgumentFloat(ctx, ref sources), ReadArgumentFloat(ctx, ref sources), ReadArgumentFloat(ctx, ref sources));
+            Vector3 position = new Vector3(ctx.ReadFloat(), ctx.ReadFloat(), ctx.ReadFloat());
             RequestSetEntityPosition?.Invoke(ctx.EntityId, position);
         }
 
         /// <summary>
         /// Set how fast this entity moves.
         /// </summary>
-        private void SetMovementSpeedOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetMovementSpeedOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources       = default;
-            float             movementSpeed = ReadArgumentFloat(ctx, ref sources);
+            float movementSpeed = ctx.ReadFloat();
             RequestSetEntityMovementSpeed?.Invoke(ctx.EntityId, movementSpeed);
         }
 
         /// <summary>
         /// Walk this entity to a point, and wait until it arrives.
         /// </summary>
-        private void MoveEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void MoveEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToPoint(ctx, MoveStyle.Walk, true);
         }
@@ -2015,7 +1639,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start this entity walking to a point, and carry on.
         /// </summary>
-        private void MoveEntityOpcodeHandler(ScriptExecutionContext ctx)
+        private void MoveEntityOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToPoint(ctx, MoveStyle.Walk, false);
         }
@@ -2023,7 +1647,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Move this entity to a point facing its way, without walking, and wait until it arrives.
         /// </summary>
-        private void GlideEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void GlideEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToPoint(ctx, MoveStyle.Glide, true);
         }
@@ -2031,7 +1655,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start this entity moving to a point facing its way, without walking, and carry on.
         /// </summary>
-        private void GlideEntityOpcodeHandler(ScriptExecutionContext ctx)
+        private void GlideEntityOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToPoint(ctx, MoveStyle.Glide, false);
         }
@@ -2039,7 +1663,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Move this entity to a point without turning or walking, and wait until it arrives.
         /// </summary>
-        private void SlideEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void SlideEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToPoint(ctx, MoveStyle.Slide, true);
         }
@@ -2047,7 +1671,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start this entity moving to a point without turning or walking, and carry on.
         /// </summary>
-        private void SlideEntityOpcodeHandler(ScriptExecutionContext ctx)
+        private void SlideEntityOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToPoint(ctx, MoveStyle.Slide, false);
         }
@@ -2055,7 +1679,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Walk this entity up to another, and wait until it arrives.
         /// </summary>
-        private void MoveEntityToEntityAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void MoveEntityToEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToEntity(ctx, MoveStyle.Walk, true);
         }
@@ -2063,7 +1687,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start this entity walking up to another, and carry on.
         /// </summary>
-        private void MoveEntityToEntityOpcodeHandler(ScriptExecutionContext ctx)
+        private void MoveEntityToEntityOpcodeHandler(FieldScriptContext ctx)
         {
             MoveEntityToEntity(ctx, MoveStyle.Walk, false);
         }
@@ -2072,26 +1696,24 @@ namespace RPGFramework.Field
         /// The eight moves differ only in how the entity carries itself, where it is going, and whether the script
         /// waits, so they read their arguments in two places.
         /// </summary>
-        private void MoveEntityToPoint(ScriptExecutionContext ctx, MoveStyle style, bool waits)
+        private void MoveEntityToPoint(FieldScriptContext ctx, MoveStyle style, bool waits)
         {
-            SequentialSources sources = default;
-            float             x       = ReadArgumentFloat(ctx, ref sources);
-            float             y       = ReadArgumentFloat(ctx, ref sources);
-            float             z       = ReadArgumentFloat(ctx, ref sources);
+            float x = ctx.ReadFloat();
+            float y = ctx.ReadFloat();
+            float z = ctx.ReadFloat();
 
             MoveEntity(ctx, new MoveEntityArgs(new Vector3(x, y, z), FieldEntity.NO_ENTITY, 0f, style), waits);
         }
 
-        private void MoveEntityToEntity(ScriptExecutionContext ctx, MoveStyle style, bool waits)
+        private void MoveEntityToEntity(FieldScriptContext ctx, MoveStyle style, bool waits)
         {
-            SequentialSources sources        = default;
-            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
-            float             stopDistance   = ReadArgumentFloat(ctx, ref sources);
+            byte  targetEntityId = ctx.ReadByte();
+            float stopDistance   = ctx.ReadFloat();
 
             MoveEntity(ctx, new MoveEntityArgs(Vector3.zero, targetEntityId, stopDistance, style), waits);
         }
 
-        private void MoveEntity(ScriptExecutionContext ctx, MoveEntityArgs args, bool waits)
+        private void MoveEntity(FieldScriptContext ctx, MoveEntityArgs args, bool waits)
         {
             RequestMoveEntity?.Invoke(ctx.EntityId, args);
 
@@ -2104,7 +1726,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Wait until this entity has arrived where a script sent it.
         /// </summary>
-        private void WaitForMovementOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForMovementOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsEntityMoving(ctx.EntityId)));
         }
@@ -2112,7 +1734,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Stop this entity where it is.
         /// </summary>
-        private void StopMovementOpcodeHandler(ScriptExecutionContext ctx)
+        private void StopMovementOpcodeHandler(FieldScriptContext ctx)
         {
             RequestStopMovement?.Invoke(ctx.EntityId);
         }
@@ -2120,12 +1742,11 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set this entity's rotation immediately, from Euler angles.
         /// </summary>
-        private void SetEntityRotationOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetEntityRotationOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             x       = ReadArgumentFloat(ctx, ref sources);
-            float             y       = ReadArgumentFloat(ctx, ref sources);
-            float             z       = ReadArgumentFloat(ctx, ref sources);
+            float x = ctx.ReadFloat();
+            float y = ctx.ReadFloat();
+            float z = ctx.ReadFloat();
 
             RequestSetEntityRotation?.Invoke(ctx.EntityId, Quaternion.Euler(x, y, z));
         }
@@ -2133,15 +1754,14 @@ namespace RPGFramework.Field
         /// <summary>
         /// Turn this entity to a rotation over time and block until it finishes.
         /// </summary>
-        private void SetEntityRotationOverTimeOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetEntityRotationOverTimeOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources      = default;
-            float             x            = ReadArgumentFloat(ctx, ref sources);
-            float             y            = ReadArgumentFloat(ctx, ref sources);
-            float             z            = ReadArgumentFloat(ctx, ref sources);
-            RotationDirection direction    = (RotationDirection)ReadArgumentByte(ctx, ref sources);
-            float             duration     = ReadArgumentFloat(ctx, ref sources);
-            Easing            rotationType = (Easing)ReadArgumentByte(ctx, ref sources);
+            float             x            = ctx.ReadFloat();
+            float             y            = ctx.ReadFloat();
+            float             z            = ctx.ReadFloat();
+            RotationDirection direction    = (RotationDirection)ctx.ReadByte();
+            float             duration     = ctx.ReadFloat();
+            Easing            rotationType = (Easing)ctx.ReadByte();
 
             SetEntityRotationAsyncArgs args = new SetEntityRotationAsyncArgs(Quaternion.Euler(x, y, z), direction, duration, rotationType);
 
@@ -2153,19 +1773,18 @@ namespace RPGFramework.Field
         /// <summary>
         /// Turn this entity to face another entity.
         /// </summary>
-        private void SetDirectionToFaceEntityOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetDirectionToFaceEntityOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources        = default;
-            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
+            byte targetEntityId = ctx.ReadByte();
             RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, targetEntityId);
         }
 
         /// <summary>
         /// Set what this entity animates as when no script is animating it.
         /// </summary>
-        private void SetBaseAnimationOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetBaseAnimationOpcodeHandler(FieldScriptContext ctx)
         {
-            ulong stateNameHash = ReadUlong(ctx);
+            ulong stateNameHash = ctx.ReadName();
 
             RequestSetBaseAnimation?.Invoke(ctx.EntityId, stateNameHash);
         }
@@ -2173,7 +1792,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Play an animation, wait for it, then go back to the base animation.
         /// </summary>
-        private void PlayAnimationOnceAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayAnimationOnceAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, false, true);
         }
@@ -2181,7 +1800,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Play an animation, wait for it, then hold its last frame.
         /// </summary>
-        private void PlayAnimationStopOnLastFrameWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayAnimationStopOnLastFrameWaitOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, false, true);
         }
@@ -2189,7 +1808,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start an animation and carry on.
         /// </summary>
-        private void PlayAnimationOnceAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayAnimationOnceAsyncOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, false, false);
         }
@@ -2197,7 +1816,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start an animation that holds its last frame, and carry on.
         /// </summary>
-        private void PlayAnimationHoldingAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayAnimationHoldingAsyncOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, false, false);
         }
@@ -2205,7 +1824,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start an animation looping, and carry on.
         /// </summary>
-        private void PlayAnimationLoopingOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayAnimationLoopingOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.Loop, false, false);
         }
@@ -2213,7 +1832,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Play part of an animation, wait for it, then go back to the base animation.
         /// </summary>
-        private void PlayPartialAnimationAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayPartialAnimationAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, true, true);
         }
@@ -2221,7 +1840,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Play part of an animation, wait for it, then hold its last frame.
         /// </summary>
-        private void PlayPartialAnimationAndHoldOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayPartialAnimationAndHoldOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, true, true);
         }
@@ -2229,7 +1848,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start part of an animation and carry on.
         /// </summary>
-        private void PlayPartialAnimationAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayPartialAnimationAsyncOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.ReturnToBase, true, false);
         }
@@ -2237,7 +1856,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start part of an animation that holds its last frame, and carry on.
         /// </summary>
-        private void PlayPartialAnimationHoldingAsyncOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayPartialAnimationHoldingAsyncOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.HoldLastFrame, true, false);
         }
@@ -2245,7 +1864,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Start part of an animation looping, and carry on.
         /// </summary>
-        private void PlayPartialAnimationLoopingOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayPartialAnimationLoopingOpcodeHandler(FieldScriptContext ctx)
         {
             PlayAnimation(ctx, AnimationPlayMode.Loop, true, false);
         }
@@ -2254,12 +1873,11 @@ namespace RPGFramework.Field
         /// The ten play opcodes differ only in what happens at the end, whether a range was given, and whether the
         /// script waits, so they read their arguments in one place.
         /// </summary>
-        private void PlayAnimation(ScriptExecutionContext ctx, AnimationPlayMode mode, bool partial, bool waits)
+        private void PlayAnimation(FieldScriptContext ctx, AnimationPlayMode mode, bool partial, bool waits)
         {
-            SequentialSources sources   = default;
-            ulong             nameHash  = ReadUlong(ctx);
-            float             from      = partial ? ReadArgumentFloat(ctx, ref sources) : 0f;
-            float             to        = partial ? ReadArgumentFloat(ctx, ref sources) : 1f;
+            ulong nameHash = ctx.NextUlong();
+            float from     = partial ? ctx.ReadFloat() : 0f;
+            float to       = partial ? ctx.ReadFloat() : 1f;
 
             RequestPlayAnimation?.Invoke(ctx.EntityId, new PlayAnimationArgs(nameHash, mode, from, to));
 
@@ -2272,10 +1890,9 @@ namespace RPGFramework.Field
         /// <summary>
         /// Scale how fast this entity's animation plays.
         /// </summary>
-        private void SetAnimationSpeedOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetAnimationSpeedOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources    = default;
-            float             multiplier = ReadArgumentFloat(ctx, ref sources);
+            float multiplier = ctx.ReadFloat();
 
             RequestSetAnimationSpeed?.Invoke(ctx.EntityId, multiplier);
         }
@@ -2283,7 +1900,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Wait until the animation this entity is playing has reached its end.
         /// </summary>
-        private void WaitForAnimationOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForAnimationOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsEntityAnimating(ctx.EntityId)));
         }
@@ -2291,7 +1908,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Drop whatever this entity is playing and return it to its base animation.
         /// </summary>
-        private void StopAnimationOpcodeHandler(ScriptExecutionContext ctx)
+        private void StopAnimationOpcodeHandler(FieldScriptContext ctx)
         {
             RequestStopAnimation?.Invoke(ctx.EntityId);
         }
@@ -2299,7 +1916,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Remember what this entity is playing and where it has got to.
         /// </summary>
-        private void PushAnimationStateOpcodeHandler(ScriptExecutionContext ctx)
+        private void PushAnimationStateOpcodeHandler(FieldScriptContext ctx)
         {
             RequestPushAnimationState?.Invoke(ctx.EntityId);
         }
@@ -2307,7 +1924,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Put back what <c>PUSH_ANIMATION_STATE</c> remembered.
         /// </summary>
-        private void PopAnimationStateOpcodeHandler(ScriptExecutionContext ctx)
+        private void PopAnimationStateOpcodeHandler(FieldScriptContext ctx)
         {
             RequestPopAnimationState?.Invoke(ctx.EntityId);
         }
@@ -2315,23 +1932,21 @@ namespace RPGFramework.Field
         /// <summary>
         /// Turn this entity's collision trigger on or off.
         /// </summary>
-        private void CollisionTriggerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        private void CollisionTriggerActivationOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            bool              enabled = ReadArgumentBool(ctx, ref sources);
+            bool enabled = ctx.ReadBool();
             RequestSetCollisionTriggerActive?.Invoke(ctx.EntityId, enabled);
         }
 
         /// <summary>
         /// Take a colour from the screen beneath the message windows, or add one, fading to it over the given seconds.
         /// </summary>
-        private void ScreenColourOpcodeHandler(ScriptExecutionContext ctx, bool add)
+        private void ScreenColourOpcodeHandler(FieldScriptContext ctx, bool add)
         {
-            SequentialSources sources = default;
-            float             red     = ReadArgumentFloat(ctx, ref sources);
-            float             green   = ReadArgumentFloat(ctx, ref sources);
-            float             blue    = ReadArgumentFloat(ctx, ref sources);
-            float             seconds = ReadArgumentFloat(ctx, ref sources);
+            float red     = ctx.ReadFloat();
+            float green   = ctx.ReadFloat();
+            float blue    = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
 
             RequestScreenColour?.Invoke(new Color(red, green, blue), add, seconds);
         }
@@ -2339,7 +1954,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Wait until the screen's colour has reached the colour it was sent to.
         /// </summary>
-        private void WaitForScreenColourOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForScreenColourOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsScreenColourFading()));
         }
@@ -2347,23 +1962,21 @@ namespace RPGFramework.Field
         /// <summary>
         /// Close part of the field with one of its blockers, or open it again.
         /// </summary>
-        private void BlockerActivationOpcodeHandler(ScriptExecutionContext ctx)
+        private void BlockerActivationOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources    = default;
-            byte              blocker    = ReadArgumentByte(ctx, ref sources);
-            bool              isBlocking = ReadArgumentBool(ctx, ref sources);
+            byte blocker    = ctx.ReadByte();
+            bool isBlocking = ctx.ReadBool();
             RequestSetBlockerActive?.Invoke(blocker, isBlocking);
         }
 
         /// <summary>
         /// Fade the screen beneath the message windows out or back in, and carry on.
         /// </summary>
-        private void FadeScreenOpcodeHandler(ScriptExecutionContext ctx)
+        private void FadeScreenOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources    = default;
-            bool              fadeOut    = ReadArgumentBool(ctx, ref sources);
-            bool              atOnce     = ReadArgumentBool(ctx, ref sources);
-            ulong             transition = ReadUlong(ctx);
+            bool  fadeOut    = ctx.ReadBool();
+            bool  atOnce     = ctx.ReadBool();
+            ulong transition = ctx.ReadName();
 
             RequestScreenFade?.Invoke(fadeOut, atOnce, transition);
         }
@@ -2371,7 +1984,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Fade the screen beneath the message windows out or back in, and wait until it has.
         /// </summary>
-        private void FadeScreenAndWaitOpcodeHandler(ScriptExecutionContext ctx)
+        private void FadeScreenAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             FadeScreenOpcodeHandler(ctx);
             WaitForFadeOpcodeHandler(ctx);
@@ -2380,7 +1993,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Wait until the screen has faded out or back in.
         /// </summary>
-        private void WaitForFadeOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForFadeOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsScreenFading()));
         }
@@ -2388,14 +2001,13 @@ namespace RPGFramework.Field
         /// <summary>
         /// Move the view onto a point, where it stays until another scroll.
         /// </summary>
-        private void ScrollScreenToPositionOpcodeHandler(ScriptExecutionContext ctx)
+        private void ScrollScreenToPositionOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             x       = ReadArgumentFloat(ctx, ref sources);
-            float             y       = ReadArgumentFloat(ctx, ref sources);
-            float             z       = ReadArgumentFloat(ctx, ref sources);
-            float             seconds = ReadArgumentFloat(ctx, ref sources);
-            Easing            easing  = (Easing)ReadArgumentByte(ctx, ref sources);
+            float  x       = ctx.ReadFloat();
+            float  y       = ctx.ReadFloat();
+            float  z       = ctx.ReadFloat();
+            float  seconds = ctx.ReadFloat();
+            Easing easing  = (Easing)ctx.ReadByte();
 
             RequestScrollScreenToPosition?.Invoke(new Vector3(x, y, z), seconds, easing);
         }
@@ -2403,12 +2015,11 @@ namespace RPGFramework.Field
         /// <summary>
         /// Move the view onto an entity, and follow it; onto the player, the view follows the player again.
         /// </summary>
-        private void ScrollScreenToEntityOpcodeHandler(ScriptExecutionContext ctx)
+        private void ScrollScreenToEntityOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources        = default;
-            byte              targetEntityId = ReadArgumentByte(ctx, ref sources);
-            float             seconds        = ReadArgumentFloat(ctx, ref sources);
-            Easing            easing         = (Easing)ReadArgumentByte(ctx, ref sources);
+            byte   targetEntityId = ctx.ReadByte();
+            float  seconds        = ctx.ReadFloat();
+            Easing easing         = (Easing)ctx.ReadByte();
 
             RequestScrollScreenToEntity?.Invoke(targetEntityId, seconds, easing);
         }
@@ -2416,7 +2027,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Wait until the view has arrived where a script scrolled it.
         /// </summary>
-        private void WaitForScrollingOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForScrollingOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsScreenScrolling()));
         }
@@ -2424,12 +2035,11 @@ namespace RPGFramework.Field
         /// <summary>
         /// Look through another of the field's cameras, cutting to it or blending over seconds.
         /// </summary>
-        private void SetCameraOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetCameraOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            byte              camera  = ReadArgumentByte(ctx, ref sources);
-            float             seconds = ReadArgumentFloat(ctx, ref sources);
-            Easing            easing  = (Easing)ReadArgumentByte(ctx, ref sources);
+            byte   camera  = ctx.ReadByte();
+            float  seconds = ctx.ReadFloat();
+            Easing easing  = (Easing)ctx.ReadByte();
 
             RequestSetCamera?.Invoke(camera, seconds, easing);
         }
@@ -2437,10 +2047,10 @@ namespace RPGFramework.Field
         /// <summary>
         /// Play a music track, starting in one of its stem states.
         /// </summary>
-        private void PlayMusicOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlayMusicOpcodeHandler(FieldScriptContext ctx)
         {
-            ulong nameHash      = ReadUlong(ctx);
-            ulong stateNameHash = ReadUlong(ctx);
+            ulong nameHash      = ctx.ReadName();
+            ulong stateNameHash = ctx.ReadName();
 
             RequestMusic?.Invoke(nameHash, stateNameHash);
         }
@@ -2448,7 +2058,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Stop the music at once.
         /// </summary>
-        private void StopMusicOpcodeHandler(ScriptExecutionContext ctx)
+        private void StopMusicOpcodeHandler(FieldScriptContext ctx)
         {
             RequestStopMusic?.Invoke();
         }
@@ -2456,10 +2066,9 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set the volume the field plays its music at.
         /// </summary>
-        private void SetMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetMusicVolumeOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             volume  = ReadArgumentFloat(ctx, ref sources);
+            float volume = ctx.ReadFloat();
 
             RequestMusicVolume?.Invoke(volume, 0f);
         }
@@ -2467,11 +2076,10 @@ namespace RPGFramework.Field
         /// <summary>
         /// Fade the field's music to a volume over the given seconds.
         /// </summary>
-        private void FadeMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        private void FadeMusicVolumeOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             volume  = ReadArgumentFloat(ctx, ref sources);
-            float             seconds = ReadArgumentFloat(ctx, ref sources);
+            float volume  = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
 
             RequestMusicVolume?.Invoke(volume, seconds);
         }
@@ -2479,11 +2087,10 @@ namespace RPGFramework.Field
         /// <summary>
         /// Switch the playing music to one of its stem states, fading over the given number of seconds.
         /// </summary>
-        private void SetMusicStemStateOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetMusicStemStateOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources       = default;
-            ulong             stateNameHash = ReadUlong(ctx);
-            float             fadeSeconds   = ReadArgumentFloat(ctx, ref sources);
+            ulong stateNameHash = ctx.ReadName();
+            float fadeSeconds   = ctx.ReadFloat();
 
             RequestMusicStemState?.Invoke(stateNameHash, fadeSeconds);
         }
@@ -2491,21 +2098,21 @@ namespace RPGFramework.Field
         /// <summary>
         /// Store whether music is playing, or still loading to play.
         /// </summary>
-        private void CheckIfMusicIsPlayingOpcodeHandler(ScriptExecutionContext ctx)
+        private void CheckIfMusicIsPlayingOpcodeHandler(FieldScriptContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
             bool playing = IsMusicPlaying();
 
-            WriteVariableBool(ctx, bank, address, playing);
+            ctx.WriteVariableBool(bank, address, playing);
         }
 
         /// <summary>
         /// Set the track every battle plays.
         /// </summary>
-        private void SetBattleMusicOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetBattleMusicOpcodeHandler(FieldScriptContext ctx)
         {
-            ulong nameHash = ReadUlong(ctx);
+            ulong nameHash = ctx.ReadName();
 
             RequestBattleMusic?.Invoke(nameHash);
         }
@@ -2513,19 +2120,18 @@ namespace RPGFramework.Field
         /// <summary>
         /// Play a sound effect once.
         /// </summary>
-        private void PlaySoundOpcodeHandler(ScriptExecutionContext ctx)
+        private void PlaySoundOpcodeHandler(FieldScriptContext ctx)
         {
-            ulong nameHash = ReadUlong(ctx);
+            ulong nameHash = ctx.ReadName();
             RequestSfx?.Invoke(nameHash);
         }
 
         /// <summary>
         /// Switch the PS1 reverb to a preset.
         /// </summary>
-        private void SetReverbPresetOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetReverbPresetOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            byte              preset  = ReadArgumentByte(ctx, ref sources);
+            byte preset = ctx.ReadByte();
 
             RequestReverbPreset?.Invoke(preset);
         }
@@ -2533,10 +2139,9 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set how loud the PS1 reverb plays, 0 to 1.
         /// </summary>
-        private void SetReverbVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetReverbVolumeOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             volume  = ReadArgumentFloat(ctx, ref sources);
+            float volume = ctx.ReadFloat();
 
             RequestReverbVolume?.Invoke(volume);
         }
@@ -2545,13 +2150,12 @@ namespace RPGFramework.Field
         /// Fade the playing music out and a track in, starting in one of its stem states, over the given seconds, to the
         /// given volume.
         /// </summary>
-        private void CrossfadeMusicOpcodeHandler(ScriptExecutionContext ctx)
+        private void CrossfadeMusicOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources       = default;
-            ulong             nameHash      = ReadUlong(ctx);
-            ulong             stateNameHash = ReadUlong(ctx);
-            float             seconds       = ReadArgumentFloat(ctx, ref sources);
-            float             volume        = ReadArgumentFloat(ctx, ref sources);
+            ulong nameHash      = ctx.ReadName();
+            ulong stateNameHash = ctx.ReadName();
+            float seconds       = ctx.ReadFloat();
+            float volume        = ctx.ReadFloat();
 
             RequestMusicCrossfade?.Invoke(nameHash, stateNameHash, seconds, volume);
         }
@@ -2559,12 +2163,11 @@ namespace RPGFramework.Field
         /// <summary>
         /// Fade the field's music from one volume to another over the given seconds.
         /// </summary>
-        private void FadeMusicVolumeFromOpcodeHandler(ScriptExecutionContext ctx)
+        private void FadeMusicVolumeFromOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            float             from    = ReadArgumentFloat(ctx, ref sources);
-            float             volume  = ReadArgumentFloat(ctx, ref sources);
-            float             seconds = ReadArgumentFloat(ctx, ref sources);
+            float from    = ctx.ReadFloat();
+            float volume  = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
 
             RequestMusicVolumeFrom?.Invoke(from, volume, seconds);
         }
@@ -2572,7 +2175,7 @@ namespace RPGFramework.Field
         /// <summary>
         /// Wait until the field's music has finished fading to a volume.
         /// </summary>
-        private void WaitForMusicVolumeOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForMusicVolumeOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsMusicVolumeFading()));
         }
@@ -2580,10 +2183,9 @@ namespace RPGFramework.Field
         /// <summary>
         /// Set the countdown's seconds left.
         /// </summary>
-        private void SetCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        private void SetCountdownTimerOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            int               seconds = ReadArgumentInt(ctx, ref sources);
+            int seconds = ctx.ReadInt();
 
             RequestSetCountdown?.Invoke(seconds);
         }
@@ -2591,11 +2193,10 @@ namespace RPGFramework.Field
         /// <summary>
         /// Show the countdown at a place on screen.
         /// </summary>
-        private void ShowCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        private void ShowCountdownTimerOpcodeHandler(FieldScriptContext ctx)
         {
-            SequentialSources sources = default;
-            int               x       = ReadArgumentInt(ctx, ref sources);
-            int               y       = ReadArgumentInt(ctx, ref sources);
+            int x = ctx.ReadInt();
+            int y = ctx.ReadInt();
 
             RequestShowCountdown?.Invoke(x, y);
         }
@@ -2603,17 +2204,17 @@ namespace RPGFramework.Field
         /// <summary>
         /// Store the countdown's seconds left.
         /// </summary>
-        private void GetCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        private void GetCountdownTimerOpcodeHandler(FieldScriptContext ctx)
         {
             ReadDestination(ctx, out MemoryBank bank, out ushort address);
 
-            WriteVariableInt(ctx, bank, address, GetCountdown());
+            ctx.WriteVariableInt(bank, address, GetCountdown());
         }
 
         /// <summary>
         /// Take the countdown off the screen.
         /// </summary>
-        private void HideCountdownTimerOpcodeHandler(ScriptExecutionContext ctx)
+        private void HideCountdownTimerOpcodeHandler(FieldScriptContext ctx)
         {
             RequestHideCountdown?.Invoke();
         }
@@ -2621,9 +2222,9 @@ namespace RPGFramework.Field
         /// <summary>
         /// Wait until the player presses a button, named by its action, counting only a press made after the wait began.
         /// </summary>
-        private void WaitForButtonOpcodeHandler(ScriptExecutionContext ctx)
+        private void WaitForButtonOpcodeHandler(FieldScriptContext ctx)
         {
-            ulong button = ReadUlong(ctx);
+            ulong button = ctx.ReadName();
 
             Func<bool> pressed = StartWaitingForButton(button);
 

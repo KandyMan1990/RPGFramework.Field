@@ -434,7 +434,7 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     body.Add(new FieldScriptBlock(line));
                     continue;

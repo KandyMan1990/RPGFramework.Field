@@ -84,7 +84,7 @@ namespace RPGFramework.Field.Editor
                                                                                                              NotifyChanged();
                                                                                                          });
 
-            IReadOnlyList<FieldOpCodeInfo> opCodes = FieldOpCodeCatalogue.All;
+            IReadOnlyList<FieldOpCodeInfo> opCodes = FieldOpCodeCatalogue.Project.All;
 
             for (int i = 0; i < opCodes.Count; i++)
             {
@@ -116,10 +116,15 @@ namespace RPGFramework.Field.Editor
 
         /// <summary>
         /// Opcode ids are laid out in a block of 256 per category, so the high byte names the group
-        /// without the enum needing to repeat it in an attribute.
+        /// without the enum needing to repeat it in an attribute. A game's own are one group.
         /// </summary>
         private static string GetCategory(FieldScriptOpCode opCode)
         {
+            if (FieldScriptOpCodeRanges.IsGameOpCode((ushort)opCode))
+            {
+                return "Game";
+            }
+
             switch ((ushort)opCode >> 8)
             {
                 case 0x00: return "Flow";

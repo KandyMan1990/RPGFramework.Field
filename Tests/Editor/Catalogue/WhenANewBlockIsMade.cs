@@ -49,7 +49,7 @@ namespace RPGFramework.Field.Tests.Catalogue
 
         private static FieldScriptBlock New(string scriptName)
         {
-            FieldOpCodeCatalogue.TryGet(scriptName, out FieldOpCodeInfo info);
+            FieldOpCodeCatalogue.Project.TryGet(scriptName, out FieldOpCodeInfo info);
 
             return FieldScriptBlock.CreateEmpty(info);
         }

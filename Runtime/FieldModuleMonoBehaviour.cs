@@ -65,6 +65,7 @@ namespace RPGFramework.Field
         void IModuleBindings.Bind(IDIContainer sceneContainer)
         {
             sceneContainer.BindSingletonIfNotRegistered<IFieldPresentation, PrefabFieldPresentation>();
+            sceneContainer.BindSingletonIfNotRegistered<IFieldGameOpCodeDatabase, NullFieldGameOpCodeDatabase>();
             sceneContainer.BindSingletonIfNotRegistered<IFieldModule, FieldModule>();
         }
     }

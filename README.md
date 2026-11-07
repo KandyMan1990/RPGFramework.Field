@@ -151,8 +151,9 @@ editing a field's prefab.
 
 It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated,
 so don't edit it, and as it is C#, a field can't be added without a new build. It builds each field's asset bundle and
-records the variable map's layout. **A player build is refused if the variable map has changed since the last
-export**, because compiled scripts address variables where they were.
+records the variable map's layout and the table of opcodes. **A player build is refused if the variable map or the
+opcodes, the framework's or your own, have changed since the last export**, because compiled scripts address
+variables where they were and hold the opcodes' values as they were.
 
 **RPG Framework > Field > Draw Interaction and Trigger Debug** draws interaction ranges and which way each entity faces,
 triggers, gateways and blockers in the Game view.
@@ -209,7 +210,7 @@ RETURN
   written in double quotes, `PLAY_MUSIC "Town Theme" AllStems`, which the block editor does itself.
 - **The palette only offers opcodes the field can run.** Those that act through an optional package, such as PS1 reverb,
   appear only once it is installed. Some opcodes are declared for what is still to come but don't run yet, and aren't
-  offered, and a game can't add opcodes of its own yet.
+  offered. A game can add opcodes of its own (*A game's own opcodes*, below).
 
 ### The opcodes
 
@@ -229,6 +230,78 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | **Music and sounds** | `PLAY_MUSIC` `CROSSFADE_MUSIC` `STOP_MUSIC` `MUSIC_STEM_STATE` `IS_MUSIC_PLAYING` `SET_MUSIC_VOLUME` `FADE_MUSIC_VOLUME` `FADE_MUSIC_VOLUME_FROM` `WAIT_FOR_MUSIC_VOLUME` `SET_BATTLE_MUSIC` `PLAY_SOUND` `SET_REVERB_PRESET` `SET_REVERB_VOLUME` |
 | **The countdown** | `SET_COUNTDOWN_TIMER` `SHOW_COUNTDOWN_TIMER` `HIDE_COUNTDOWN_TIMER` `GET_COUNTDOWN_TIMER` |
 | **Input** | `WAIT_FOR_BUTTON` |
+
+### A game's own opcodes
+
+What only your game has — its own data, kept in its variables, read or changed by C# a script can't express — can be an
+opcode of its own, offered in the palette under **Game** and compiled and checked as the framework's are.
+**Assets > Create > RPG Framework > Field > Game Opcodes** makes a script to start from: the enum, its example opcode at
+`GAME_BASE`, and the database that runs it, in one file so it compiles at once; split them as it grows.
+
+1. **Describe it** in a `ushort` enum of your own, with the attributes the framework's opcodes use. Values start at
+   `FieldScriptOpCodeRanges.GAME_BASE`, `0x8000`; the framework's are below. Every exported field holds the values, so
+   give each new opcode the next one and never change or reuse one.
+
+   ```csharp
+   internal enum GameOpCode : ushort
+   {
+       [FieldOpCode("COUNT_ITEMS", ArgumentLayout.Sequential, Summary = "Read how many of an item the player holds")]
+       [Argument(0, "count", ArgumentType.Variable, VariableWidth.Int)]
+       [Argument(1, "item",  ArgumentType.Byte)]
+       CountItems = FieldScriptOpCodeRanges.GAME_BASE
+   }
+   ```
+
+2. **Handle it** in a class of your own implementing `IFieldGameOpCodeDatabase`, which holds each opcode's value with the
+   method that runs it, a dictionary as the framework's own handlers are; the field puts them in one table with its
+   own as each field's VM is made, indexed by the opcode. A method reads every argument, in order, with the read its type takes — `ReadByte` for a
+   `Byte`, an `EntityId` or a `CameraId`, `ReadUShort`, `ReadInt` (also for `Seconds`), `ReadFloat`, `ReadBool`,
+   `ReadName` for a hashed name or key, and `ReadDestination` for a `Variable` — then acts. A number can come from a
+   variable, as any opcode's can. It writes a result to a destination with `WriteInt` and the rest, at the width the
+   destination declares: `Bool`, `Byte`, `UShort`, `Int` or `Float`. The class's constructor takes your game's services.
+
+   ```csharp
+   internal sealed class GameOpCodeDatabase : IFieldGameOpCodeDatabase
+   {
+       private readonly IItemStore                             m_Items;
+       private readonly Dictionary<ushort, FieldOpCodeHandler> m_Handlers;
+
+       internal GameOpCodeDatabase(IItemStore items)
+       {
+           m_Items    = items;
+           m_Handlers = new Dictionary<ushort, FieldOpCodeHandler>
+                        {
+                            { (ushort)GameOpCode.CountItems, CountItems }
+                        };
+       }
+
+       IReadOnlyDictionary<ushort, FieldOpCodeHandler> IFieldGameOpCodeDatabase.Handlers => m_Handlers;
+
+       private void CountItems(FieldScriptContext context)
+       {
+           FieldScriptDestination count = context.ReadDestination();
+           byte                   item  = context.ReadByte();
+
+           context.WriteInt(count, m_Items.Count(item));
+       }
+   }
+   ```
+
+3. **Bind it** in the field scene's installer, where the field otherwise binds one holding none:
+
+   ```csharp
+   container.BindSingleton<IFieldGameOpCodeDatabase, GameOpCodeDatabase>();
+   ```
+
+A handler runs once and the script carries on, in the same frame. It acts on your game's own services, not on the field:
+moving an entity, showing a message or opening a menu stay the framework's opcodes, written beside yours. Your enum
+must be in an assembly a player builds.
+
+**What is checked.** Export refuses a value below `0x8000` or one two opcodes share, a script name the framework or
+another of yours uses, a layout other than `Sequential`, and an argument type a handler can't read: a jump, a
+comparison, a bank layout's value, or one of dialogue's channels, styles and slots. As the field module enters in play,
+the editor logs an opcode described but never added, and one added but never described or below `0x8000`. In the editor, every read a handler makes is checked against its attributes; a read of another type, past the
+last argument or an argument left unread is logged, and the script stops there.
 
 ---
 

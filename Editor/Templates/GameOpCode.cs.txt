@@ -1,0 +1,42 @@
+using System.Collections.Generic;
+using RPGFramework.Core.Memory;
+using RPGFramework.Field;
+
+#ROOTNAMESPACEBEGIN#
+// The game's own field opcodes, from GAME_BASE: the framework's are below. Every exported field holds these values, so
+// give each new opcode the next one, GAME_BASE + 1 and on, and never change or reuse one.
+internal enum #SCRIPTNAME# : ushort
+{
+    [FieldOpCode("EXAMPLE_OPCODE", ArgumentLayout.Sequential, Summary = "Write a value to a variable. Replace it with the game's first opcode")]
+    [Argument(0, "result", ArgumentType.Variable, VariableWidth.Int)]
+    [Argument(1, "value",  ArgumentType.Int)]
+    ExampleOpCode = FieldScriptOpCodeRanges.GAME_BASE
+}
+
+/// <summary>
+/// The game's own field opcodes, each value to the method that runs it. Bind it in the field scene's installer:
+/// <c>container.BindSingleton&lt;IFieldGameOpCodeDatabase, #SCRIPTNAME#Database&gt;();</c>
+/// </summary>
+internal sealed class #SCRIPTNAME#Database : IFieldGameOpCodeDatabase
+{
+    private readonly Dictionary<ushort, FieldOpCodeHandler> m_Handlers;
+
+    internal #SCRIPTNAME#Database()
+    {
+        m_Handlers = new Dictionary<ushort, FieldOpCodeHandler>
+                     {
+                         { (ushort)#SCRIPTNAME#.ExampleOpCode, ExampleOpCode }
+                     };
+    }
+
+    IReadOnlyDictionary<ushort, FieldOpCodeHandler> IFieldGameOpCodeDatabase.Handlers => m_Handlers;
+
+    private void ExampleOpCode(FieldScriptContext context)
+    {
+        FieldScriptDestination result = context.ReadDestination();
+        int                    value  = context.ReadInt();
+
+        context.WriteInt(result, value);
+    }
+}
+#ROOTNAMESPACEEND#

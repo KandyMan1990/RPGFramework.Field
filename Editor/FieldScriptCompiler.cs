@@ -35,6 +35,12 @@ namespace RPGFramework.Field.Editor
 
         public static byte[] Compile(string source)
         {
+            return Compile(source, FieldOpCodeCatalogue.Project);
+        }
+
+        /// <summary>As <see cref="Compile(string)" />, with the opcodes of <paramref name="catalogue" />.</summary>
+        internal static byte[] Compile(string source, FieldOpCodeCatalogue catalogue)
+        {
             using MemoryStream ms = new MemoryStream();
             using BinaryWriter bw = new BinaryWriter(ms);
 
@@ -112,7 +118,7 @@ namespace RPGFramework.Field.Editor
                     }
 
                     default:
-                        if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                        if (!catalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
                         {
                             throw new Exception($"Unknown opcode '{parts[0]}'");
                         }
@@ -388,7 +394,11 @@ namespace RPGFramework.Field.Editor
                     CheckEnumMask(argument, parts[part], parts[0], lineNumber);
                 }
 
-                if (ArgumentTypes.TakesSource(argument.Type))
+                if (argument.Type == ArgumentType.Variable)
+                {
+                    WriteDestination(bw, ms, argument, parts[part], parts[0], lineNumber, ref sourcesPosition, ref variableMap);
+                }
+                else if (ArgumentTypes.TakesSource(argument.Type))
                 {
                     WriteSourcedArgument(bw, ms, argument.Type, parts[part], parts[0], lineNumber, ref sourcesPosition, ref variableMap);
                 }
@@ -435,27 +445,7 @@ namespace RPGFramework.Field.Editor
                 address = variable.Address;
             }
 
-            if (sourcesPosition < 0)
-            {
-                sourcesPosition = (int)ms.Position;
-                bw.Write((byte)(source << 4));
-            }
-            else
-            {
-                bw.Flush();
-
-                long resume = ms.Position;
-
-                ms.Position = sourcesPosition;
-                int firstSource = ms.ReadByte();
-
-                ms.Position = sourcesPosition;
-                bw.Write((byte)(firstSource | source));
-                bw.Flush();
-
-                ms.Position     = resume;
-                sourcesPosition = -1;
-            }
+            WriteSource(bw, ms, source, ref sourcesPosition);
 
             if (source != ARGUMENT_IMMEDIATE)
             {
@@ -512,6 +502,49 @@ namespace RPGFramework.Field.Editor
                     bw.Write(float.Parse(token, CultureInfo.InvariantCulture));
                     break;
             }
+        }
+
+        /// <summary>
+        /// A sequential opcode's variable to write to: its bank in the sources byte, as a sourced argument's variable is,
+        /// then its address. Never a literal, and exactly the width the opcode writes.
+        /// </summary>
+        private static void WriteDestination(BinaryWriter bw, MemoryStream ms, FieldArgumentInfo argument, string token, string scriptName, int lineNumber, ref int sourcesPosition, ref IVariableMap variableMap)
+        {
+            if (!IsVariableToken(token))
+            {
+                throw new Exception($"line {lineNumber}: {scriptName} writes its {argument.Name} to a variable, as $name, not '{token}'");
+            }
+
+            ScriptVariable variable = ResolveVariable(token, scriptName, ref variableMap, argument.Width);
+
+            WriteSource(bw, ms, ToArgumentSource(variable.Bank), ref sourcesPosition);
+
+            bw.Write(variable.Address);
+        }
+
+        // A sources byte holds two arguments' sources, high nibble first, so the second fills in the byte the first wrote.
+        private static void WriteSource(BinaryWriter bw, MemoryStream ms, byte source, ref int sourcesPosition)
+        {
+            if (sourcesPosition < 0)
+            {
+                sourcesPosition = (int)ms.Position;
+                bw.Write((byte)(source << 4));
+                return;
+            }
+
+            bw.Flush();
+
+            long resume = ms.Position;
+
+            ms.Position = sourcesPosition;
+            int firstSource = ms.ReadByte();
+
+            ms.Position = sourcesPosition;
+            bw.Write((byte)(firstSource | source));
+            bw.Flush();
+
+            ms.Position     = resume;
+            sourcesPosition = -1;
         }
 
         private static void WriteUnsourcedArgument(BinaryWriter bw, ArgumentType type, string[] parts, int part, int lineNumber)

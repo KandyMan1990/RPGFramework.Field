@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using RPGFramework.Core.Memory;
@@ -26,6 +27,31 @@ namespace RPGFramework.Field.Editor
         /// they had when compiled, so fields exported under one layout are wrong under another. The settings are left
         /// out, as no script can name one.
         /// </summary>
+        /// <summary>
+        /// Every opcode's value and script name, the framework's and the game's, in order of value. Scripts hold the
+        /// values they were compiled with, so fields exported under one table run the wrong opcodes under another.
+        /// </summary>
+        internal static ulong OpCodeHash(FieldOpCodeCatalogue catalogue)
+        {
+            FieldOpCodeInfo[] opCodes = new FieldOpCodeInfo[catalogue.All.Count];
+
+            for (int i = 0; i < opCodes.Length; i++)
+            {
+                opCodes[i] = catalogue.All[i];
+            }
+
+            Array.Sort(opCodes, (a, b) => ((ushort)a.OpCode).CompareTo((ushort)b.OpCode));
+
+            StringBuilder table = new StringBuilder();
+
+            for (int i = 0; i < opCodes.Length; i++)
+            {
+                table.Append((ushort)opCodes[i].OpCode).Append(' ').Append(opCodes[i].ScriptName).Append('\n');
+            }
+
+            return Fnv1a64.Hash(table.ToString());
+        }
+
         internal static ulong LayoutHash(IVariableMap map)
         {
             List<VariableDefinition> variables = new List<VariableDefinition>(map.Variables.Count);
@@ -140,7 +166,7 @@ namespace RPGFramework.Field.Editor
 
                 string[] parts = FieldScriptLine.Split(line);
 
-                if (!FieldOpCodeCatalogue.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
                 {
                     continue;
                 }

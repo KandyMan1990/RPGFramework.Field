@@ -12,7 +12,7 @@ namespace RPGFramework.Field.Tests.Catalogue
         [SetUp]
         public void SetUp()
         {
-            FieldOpCodeCatalogue.TryGet("PLAY_MUSIC", out FieldOpCodeInfo info);
+            FieldOpCodeCatalogue.Project.TryGet("PLAY_MUSIC", out FieldOpCodeInfo info);
 
             m_Choices = new Choices();
             m_Block   = FieldScriptBlock.CreateEmpty(info);
