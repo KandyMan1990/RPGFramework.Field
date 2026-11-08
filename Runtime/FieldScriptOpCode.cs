@@ -1412,13 +1412,21 @@ namespace RPGFramework.Field
         [Argument(0, "track", ArgumentType.MusicName, Description = "the music asset's name, as it appears in the music provider")]
         SetBattleMusic = 0x0806,
 
-        [FieldOpCode("PLAY_SOUND", ArgumentLayout.Sequential, Summary = "Play a sound effect once")]
-        [Argument(0, "sound", ArgumentType.SoundName, Description = "the sound asset's name, as it appears in the SFX provider")]
+        [FieldOpCode("PLAY_SOUND", ArgumentLayout.Sequential, Summary = "Play a sound effect, on a channel for STOP_SOUND and the fades to reach it again")]
+        [Argument(0, "sound",   ArgumentType.SoundName,    Description = "the sound asset's name, as it appears in the SFX provider")]
+        [Argument(1, "volume",  ArgumentType.Float,        Description = "0 to 1", Default = "1")]
+        [Argument(2, "pan",     ArgumentType.Float,        Description = "-1 full left, 0 centred, 1 full right", Default = "0")]
+        [Argument(3, "channel", ArgumentType.SoundChannel, Description = "stops whatever the channel holds; None for a sound nothing will touch again")]
         PlaySound = 0x0807,
 
-        PlayAmbientLoop    = 0x0808, // int id - a looping ambience, distinct from a one-shot
-        SetAllSoundVolume  = 0x0809, // float volume
-        FadeAllSoundVolume = 0x080A, // float volume, float duration
+        [FieldOpCode("SET_ALL_SOUND_VOLUME", ArgumentLayout.Sequential, Summary = "Set the volume of every sound effect at once, until the next field")]
+        [Argument(0, "volume", ArgumentType.Float, Description = "0 to 1", Default = "1")]
+        SetAllSoundVolume = 0x0809,
+
+        [FieldOpCode("FADE_ALL_SOUND_VOLUME", ArgumentLayout.Sequential, Summary = "Fade the volume of every sound effect, until the next field")]
+        [Argument(0, "volume",  ArgumentType.Float, Description = "0 to 1", Default = "1")]
+        [Argument(1, "seconds", ArgumentType.Float)]
+        FadeAllSoundVolume = 0x080A,
 
         [FieldOpCode("SET_REVERB_PRESET", ArgumentLayout.Sequential, Summary = "Switch the PS1 reverb to one of the console's presets, until the next song that names one", Package = "com.rpgframework.psxreverb")]
         [Argument(0, "preset", ArgumentType.Byte, EnumType = typeof(ReverbPreset), Description = "a different preset cuts the reverb's tail")]
@@ -1443,6 +1451,22 @@ namespace RPGFramework.Field
 
         [FieldOpCode("WAIT_FOR_MUSIC_VOLUME", ArgumentLayout.Sequential, Summary = "Wait until the field's music has faded to the volume it was sent to", StopsInit = true)]
         WaitForMusicVolume = 0x080F,
+
+        [FieldOpCode("STOP_SOUND", ArgumentLayout.Sequential, Summary = "Stop the sound a channel holds")]
+        [Argument(0, "channel", ArgumentType.SoundChannel)]
+        StopSound = 0x0810,
+
+        [FieldOpCode("FADE_SOUND_VOLUME", ArgumentLayout.Sequential, Summary = "Take the volume of the sound a channel holds to a new level, and carry on")]
+        [Argument(0, "channel", ArgumentType.SoundChannel)]
+        [Argument(1, "volume",  ArgumentType.Float, Description = "0 to 1", Default = "1")]
+        [Argument(2, "seconds", ArgumentType.Float, Description = "how long it takes, 0 for at once")]
+        FadeSoundVolume = 0x0811,
+
+        [FieldOpCode("FADE_SOUND_PAN", ArgumentLayout.Sequential, Summary = "Take the pan of the sound a channel holds to a new place, and carry on")]
+        [Argument(0, "channel", ArgumentType.SoundChannel)]
+        [Argument(1, "pan",     ArgumentType.Float, Description = "-1 full left, 0 centred, 1 full right")]
+        [Argument(2, "seconds", ArgumentType.Float, Description = "how long it takes, 0 for at once")]
+        FadeSoundPan = 0x0812,
 
         // Video (0x0900)
         PrepareMovie = 0x0900, // int id

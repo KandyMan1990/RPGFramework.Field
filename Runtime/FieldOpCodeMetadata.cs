@@ -172,6 +172,11 @@ namespace RPGFramework.Field
         /// channel keeps its rectangle and style for every message shown on it. Always literal.
         /// </summary>
         DialogueChannel,
+        /// <summary>
+        /// What a script calls a sound so as to reach it again, 1 to <see cref="ArgumentTypes.SOUND_CHANNEL_COUNT" /> - 1,
+        /// or 0 for one nothing will touch again. Always literal.
+        /// </summary>
+        SoundChannel,
         /// <summary>How a dialogue window looks — see <c>DialogueWindowStyle</c>. Written by name. Always literal.</summary>
         DialogueWindowStyle,
         /// <summary>
@@ -332,6 +337,7 @@ namespace RPGFramework.Field
     internal static class ArgumentTypes
     {
         internal const int DIALOGUE_CHANNEL_COUNT = 8;
+        internal const int SOUND_CHANNEL_COUNT    = 33;
 
 #if UNITY_EDITOR
         /// <summary>

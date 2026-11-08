@@ -48,6 +48,7 @@ namespace RPGFramework.Field
         private readonly IInputRouter               m_InputRouter;
         private readonly IMusicPlayer               m_MusicPlayer;
         private readonly ISfxPlayer                 m_SfxPlayer;
+        private readonly FieldSoundChannels         m_SoundChannels;
         private readonly ISystemSoundConfig         m_SystemSounds;
         private readonly IFieldDatabase             m_FieldDatabase;
         private readonly IFieldGameOpCodeDatabase   m_OpCodeDatabase;
@@ -158,6 +159,7 @@ namespace RPGFramework.Field
             m_InputRouter              = inputRouter;
             m_MusicPlayer              = musicPlayer;
             m_SfxPlayer                = sfxPlayer;
+            m_SoundChannels            = new FieldSoundChannels(new FieldSoundPlayer(sfxPlayer));
             m_SystemSounds             = systemSounds;
             m_FieldDatabase            = fieldDatabase;
             m_OpCodeDatabase           = opCodeDatabase;
@@ -258,6 +260,9 @@ namespace RPGFramework.Field
             }
 
             await UnloadCurrentFieldAsync();
+
+            m_SoundChannels.StopAll();
+            m_SfxPlayer.SetAllSoundsVolume(1f, 0f);
 
             m_Screen.Exit();
             m_Countdown.Exit();
@@ -450,6 +455,10 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestReverbPreset                += OnRequestReverbPreset;
             m_FieldContext.VM.RequestReverbVolume                += OnRequestReverbVolume;
             m_FieldContext.VM.RequestSfx                         += OnRequestSfx;
+            m_FieldContext.VM.RequestStopSound                   += OnRequestStopSound;
+            m_FieldContext.VM.RequestFadeSoundVolume             += OnRequestFadeSoundVolume;
+            m_FieldContext.VM.RequestFadeSoundPan                += OnRequestFadeSoundPan;
+            m_FieldContext.VM.RequestFadeAllSoundVolume          += OnRequestFadeAllSoundVolume;
             m_FieldContext.VM.RequestSetPlayerEntity             += OnRequestSetPlayerEntity;
             m_FieldContext.VM.RequestSetEntityVisible            += OnRequestSetEntityVisible;
             m_FieldContext.VM.RequestSetEntitySolid              += OnRequestSetEntitySolid;
@@ -600,6 +609,10 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntitySolid              -= OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetEntityVisible            -= OnRequestSetEntityVisible;
             m_FieldContext.VM.RequestSetPlayerEntity             -= OnRequestSetPlayerEntity;
+            m_FieldContext.VM.RequestFadeAllSoundVolume          -= OnRequestFadeAllSoundVolume;
+            m_FieldContext.VM.RequestFadeSoundPan                -= OnRequestFadeSoundPan;
+            m_FieldContext.VM.RequestFadeSoundVolume             -= OnRequestFadeSoundVolume;
+            m_FieldContext.VM.RequestStopSound                   -= OnRequestStopSound;
             m_FieldContext.VM.RequestSfx                         -= OnRequestSfx;
             m_FieldContext.VM.RequestMusic                       -= OnRequestMusic;
             m_FieldContext.VM.RequestMusicCrossfade              -= OnRequestMusicCrossfade;
@@ -821,6 +834,8 @@ namespace RPGFramework.Field
         {
             FieldEntities fieldEntities = await PreLoadFieldAsync();
 
+            m_SfxPlayer.SetAllSoundsVolume(1f, 0f);
+
             m_CurrentModuleStore.SetModuleId(FieldConstants.MODULE_ID);
 
             m_SaveEnabledStore.ResetSaveEnabled();
@@ -1025,6 +1040,8 @@ namespace RPGFramework.Field
 
             SubscribeVm();
 
+            m_SoundChannels.StartAgain(m_FieldContext.KeptSounds);
+
             FieldEntityRuntime playerEntity = m_FieldContext.PlayerEntity;
 
             if (playerEntity != null)
@@ -1223,9 +1240,29 @@ namespace RPGFramework.Field
             m_MusicPlayer.SetStemStateFadeAsync(stateNameHash, fadeSeconds).FireAndForget();
         }
 
-        private void OnRequestSfx(ulong nameHash)
+        private void OnRequestSfx(ulong nameHash, float volume, float pan, byte channel)
         {
-            m_SfxPlayer.PlayAsync(nameHash).FireAndForget();
+            m_SoundChannels.Play(nameHash, volume, pan, channel);
+        }
+
+        private void OnRequestStopSound(byte channel)
+        {
+            m_SoundChannels.Stop(channel);
+        }
+
+        private void OnRequestFadeSoundVolume(byte channel, float volume, float seconds)
+        {
+            m_SoundChannels.FadeVolume(channel, volume, seconds);
+        }
+
+        private void OnRequestFadeSoundPan(byte channel, float pan, float seconds)
+        {
+            m_SoundChannels.FadePan(channel, pan, seconds);
+        }
+
+        private void OnRequestFadeAllSoundVolume(float volume, float seconds)
+        {
+            m_SfxPlayer.SetAllSoundsVolume(volume, seconds);
         }
 
         private void OnRequestBattleMusic(ulong nameHash)
@@ -1547,6 +1584,8 @@ namespace RPGFramework.Field
                     state.SetMove(entity.Move);
                 }
             }
+
+            m_FieldContext.SetKeptSounds(m_SoundChannels.KeepLooping());
 
             m_FieldResumeDataStore.Set(m_FieldContext);
         }

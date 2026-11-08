@@ -949,6 +949,9 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.DialogueChannel:
                     return IndexDropdown(block, argumentIndex, label, current, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, i => $"Channel {i}");
 
+                case ArgumentType.SoundChannel:
+                    return IndexDropdown(block, argumentIndex, label, current, ArgumentTypes.SOUND_CHANNEL_COUNT, i => i == 0 ? "None" : $"Channel {i}");
+
                 case ArgumentType.MessageVariableSlot:
                     return IndexDropdown(block, argumentIndex, label, current, DialogueMarkup.MESSAGE_VARIABLE_COUNT, i => $"{{Var {i}}}");
 

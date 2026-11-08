@@ -26,7 +26,11 @@ namespace RPGFramework.Field
         internal Func<bool>                                    IsMusicVolumeFading;
         internal event Action<ulong, float>                    RequestMusicStemState;
         internal event Action<ulong>                           RequestBattleMusic;
-        internal event Action<ulong>                           RequestSfx;
+        internal event Action<ulong, float, float, byte>       RequestSfx;
+        internal event Action<byte>                            RequestStopSound;
+        internal event Action<byte, float, float>              RequestFadeSoundVolume;
+        internal event Action<byte, float, float>              RequestFadeSoundPan;
+        internal event Action<float, float>                    RequestFadeAllSoundVolume;
         internal event Action<byte>                            RequestReverbPreset;
         internal event Action<float>                           RequestReverbVolume;
         internal event Action<FieldEntityRuntime>              RequestSetPlayerEntity;
@@ -507,14 +511,16 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.CheckIfMusicIsPlaying, CheckIfMusicIsPlayingOpcodeHandler },
                        { FieldScriptOpCode.SetBattleMusic, SetBattleMusicOpcodeHandler },
                        { FieldScriptOpCode.PlaySound, PlaySoundOpcodeHandler },
-                       // { FieldScriptOpCode.PlayAmbientLoop, PlayAmbientLoopOpcodeHandler },
-                       // { FieldScriptOpCode.SetAllSoundVolume, SetAllSoundVolumeOpcodeHandler },
-                       // { FieldScriptOpCode.FadeAllSoundVolume, FadeAllSoundVolumeOpcodeHandler },
+                       { FieldScriptOpCode.SetAllSoundVolume, SetAllSoundVolumeOpcodeHandler },
+                       { FieldScriptOpCode.FadeAllSoundVolume, FadeAllSoundVolumeOpcodeHandler },
                        { FieldScriptOpCode.SetReverbPreset, SetReverbPresetOpcodeHandler },
                        { FieldScriptOpCode.SetReverbVolume, SetReverbVolumeOpcodeHandler },
                        { FieldScriptOpCode.CrossfadeMusic, CrossfadeMusicOpcodeHandler },
                        { FieldScriptOpCode.FadeMusicVolumeFrom, FadeMusicVolumeFromOpcodeHandler },
                        { FieldScriptOpCode.WaitForMusicVolume, WaitForMusicVolumeOpcodeHandler },
+                       { FieldScriptOpCode.StopSound, StopSoundOpcodeHandler },
+                       { FieldScriptOpCode.FadeSoundVolume, FadeSoundVolumeOpcodeHandler },
+                       { FieldScriptOpCode.FadeSoundPan, FadeSoundPanOpcodeHandler },
 
                        // Video
                        // { FieldScriptOpCode.PrepareMovie, PrepareMovieOpcodeHandler },
@@ -2467,12 +2473,37 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Play a sound effect once.
+        /// Play a sound effect, on a channel if the script gives one.
         /// </summary>
         private void PlaySoundOpcodeHandler(FieldScriptContext ctx)
         {
             ulong nameHash = ctx.ReadName();
-            RequestSfx?.Invoke(nameHash);
+            float volume   = ctx.ReadFloat();
+            float pan      = ctx.ReadFloat();
+            byte  channel  = ctx.NextByte();
+
+            RequestSfx?.Invoke(nameHash, volume, pan, channel);
+        }
+
+        /// <summary>
+        /// Set every sound effect's volume at once.
+        /// </summary>
+        private void SetAllSoundVolumeOpcodeHandler(FieldScriptContext ctx)
+        {
+            float volume = ctx.ReadFloat();
+
+            RequestFadeAllSoundVolume?.Invoke(volume, 0f);
+        }
+
+        /// <summary>
+        /// Fade every sound effect's volume.
+        /// </summary>
+        private void FadeAllSoundVolumeOpcodeHandler(FieldScriptContext ctx)
+        {
+            float volume  = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
+
+            RequestFadeAllSoundVolume?.Invoke(volume, seconds);
         }
 
         /// <summary>
@@ -2527,6 +2558,40 @@ namespace RPGFramework.Field
         private void WaitForMusicVolumeOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsMusicVolumeFading()));
+        }
+
+        /// <summary>
+        /// Stop the sound a channel holds.
+        /// </summary>
+        private void StopSoundOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte channel = ctx.NextByte();
+
+            RequestStopSound?.Invoke(channel);
+        }
+
+        /// <summary>
+        /// Take the volume of the sound a channel holds to a new level.
+        /// </summary>
+        private void FadeSoundVolumeOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte  channel = ctx.NextByte();
+            float volume  = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
+
+            RequestFadeSoundVolume?.Invoke(channel, volume, seconds);
+        }
+
+        /// <summary>
+        /// Take the pan of the sound a channel holds to a new place.
+        /// </summary>
+        private void FadeSoundPanOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte  channel = ctx.NextByte();
+            float pan     = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
+
+            RequestFadeSoundPan?.Invoke(channel, pan, seconds);
         }
 
         /// <summary>

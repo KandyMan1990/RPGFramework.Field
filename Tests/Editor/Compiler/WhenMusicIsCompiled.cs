@@ -93,9 +93,9 @@ namespace RPGFramework.Field.Tests.Compiler
         [Test]
         public void ThenASoundIsItsNamesHash()
         {
-            byte[] sound = FieldScriptCompiler.Compile("PLAY_SOUND Equip");
+            byte[] sound = FieldScriptCompiler.Compile("PLAY_SOUND Equip 1 0 0");
 
-            Assert.AreEqual(2 + 8, sound.Length);
+            Assert.AreEqual(2 + 8 + 1 + 4 + 4 + 1, sound.Length);
             Assert.AreEqual(Fnv1a64.Hash("Equip"), BitConverter.ToUInt64(sound, 2));
         }
     }

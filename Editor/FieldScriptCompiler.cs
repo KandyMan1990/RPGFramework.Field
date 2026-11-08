@@ -406,6 +406,11 @@ namespace RPGFramework.Field.Editor
                 FieldArgumentInfo argument = opCode.Arguments[i];
                 int               part     = i + 1;
 
+                if (part >= parts.Length && (argument.Type == ArgumentType.Variable || ArgumentTypes.TakesSource(argument.Type)))
+                {
+                    throw new Exception($"line {lineNumber}: {parts[0]} is missing its {argument.Name}");
+                }
+
                 if (argument.EnumMask != 0)
                 {
                     CheckEnumMask(argument, parts[part], parts[0], lineNumber);
@@ -595,6 +600,10 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.DialogueChannel:
                     bw.Write(ParseIndex(parts, part, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, "dialogue channel", lineNumber));
+                    break;
+
+                case ArgumentType.SoundChannel:
+                    bw.Write(ParseIndex(parts, part, ArgumentTypes.SOUND_CHANNEL_COUNT, "sound channel", lineNumber));
                     break;
 
                 case ArgumentType.MessageVariableSlot:

@@ -81,6 +81,11 @@ namespace RPGFramework.Field
 
         internal void SetLiveCamera(byte cameraId) => m_LiveCamera = cameraId;
 
+        /// <summary>The looping sounds a battle stopped, which the field starts again as it returns.</summary>
+        internal KeptSound[] KeptSounds { get; private set; }
+
+        internal void SetKeptSounds(KeptSound[] sounds) => KeptSounds = sounds;
+
         /// <summary>A script waiting for a button, kept so the wait is offered input again after a battle.</summary>
         internal void AddButtonWait(ButtonWaitInputContext wait) => m_ButtonWaits.Add(wait);
 
