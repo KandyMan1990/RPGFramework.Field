@@ -21,7 +21,8 @@ namespace RPGFramework.Field
         BaseAnimation          = 1 << 9,
         AnimationSpeed         = 1 << 10,
         PlayedAnimation        = 1 << 11,
-        CollisionTriggerActive = 1 << 12
+        CollisionTriggerActive = 1 << 12,
+        InField                = 1 << 13
     }
 
     /// <summary>
@@ -41,12 +42,22 @@ namespace RPGFramework.Field
         internal bool              Solid;
         internal bool              PushActive;
         internal bool              CollisionTriggerActive;
+        internal bool              InField;
         internal float             InteractionRange;
         internal float             MovementSpeed;
         internal float             AnimationSpeed;
         internal ulong             BaseAnimation;
         internal PlayAnimationArgs PlayedAnimation;
         internal MoveEntityArgs    Move;
+
+        /// <summary>Whether a script has left this entity out of the field; one that says nothing is in it.</summary>
+        internal bool IsLeftOut => (Set & FieldEntityValues.InField) != 0 && !InField;
+
+        internal void SetInField(bool inField)
+        {
+            InField =  inField;
+            Set     |= FieldEntityValues.InField;
+        }
 
         internal void SetPose(Vector3 position, Quaternion rotation)
         {

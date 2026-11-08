@@ -53,6 +53,13 @@ namespace RPGFramework.Field
         internal event Action<int, SetEntityRotationAsyncArgs> RequestSetEntityRotationAsync;
         internal Func<int, bool>                               IsEntityRotating;
         internal event Action<int, int>                        RequestSetEntityToFaceEntity;
+        internal event Action<int, Vector3>                    RequestSetEntityToFacePosition;
+        internal event Action<int, int, float, Easing>         RequestTurnEntityToEntity;
+        internal event Action<int, int>                        RequestCopyEntityPose;
+        internal event Action<int, bool>                       RequestSetEntityInField;
+        internal Func<int, Vector3>                            GetEntityPosition;
+        internal Func<int, float>                              GetEntityDirection;
+        internal Func<int, int, bool>                          IsEntityInRange;
         internal event Action<int, float>                      RequestSetEntityMovementSpeed;
         internal event Action<int, MoveEntityArgs>             RequestMoveEntity;
         internal Func<int, bool>                               IsEntityMoving;
@@ -399,10 +406,9 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetFollowerEnabled, SetFollowerEnabledOpcodeHandler },
                        // { FieldScriptOpCode.ResetFollowerTrail, ResetFollowerTrailOpcodeHandler },
                        { FieldScriptOpCode.Visibility, VisibilityOpcodeHandler },
-                       // { FieldScriptOpCode.SetEntityActive, SetEntityActiveOpcodeHandler },
+                       { FieldScriptOpCode.EntityInField, EntityInFieldOpcodeHandler },
                        { FieldScriptOpCode.EntitySolidity, EntitySolidityOpcodeHandler },
                        { FieldScriptOpCode.PushScriptActivation, PushScriptActivationOpcodeHandler },
-                       // { FieldScriptOpCode.SetCollisionRadius, SetCollisionRadiusOpcodeHandler },
                        { FieldScriptOpCode.InteractionTriggerActivation, InteractabilityOpcodeHandler },
                        { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
                        { FieldScriptOpCode.SetEntityPosition, SetEntityPositionOpcodeHandler },
@@ -427,9 +433,9 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
                        { FieldScriptOpCode.SetEntityRotationOverTime, SetEntityRotationOverTimeOpcodeHandler },
                        { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
-                       // { FieldScriptOpCode.SetDirectionToPosition, SetDirectionToPositionOpcodeHandler },
+                       { FieldScriptOpCode.SetDirectionToFacePosition, SetDirectionToFacePositionOpcodeHandler },
                        // { FieldScriptOpCode.SetDirectionToPartyMember, SetDirectionToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.TurnEntityToAnotherEntity, TurnEntityToAnotherEntityOpcodeHandler },
+                       { FieldScriptOpCode.TurnToEntityAndWait, TurnToEntityAndWaitOpcodeHandler },
                        // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.SetBaseAnimation, SetBaseAnimationOpcodeHandler },
                        // { FieldScriptOpCode.SetLadderAnimations, SetLadderAnimationsOpcodeHandler },
@@ -458,12 +464,12 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetFootstepSound, SetFootstepSoundOpcodeHandler },
                        // { FieldScriptOpCode.SetFootstepsEnabled, SetFootstepsEnabledOpcodeHandler },
                        // { FieldScriptOpCode.SetEntityShadeLevel, SetEntityShadeLevelOpcodeHandler },
-                       // { FieldScriptOpCode.GetEntityPosition, GetEntityPositionXYZIOpcodeHandler },
-                       // { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
+                       { FieldScriptOpCode.GetEntityPosition, GetEntityPositionOpcodeHandler },
+                       { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
                        // { FieldScriptOpCode.GetPartyMemberPosition, GetPartyMemberPositionOpcodeHandler },
                        // { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
-                       // { FieldScriptOpCode.CopyEntityInfo, CopyEntityInfoOpcodeHandler },
-                       // { FieldScriptOpCode.IsEntityTouching, IsEntityTouchingOpcodeHandler },
+                       { FieldScriptOpCode.CopyEntityPose, CopyEntityPoseOpcodeHandler },
+                       { FieldScriptOpCode.IsEntityInRange, IsEntityInRangeOpcodeHandler },
                        { FieldScriptOpCode.CollisionTriggerActivation, CollisionTriggerActivationOpcodeHandler },
 
                        // Screen and field effects
@@ -1739,6 +1745,16 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Say whether this entity is in the field this visit. The field reads it once every init script has run.
+        /// </summary>
+        private void EntityInFieldOpcodeHandler(FieldScriptContext ctx)
+        {
+            bool inField = ctx.ReadBool();
+
+            RequestSetEntityInField?.Invoke(ctx.EntityId, inField);
+        }
+
+        /// <summary>
         /// Let other entities walk through this one, or block them again.
         /// </summary>
         private void EntitySolidityOpcodeHandler(FieldScriptContext ctx)
@@ -1944,6 +1960,32 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Face this entity towards a point.
+        /// </summary>
+        private void SetDirectionToFacePositionOpcodeHandler(FieldScriptContext ctx)
+        {
+            float x = ctx.ReadFloat();
+            float y = ctx.ReadFloat();
+            float z = ctx.ReadFloat();
+
+            RequestSetEntityToFacePosition?.Invoke(ctx.EntityId, new Vector3(x, y, z));
+        }
+
+        /// <summary>
+        /// Turn this entity over time to face another and block until it has.
+        /// </summary>
+        private void TurnToEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte   targetEntityId = ctx.ReadByte();
+            float  duration       = ctx.ReadFloat();
+            Easing rotationType   = (Easing)ctx.ReadByte();
+
+            RequestTurnEntityToEntity?.Invoke(ctx.EntityId, targetEntityId, duration, rotationType);
+
+            ctx.Block(new WaitUntilBlock(() => !IsEntityRotating(ctx.EntityId)));
+        }
+
+        /// <summary>
         /// Set what this entity animates as when no script is animating it.
         /// </summary>
         private void SetBaseAnimationOpcodeHandler(FieldScriptContext ctx)
@@ -2091,6 +2133,54 @@ namespace RPGFramework.Field
         private void PopAnimationStateOpcodeHandler(FieldScriptContext ctx)
         {
             RequestPopAnimationState?.Invoke(ctx.EntityId);
+        }
+
+        /// <summary>
+        /// Store where an entity is.
+        /// </summary>
+        private void GetEntityPositionOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte                   entityId = ctx.ReadByte();
+            FieldScriptDestination x        = ctx.ReadDestination();
+            FieldScriptDestination y        = ctx.ReadDestination();
+            FieldScriptDestination z        = ctx.ReadDestination();
+            Vector3                position = GetEntityPosition(entityId);
+
+            ctx.WriteFloat(x, position.x);
+            ctx.WriteFloat(y, position.y);
+            ctx.WriteFloat(z, position.z);
+        }
+
+        /// <summary>
+        /// Store which way an entity faces, in degrees.
+        /// </summary>
+        private void GetEntityDirectionOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte                   entityId    = ctx.ReadByte();
+            FieldScriptDestination destination = ctx.ReadDestination();
+
+            ctx.WriteFloat(destination, GetEntityDirection(entityId));
+        }
+
+        /// <summary>
+        /// Put this entity where another stands, facing the way it faces.
+        /// </summary>
+        private void CopyEntityPoseOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte sourceEntityId = ctx.ReadByte();
+
+            RequestCopyEntityPose?.Invoke(ctx.EntityId, sourceEntityId);
+        }
+
+        /// <summary>
+        /// Store whether another entity is within this one's interaction range.
+        /// </summary>
+        private void IsEntityInRangeOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte                   otherEntityId = ctx.ReadByte();
+            FieldScriptDestination destination   = ctx.ReadDestination();
+
+            ctx.WriteBool(destination, IsEntityInRange(ctx.EntityId, otherEntityId));
         }
 
         /// <summary>

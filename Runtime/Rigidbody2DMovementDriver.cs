@@ -80,6 +80,11 @@ namespace RPGFramework.Field
             m_Facing.Face(direction);
         }
 
+        Quaternion IMovementDriver.RotationAlong(Vector3 direction)
+        {
+            return SpriteFacing.RotationFacing(direction);
+        }
+
         void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
             m_Facing.StartTurn(args);

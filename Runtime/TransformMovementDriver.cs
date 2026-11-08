@@ -79,6 +79,11 @@ namespace RPGFramework.Field
             FaceAlong(direction);
         }
 
+        Quaternion IMovementDriver.RotationAlong(Vector3 direction)
+        {
+            return m_SpriteFacing != null ? SpriteFacing.RotationFacing(direction) : Quaternion.LookRotation(Vector3.ProjectOnPlane(direction, Vector3.up));
+        }
+
         void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
             if (m_SpriteFacing != null)

@@ -11,6 +11,7 @@ namespace RPGFramework.Field
         internal FieldInteractionTrigger InteractionTrigger { get; private set; }
         internal MoveEntityArgs          Move               { get; private set; }
         internal bool                    HasMove            { get; private set; }
+        internal bool                    IsLeftOut          { get; private set; }
 
         internal void SetEntity(FieldEntity                         entity)             => Entity = entity;
         internal void SetMovementDriver(IMovementDriver             movementDriver)     => MovementDriver = movementDriver;
@@ -25,5 +26,7 @@ namespace RPGFramework.Field
         }
 
         internal void ClearMove() => HasMove = false;
+
+        internal void LeaveOut() => IsLeftOut = true;
     }
 }

@@ -43,6 +43,9 @@ namespace RPGFramework.Field
         /// <summary>Faces the entity along a direction at once, as facing another does.</summary>
         void Face(Vector3 direction);
 
+        /// <summary>The rotation that faces along a direction, for a turn over time to end on.</summary>
+        Quaternion RotationAlong(Vector3 direction);
+
         /// <summary>Starts a turn over time, as a script asks.</summary>
         void StartRotation(SetEntityRotationAsyncArgs args);
 

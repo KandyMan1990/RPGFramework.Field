@@ -37,7 +37,8 @@ namespace RPGFramework.Field
 {
     internal sealed partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
     {
-        private const float MUSIC_RESUME_SECONDS = 1f;
+        private const float MUSIC_RESUME_SECONDS   = 1f;
+        private const float ALREADY_FACING_DEGREES = 0.5f;
 
         private readonly ICoreModule                m_CoreModule;
         private readonly IDIResolver                m_DIResolver;
@@ -350,6 +351,11 @@ namespace RPGFramework.Field
 
             foreach (FieldEntityComponents entity in m_Entities.Values)
             {
+                if (entity.IsLeftOut)
+                {
+                    continue;
+                }
+
                 UpdateMove(entity);
 
                 entity.MovementDriver?.Tick(deltaTime);
@@ -416,7 +422,10 @@ namespace RPGFramework.Field
 
             foreach (FieldEntityComponents entity in m_Entities.Values)
             {
-                entity.MovementDriver?.PhysicsTick(fixedDeltaTime);
+                if (!entity.IsLeftOut)
+                {
+                    entity.MovementDriver?.PhysicsTick(fixedDeltaTime);
+                }
             }
 
             RaisePushes();
@@ -460,6 +469,13 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityRotationAsync      += OnRequestSetEntityRotationAsync;
             m_FieldContext.VM.IsEntityRotating                   =  IsEntityRotating;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       += OnRequestSetEntityToFaceEntity;
+            m_FieldContext.VM.RequestSetEntityToFacePosition     += OnRequestSetEntityToFacePosition;
+            m_FieldContext.VM.RequestTurnEntityToEntity          += OnRequestTurnEntityToEntity;
+            m_FieldContext.VM.RequestCopyEntityPose              += OnRequestCopyEntityPose;
+            m_FieldContext.VM.RequestSetEntityInField            += OnRequestSetEntityInField;
+            m_FieldContext.VM.GetEntityPosition                  =  EntityPosition;
+            m_FieldContext.VM.GetEntityDirection                 =  EntityDirection;
+            m_FieldContext.VM.IsEntityInRange                    =  IsEntityInRange;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      += OnRequestSetEntityMovementSpeed;
             m_FieldContext.VM.RequestMoveEntity                  += OnRequestMoveEntity;
             m_FieldContext.VM.IsEntityMoving                     =  IsEntityMoving;
@@ -534,6 +550,13 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsMusicPlaying                     =  null;
             m_FieldContext.VM.RequestMoveEntity                  -= OnRequestMoveEntity;
             m_FieldContext.VM.RequestSetEntityMovementSpeed      -= OnRequestSetEntityMovementSpeed;
+            m_FieldContext.VM.IsEntityInRange                    =  null;
+            m_FieldContext.VM.GetEntityDirection                 =  null;
+            m_FieldContext.VM.GetEntityPosition                  =  null;
+            m_FieldContext.VM.RequestSetEntityInField            -= OnRequestSetEntityInField;
+            m_FieldContext.VM.RequestCopyEntityPose              -= OnRequestCopyEntityPose;
+            m_FieldContext.VM.RequestTurnEntityToEntity          -= OnRequestTurnEntityToEntity;
+            m_FieldContext.VM.RequestSetEntityToFacePosition     -= OnRequestSetEntityToFacePosition;
             m_FieldContext.VM.RequestSetEntityToFaceEntity       -= OnRequestSetEntityToFaceEntity;
             m_FieldContext.VM.IsEntityRotating                   =  null;
             m_FieldContext.VM.RequestSetEntityRotationAsync      -= OnRequestSetEntityRotationAsync;
@@ -826,6 +849,7 @@ namespace RPGFramework.Field
             SubscribeVm();
 
             InitialiseFieldScripts();
+            LeaveOutEntities();
             StartDefaultScripts(fieldEntities);
             InitialisePlayer();
 
@@ -881,6 +905,42 @@ namespace RPGFramework.Field
             Debug.LogError($"{nameof(FieldModule)}::{nameof(InitialiseFieldScripts)} Entity [{entity.EntityId}]'s init script ran {FieldVM.INIT_INSTRUCTION_CEILING} instructions without returning, so it was stopped there. It most likely loops — init has to run straight through to its RETURN; move looping behaviour into a {nameof(FieldScriptType.Default)} script");
         }
 #endif
+
+        /// <summary>
+        /// Read once, when every init script has run, so an init can change its mind: an entity left out is gone for
+        /// the visit.
+        /// </summary>
+        private void LeaveOutEntities()
+        {
+            IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
+
+            for (int i = 0; i < entities.Count; i++)
+            {
+                if (m_FieldContext.EntityStateAt(i).IsLeftOut)
+                {
+                    entities[i].LeaveOutOfField();
+                    LeaveBodyOut(entities[i].EntityId);
+                }
+            }
+        }
+
+        private void LeaveBodyOut(int entityId)
+        {
+            FieldEntityComponents entity = m_Entities[entityId];
+
+            if (entity.Entity == null)
+            {
+                return;
+            }
+
+            entity.LeaveOut();
+            entity.Entity.gameObject.SetActive(false);
+
+            if (entity.InteractionTrigger != null)
+            {
+                entity.InteractionTrigger.SetActive(false);
+            }
+        }
 
         /// <summary>
         /// Start each entity's <see cref="FieldScriptType.Default" /> script, once every init has run.
@@ -971,6 +1031,12 @@ namespace RPGFramework.Field
             for (int i = 0; i < entities.Count; i++)
             {
                 int entityId = entities[i].EntityId;
+
+                if (m_FieldContext.EntityState(entityId).IsLeftOut)
+                {
+                    LeaveBodyOut(entityId);
+                    continue;
+                }
 
                 ApplyEntityState(entityId, m_FieldContext.EntityState(entityId).Set);
             }
@@ -1438,7 +1504,7 @@ namespace RPGFramework.Field
 
                 state.ClearMove();
 
-                if (entity.Entity == null)
+                if (entity.Entity == null || entity.IsLeftOut)
                 {
                     continue;
                 }
@@ -1660,13 +1726,63 @@ namespace RPGFramework.Field
 
         private void OnRequestSetEntityToFaceEntity(int entityId, int targetEntityId)
         {
-            FieldEntity fieldEntity       = m_Entities[entityId].Entity;
-            FieldEntity targetFieldEntity = m_Entities[targetEntityId].Entity;
+            GetMovementDriver(entityId).Face(DirectionTo(entityId, EntityPosition(targetEntityId)));
+        }
 
-            Vector3 direction = targetFieldEntity.transform.position - fieldEntity.transform.position;
-            direction = Vector3.ProjectOnPlane(direction, m_FieldModuleMonoBehaviour.Up);
+        private void OnRequestSetEntityToFacePosition(int entityId, Vector3 position)
+        {
+            GetMovementDriver(entityId).Face(DirectionTo(entityId, position));
+        }
 
-            GetMovementDriver(entityId).Face(direction);
+        private void OnRequestTurnEntityToEntity(int entityId, int targetEntityId, float duration, Easing easing)
+        {
+            IMovementDriver driver    = GetMovementDriver(entityId);
+            Vector3         direction = DirectionTo(entityId, EntityPosition(targetEntityId));
+
+            if (Vector3.Angle(driver.Facing, direction) < ALREADY_FACING_DEGREES)
+            {
+                return;
+            }
+
+            driver.StartRotation(new SetEntityRotationAsyncArgs(driver.RotationAlong(direction), RotationDirection.Closest, duration, easing));
+        }
+
+        private void OnRequestCopyEntityPose(int entityId, int sourceEntityId)
+        {
+            IMovementDriver driver = GetMovementDriver(entityId);
+
+            driver.SetPosition(EntityPosition(sourceEntityId));
+            driver.Face(FacingOf(m_Entities[sourceEntityId]));
+        }
+
+        private void OnRequestSetEntityInField(int entityId, bool inField)
+        {
+            m_FieldContext.EntityState(entityId).SetInField(inField);
+        }
+
+        private Vector3 DirectionTo(int entityId, Vector3 position)
+        {
+            return Vector3.ProjectOnPlane(position - EntityPosition(entityId), m_FieldModuleMonoBehaviour.Up);
+        }
+
+        private Vector3 EntityPosition(int entityId)
+        {
+            return m_Entities[entityId].Entity.transform.position;
+        }
+
+        private float EntityDirection(int entityId)
+        {
+            Vector3 angles = RotationOf(m_Entities[entityId]).eulerAngles;
+
+            return m_Dimension == FieldDimension.TwoD ? angles.z : angles.y;
+        }
+
+        private bool IsEntityInRange(int entityId, int otherEntityId)
+        {
+            FieldEntityComponents entity = m_Entities[entityId];
+            FieldEntityComponents other  = m_Entities[otherEntityId];
+
+            return !other.IsLeftOut && m_InteractionSearch.IsInRange(entity.Entity.transform.position, other.Entity.transform.position, entity.InteractionTrigger.InteractionRange);
         }
 
         private void OnRequestSetEntityMovementSpeed(int entityId, float movementSpeed)

@@ -484,6 +484,7 @@ namespace RPGFramework.Field.Editor
                 string[] lines = text.Split('\n');
 
                 ValidateInitScript(script.Type, scriptDescription, lines, problems);
+                ValidateEntityInField(script.Type, scriptDescription, lines, problems);
                 ValidateBodyOpcodes(body, scriptDescription, lines, problems);
                 ValidateEntityTargets(scriptCounts, withBodies, scriptDescription, lines, problems);
                 ValidateIdTargets(ArgumentType.BlockerId, blockerIds, "blocker", nameof(FieldBlocker), scriptDescription, lines, problems);
@@ -773,10 +774,6 @@ namespace RPGFramework.Field.Editor
             }
         }
 
-        /// <summary>
-        /// An opcode acting on the entity's presence that names another entity — to face it, to walk up to it — acts
-        /// toward that entity's body, so the one it names needs a body too.
-        /// </summary>
         /// <summary>
         /// Scripts name a blocker by id, so two sharing one would be switched together — and the field module keys
         /// them by id at load. One that has nothing to stop an entity closes nothing: the physics drivers meet solid
@@ -1101,6 +1098,10 @@ namespace RPGFramework.Field.Editor
             }
         }
 
+        /// <summary>
+        /// An opcode acting on the entity's presence that names another entity — to face it, to walk up to it — acts
+        /// toward that entity's body, so the one it names needs a body too.
+        /// </summary>
         private static void ValidateEntityTargets(Dictionary<int, int> scriptCounts, HashSet<int> withBodies, string scriptDescription, string[] lines, List<string> problems)
         {
             for (int i = 0; i < lines.Length; i++)
@@ -1496,6 +1497,28 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
+        /// <c>ENTITY_IN_FIELD</c> anywhere but an init script. The field reads it once, as every init ends, so
+        /// anywhere else it would look as if it had worked and do nothing.
+        /// </summary>
+        internal static void ValidateEntityInField(FieldScriptType scriptType, string scriptDescription, string[] lines, List<string> problems)
+        {
+            if (scriptType == FieldScriptType.Init)
+            {
+                return;
+            }
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string name = FieldScriptLine.Split(lines[i])[0];
+
+                if (FieldOpCodeCatalogue.Project.TryGet(name, out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.EntityInField)
+                {
+                    problems.Add($"{scriptDescription} uses {name}, which only an init script can: the field reads it once, when every init has run. To hide an entity later, use VISIBILITY");
+                }
+            }
+        }
+
+        /// <summary>
         /// A script switching a trigger its entity does not have. The field module reaches for the trigger
         /// without looking, so this is the only place the mistake can be caught.
         /// </summary>
@@ -1523,6 +1546,11 @@ namespace RPGFramework.Field.Editor
                 if ((opCode.OpCode == FieldScriptOpCode.InteractionTriggerActivation || opCode.OpCode == FieldScriptOpCode.SetInteractionRange) && !hasInteractionTrigger)
                 {
                     problems.Add($"{scriptDescription} uses {name}, but its entity has no {nameof(FieldInteractionTrigger)} to change");
+                }
+
+                if (opCode.OpCode == FieldScriptOpCode.IsEntityInRange && !hasInteractionTrigger)
+                {
+                    problems.Add($"{scriptDescription} uses {name}, but its entity has no {nameof(FieldInteractionTrigger)}, whose range it measures");
                 }
             }
         }
@@ -1634,12 +1662,6 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// A key the field does not load. It is hashed into the bytecode, so a typo, a key from another field's sheet
-        /// or one missing its <c>Sheet/</c> prefix only shows as a missing string in play. The field's sheets record
-        /// their keys when generated, so one generated before that has none to check against until it is generated
-        /// again — said so, rather than every key being reported as unknown.
-        /// </summary>
-        /// <summary>
         /// Every key of every localisation sheet in the project, as <c>Sheet/Key</c>, in order. Read from the sheet assets,
         /// where generation records them.
         /// </summary>
@@ -1666,6 +1688,12 @@ namespace RPGFramework.Field.Editor
             return keys;
         }
 
+        /// <summary>
+        /// A key the field does not load. It is hashed into the bytecode, so a typo, a key from another field's sheet
+        /// or one missing its <c>Sheet/</c> prefix only shows as a missing string in play. The field's sheets record
+        /// their keys when generated, so one generated before that has none to check against until it is generated
+        /// again — said so, rather than every key being reported as unknown.
+        /// </summary>
         private static void ValidateDialogueKeys(GameObject prefab, LocalisationSheetAsset[] sheets, FieldEntities fieldEntities, List<string> problems)
         {
             HashSet<string> known       = new HashSet<string>(StringComparer.Ordinal);

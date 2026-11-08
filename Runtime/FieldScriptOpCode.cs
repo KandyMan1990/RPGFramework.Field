@@ -1033,7 +1033,9 @@ namespace RPGFramework.Field
         [Argument(0, "isVisible", ArgumentType.Bool)]
         Visibility = 0x0507,
 
-        SetEntityActive = 0x0508, // bool active - inactive stops its scripts, hides it and removes its collision
+        [FieldOpCode("ENTITY_IN_FIELD", ArgumentLayout.Sequential, Summary = "In an init script, say whether this entity is in the field this visit. One left out has no body, runs no scripts and refuses requests")]
+        [Argument(0, "inField", ArgumentType.Bool)]
+        EntityInField = 0x0508,
 
         [FieldOpCode("SOLIDITY", ArgumentLayout.Sequential, Summary = "Let other entities walk through this one, or block them again", NeedsBody = true)]
         [Argument(0, "isSolid", ArgumentType.Bool)]
@@ -1042,8 +1044,6 @@ namespace RPGFramework.Field
         [FieldOpCode("PUSH_SCRIPT_ACTIVATION", ArgumentLayout.Sequential, Summary = "Let walking into this entity run its push script, or stop it", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
         PushScriptActivation = 0x050A,
-
-        SetCollisionRadius = 0x050B,
 
         [FieldOpCode("INTERACTION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's interaction trigger on or off", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
@@ -1143,10 +1143,21 @@ namespace RPGFramework.Field
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
         SetDirectionToFaceEntity = 0x0523,
 
-        SetDirectionToPosition    = 0x0524, // float x, float y, float z
+        [FieldOpCode("SET_DIRECTION_TO_FACE_POSITION", ArgumentLayout.Sequential, Summary = "Face this entity towards a point", NeedsBody = true)]
+        [Argument(0, "x", ArgumentType.Float)]
+        [Argument(1, "y", ArgumentType.Float)]
+        [Argument(2, "z", ArgumentType.Float)]
+        SetDirectionToFacePosition = 0x0524,
+
         SetDirectionToPartyMember = 0x0525, // byte partySlot
-        TurnEntityToAnotherEntity = 0x0526, // int entityId, byte rotationDirection (0 clockwise, 1 anti-clockwise, 2 closest), float duration (calls SET_ENTITY_ROTATION_OVER_TIME with smooth)
-        TurnToPartyMember         = 0x0527,
+
+        [FieldOpCode("TURN_TO_ENTITY_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity over time to face where another stands now, the short way round, waiting until it has", StopsInit = true, NeedsBody = true)]
+        [Argument(0, "targetEntityId", ArgumentType.EntityId)]
+        [Argument(1, "duration",       ArgumentType.Float)]
+        [Argument(2, "rotationType",   ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        TurnToEntityAndWait = 0x0526,
+
+        TurnToPartyMember = 0x0527,
 
         [FieldOpCode("SET_BASE_ANIMATION", ArgumentLayout.Sequential, Summary = "Set what this entity does when no script is animating it", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "state", ArgumentType.AnimationName, Description = "the state it rests in; a locomotion blend tree reads the entity's speed from there")]
@@ -1230,12 +1241,30 @@ namespace RPGFramework.Field
         SetFootstepSound        = 0x0540, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
         SetFootstepsEnabled     = 0x0541, // bool enabled
         SetEntityShadeLevel     = 0x0542, // float level
-        GetEntityPosition       = 0x0543,
-        GetEntityDirection      = 0x0544,
+
+        [FieldOpCode("GET_ENTITY_POSITION", ArgumentLayout.Sequential, Summary = "Store where an entity is", TargetsBody = true)]
+        [Argument(0, "entity", ArgumentType.EntityId)]
+        [Argument(1, "x",      ArgumentType.Variable, VariableWidth.Float)]
+        [Argument(2, "y",      ArgumentType.Variable, VariableWidth.Float)]
+        [Argument(3, "z",      ArgumentType.Variable, VariableWidth.Float)]
+        GetEntityPosition = 0x0543,
+
+        [FieldOpCode("GET_ENTITY_DIRECTION", ArgumentLayout.Sequential, Summary = "Store which way an entity faces, in degrees, the turn SET_ENTITY_ROTATION would give it: about y in 3D, about z in 2D", TargetsBody = true)]
+        [Argument(0, "entity",      ArgumentType.EntityId)]
+        [Argument(1, "destination", ArgumentType.Variable, VariableWidth.Float)]
+        GetEntityDirection = 0x0544,
+
         GetPartyMemberPosition  = 0x0545,
         GetPartyMemberDirection = 0x0546,
-        CopyEntityInfo          = 0x0547, // int sourceEntityId - take another entity's position and facing
-        IsEntityTouching        = 0x0548, // int otherEntityId, ushort destination
+
+        [FieldOpCode("COPY_ENTITY_POSE", ArgumentLayout.Sequential, Summary = "Put this entity where another stands, facing the way it faces", NeedsBody = true)]
+        [Argument(0, "source", ArgumentType.EntityId)]
+        CopyEntityPose = 0x0547,
+
+        [FieldOpCode("IS_ENTITY_IN_RANGE", ArgumentLayout.Sequential, Summary = "Store whether another entity is within this one's interaction range, from any side", NeedsBody = true)]
+        [Argument(0, "other",       ArgumentType.EntityId)]
+        [Argument(1, "destination", ArgumentType.Variable, VariableWidth.Bool)]
+        IsEntityInRange = 0x0548,
 
         [FieldOpCode("COLLISION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's collision trigger on or off, and with it the entity's enter and leave scripts", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]

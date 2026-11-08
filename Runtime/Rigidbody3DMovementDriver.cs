@@ -89,6 +89,11 @@ namespace RPGFramework.Field
             m_Rigidbody.transform.rotation = rotation;
         }
 
+        Quaternion IMovementDriver.RotationAlong(Vector3 direction)
+        {
+            return Quaternion.LookRotation(Vector3.ProjectOnPlane(direction, Vector3.up));
+        }
+
         void IMovementDriver.StartRotation(SetEntityRotationAsyncArgs args)
         {
             m_RotationState = new RotationState

@@ -62,11 +62,17 @@ namespace RPGFramework.Field
         /// <summary>Within its range of the player along the ground and the height limit above or below, but not on the player's spot.</summary>
         internal bool IsInReach(Vector3 playerPosition, InteractionCandidate candidate)
         {
-            Vector3 offset   = candidate.Position - playerPosition;
-            float   height   = Vector3.Dot(offset, m_Up);
-            float   distance = (offset - m_Up * height).magnitude;
+            float distance = DistanceAlongGround(candidate.Position - playerPosition, out float height);
 
             return math.abs(height) <= m_Height && distance > MIN_DISTANCE && distance <= candidate.Range;
+        }
+
+        /// <summary>Within a range along the ground and the height limit above or below, the very same spot included.</summary>
+        internal bool IsInRange(Vector3 from, Vector3 to, float range)
+        {
+            float distance = DistanceAlongGround(to - from, out float height);
+
+            return math.abs(height) <= m_Height && distance <= range;
         }
 
 #if UNITY_EDITOR
@@ -75,6 +81,13 @@ namespace RPGFramework.Field
             return AngleOff(playerPosition, playerFacing, position) <= m_PlayerAngle * 0.5f;
         }
 #endif
+
+        private float DistanceAlongGround(Vector3 offset, out float height)
+        {
+            height = Vector3.Dot(offset, m_Up);
+
+            return (offset - m_Up * height).magnitude;
+        }
 
         private bool FacesPlayer(Vector3 playerPosition, InteractionCandidate candidate)
         {

@@ -19,7 +19,7 @@
         private const int NO_SCRIPT = -1;
 
         internal int  EntityId { get; }
-        private  bool IsActive { get; }
+        private  bool IsActive { get; set; }
 
         private readonly int[]  m_ScriptIdBySlot;
         private readonly int[]  m_ScriptIdByEvent;
@@ -110,12 +110,13 @@
 
         /// <summary>
         /// Place a script in a priority slot, unless something is already there.<br /><br />
-        /// A request that finds its slot busy is refused rather than replacing what is running.
+        /// A request that finds its slot busy is refused rather than replacing what is running, and so is one for
+        /// an entity left out of the field, so that nothing waits on a script that will never run.
         /// </summary>
-        /// <returns>False when the slot was occupied and the request was refused.</returns>
+        /// <returns>False when the request was refused.</returns>
         internal bool TryRequestScript(int scriptId, byte priority)
         {
-            if (IsSlotOccupied(priority))
+            if (!IsActive || IsSlotOccupied(priority))
             {
                 return false;
             }
@@ -123,6 +124,14 @@
             m_ScriptIdBySlot[priority] = scriptId;
 
             return true;
+        }
+
+        /// <summary>
+        /// Takes this entity out of the field for the visit: it runs nothing more.
+        /// </summary>
+        internal void LeaveOutOfField()
+        {
+            IsActive = false;
         }
 
         internal void ReplaceScriptInSlot(int scriptId, byte priority)
