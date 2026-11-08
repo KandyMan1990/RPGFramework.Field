@@ -51,7 +51,7 @@ namespace RPGFramework.Field.Tests.Vm.Arithmetic
 
             m_Field.Run(new Script().Op(FieldScriptOpCode.MultiplyUInt).Sources(Source.Persistent, Source.Immediate).UShort(120).UInt(2).Return());
 
-            Assert.AreEqual(0xFFFFFFFE, unchecked((uint)m_Field.Memory.ReadInt(MemoryBank.Persistent, 120)));
+            Assert.AreEqual(0xFFFFFFFE, m_Field.Memory.ReadUint(MemoryBank.Persistent, 120));
         }
 
         [Test]

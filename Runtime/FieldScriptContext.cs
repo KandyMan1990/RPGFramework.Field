@@ -28,19 +28,24 @@ namespace RPGFramework.Field
         // variable map declares.
         internal const byte ARGUMENT_IMMEDIATE = 0;
 
-        internal readonly int    EntityId;
-        internal readonly byte   Priority;
-        internal readonly int    ScriptId;
-        internal readonly byte[] Bytecode;
+        /// <summary>How many calls a script can be inside at once; export refuses scripts that would go deeper.</summary>
+        internal const int MAX_CALL_DEPTH = 8;
 
-        internal int  InstructionPointer;
-        internal bool YieldRequested;
+        internal readonly int  EntityId;
+        internal readonly byte Priority;
+        internal readonly int  ScriptId;
+
+        internal byte[] Bytecode;
+        internal int    InstructionPointer;
+        internal bool   YieldRequested;
 
         private readonly IMemoryService m_MemoryService;
         private readonly int            m_TempBytes;
 
         private TempMemory  m_Temp;
         private IBlockState m_BlockingState;
+        private CallFrame[] m_CallFrames;
+        private int         m_CallDepth;
 
         // A sources byte precedes every pair of arguments that can come from a variable, so the second argument of a
         // pair uses the low nibble left over from the first.
@@ -278,6 +283,46 @@ namespace RPGFramework.Field
         }
 #endif
 
+        /// <summary>
+        /// Starts running another script here, with Temp of its own, keeping this one's place for
+        /// <see cref="TryLeaveCall" />. The slot still holds the script that made the call, so a wait on it is unchanged.
+        /// </summary>
+        internal void EnterCall(byte[] bytecode)
+        {
+            m_CallFrames ??= new CallFrame[MAX_CALL_DEPTH];
+
+            m_CallFrames[m_CallDepth] = new CallFrame(Bytecode, InstructionPointer, m_Temp);
+            m_CallDepth++;
+
+            Bytecode           = bytecode;
+            InstructionPointer = 0;
+            m_Temp             = null;
+        }
+
+        /// <summary>
+        /// Goes back to the script that made the call, with its Temp as it was.
+        /// </summary>
+        /// <returns>False when this script is not inside a call.</returns>
+        internal bool TryLeaveCall()
+        {
+            if (m_CallDepth == 0)
+            {
+                return false;
+            }
+
+            m_CallDepth--;
+
+            CallFrame caller = m_CallFrames[m_CallDepth];
+
+            m_CallFrames[m_CallDepth] = default;
+
+            Bytecode           = caller.Bytecode;
+            InstructionPointer = caller.InstructionPointer;
+            m_Temp             = caller.Temp;
+
+            return true;
+        }
+
         internal void Block(IBlockState blockingState)
         {
             m_BlockingState = blockingState;
@@ -474,6 +519,22 @@ namespace RPGFramework.Field
             m_MemoryService.WriteInt(bank, address, value);
         }
 
+        internal uint ReadVariableUint(MemoryBank bank, ushort address)
+        {
+            return bank == MemoryBank.Temp ? Temp.ReadUint(address) : m_MemoryService.ReadUint(bank, address);
+        }
+
+        internal void WriteVariableUint(MemoryBank bank, ushort address, uint value)
+        {
+            if (bank == MemoryBank.Temp)
+            {
+                Temp.WriteUint(address, value);
+                return;
+            }
+
+            m_MemoryService.WriteUint(bank, address, value);
+        }
+
         internal float ReadVariableFloat(MemoryBank bank, ushort address)
         {
             return bank == MemoryBank.Temp ? Temp.ReadFloat(address) : m_MemoryService.ReadFloat(bank, address);
@@ -513,7 +574,7 @@ namespace RPGFramework.Field
                          {
                              1 => ReadVariableByte(bank, address),
                              2 => ReadVariableUshort(bank, address),
-                             4 => (uint)ReadVariableInt(bank, address),
+                             4 => ReadVariableUint(bank, address),
                              _ => ReadVariableUlong(bank, address)
                          };
 
@@ -533,12 +594,26 @@ namespace RPGFramework.Field
                     return;
 
                 case 4:
-                    WriteVariableInt(bank, address, unchecked((int)bits));
+                    WriteVariableUint(bank, address, (uint)bits);
                     return;
 
                 default:
                     WriteVariableUlong(bank, address, bits);
                     return;
+            }
+        }
+
+        private readonly struct CallFrame
+        {
+            internal readonly byte[]     Bytecode;
+            internal readonly int        InstructionPointer;
+            internal readonly TempMemory Temp;
+
+            internal CallFrame(byte[] bytecode, int instructionPointer, TempMemory temp)
+            {
+                Bytecode           = bytecode;
+                InstructionPointer = instructionPointer;
+                Temp               = temp;
             }
         }
     }

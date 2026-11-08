@@ -588,6 +588,15 @@ namespace RPGFramework.Field.Editor
                     bw.Write((byte)ParseWindowStyle(parts, part, lineNumber));
                     break;
 
+                case ArgumentType.OwnScript:
+                    if (part >= parts.Length || !ushort.TryParse(parts[part], NumberStyles.None, CultureInfo.InvariantCulture, out ushort script))
+                    {
+                        throw new Exception($"line {lineNumber}: {parts[0]} needs the number of one of this entity's scripts");
+                    }
+
+                    bw.Write(script);
+                    break;
+
                 default:
                     throw new Exception($"line {lineNumber}: {parts[0]} has a {type} argument, which a sequential opcode cannot encode");
             }

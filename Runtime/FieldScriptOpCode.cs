@@ -35,8 +35,12 @@ namespace RPGFramework.Field
         [Argument(0, "targetEventId", ArgumentType.EventId)]
         ReturnToAnotherScript = 0x0007,
 
-        CallAnotherScript = 0x0008, // run another of this entity's scripts and come back when it returns
-        ReturnFromCall    = 0x0009, // return from CallAnotherScript, which RETURN does not
+        [FieldOpCode("CALL_SCRIPT", ArgumentLayout.Sequential, Summary = "Run another of this entity's scripts here, and carry on from the next line when it reaches RETURN_FROM_CALL")]
+        [Argument(0, "script", ArgumentType.OwnScript, Description = "which of this entity's scripts; it runs in this script's slot, with Temp of its own")]
+        CallAnotherScript = 0x0008,
+
+        [FieldOpCode("RETURN_FROM_CALL", ArgumentLayout.Sequential, Summary = "Go back to the line after the CALL_SCRIPT that ran this script. RETURN would end the caller too; run on its own, this ends the script")]
+        ReturnFromCall = 0x0009,
 
         [FieldOpCode("GOTO_JUMP", ArgumentLayout.Sequential, Summary = "Carry on from a label in this script, stored as a distance from this instruction")]
         [Argument(0, "label", ArgumentType.Label, Description = "a LABEL in this script")]
@@ -113,12 +117,12 @@ namespace RPGFramework.Field
         [Argument(0, "seconds", ArgumentType.Float)]
         WaitSeconds = 0x0017,
 
-        HaltScript = 0x0018, // stop here for good, holding this priority slot
-
         [FieldOpCode("NOP", ArgumentLayout.Sequential, Summary = "Does nothing. Useful as a placeholder while authoring")]
         DoNothing = 0x0019,
 
-        DebugLog = 0x001A, // ulong messageId - authoring aid, writes to the console
+        [FieldOpCode("RETURN_TO_PRIORITY", ArgumentLayout.Sequential, Summary = "End this script and throw away every interrupted script between it and a priority slot, which carries on")]
+        [Argument(0, "priority", ArgumentType.Priority, Description = "the slot that carries on, less urgent than this script's")]
+        ReturnToPriority = 0x001B,
 
         // System and module control (0x0100)
 
@@ -126,8 +130,6 @@ namespace RPGFramework.Field
         [Argument(0, "field",      ArgumentType.FieldName)]
         [Argument(1, "spawnPoint", ArgumentType.SpawnId, Description = "the id on a SpawnPoint in the field being entered")]
         JumpToAnotherMap = 0x0100,
-
-        SetJumpFieldID = 0x0101,
 
         [FieldOpCode("GATEWAY_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Let the player leave this field through its gateways, or stop them. A script's JUMP_TO_MAP still works")]
         [Argument(0, "active", ArgumentType.Bool)]
@@ -852,6 +854,38 @@ namespace RPGFramework.Field
         [Argument(0, "seed", ArgumentType.Value, VariableWidth.Int)]
         RandomNumberSeed = 0x028F,
 
+        [FieldOpCode("NOT_SBYTE", ArgumentLayout.BankUnary, Summary = "Flip every bit of an sbyte variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.SByte)]
+        BitwiseNotSByte = 0x0290,
+
+        [FieldOpCode("NOT_BYTE", ArgumentLayout.BankUnary, Summary = "Flip every bit of a byte variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
+        BitwiseNotByte = 0x0291,
+
+        [FieldOpCode("NOT_SHORT", ArgumentLayout.BankUnary, Summary = "Flip every bit of a short variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Short)]
+        BitwiseNotShort = 0x0292,
+
+        [FieldOpCode("NOT_USHORT", ArgumentLayout.BankUnary, Summary = "Flip every bit of a ushort variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.UShort)]
+        BitwiseNotUShort = 0x0293,
+
+        [FieldOpCode("NOT_INT", ArgumentLayout.BankUnary, Summary = "Flip every bit of an int variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Int)]
+        BitwiseNotInt = 0x0294,
+
+        [FieldOpCode("NOT_UINT", ArgumentLayout.BankUnary, Summary = "Flip every bit of a uint variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.UInt)]
+        BitwiseNotUInt = 0x0295,
+
+        [FieldOpCode("NOT_LONG", ArgumentLayout.BankUnary, Summary = "Flip every bit of a long variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Long)]
+        BitwiseNotLong = 0x0296,
+
+        [FieldOpCode("NOT_ULONG", ArgumentLayout.BankUnary, Summary = "Flip every bit of a ulong variable")]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.ULong)]
+        BitwiseNotULong = 0x0297,
+
         // Windowing and menu (0x0300)
 
         [FieldOpCode("CREATE_DIALOGUE_WINDOW", ArgumentLayout.Sequential, Summary = "Set where a dialogue channel's window appears and how big it is, for every message shown on it")]
@@ -935,10 +969,17 @@ namespace RPGFramework.Field
         GetCharacterHP           = 0x040A, // byte characterId, ushort destination
         SetCharacterMP           = 0x040B,
         GetCharacterMP           = 0x040C,
-        AddMoney                 = 0x040D, // int amount - negative takes money away
-        GetMoneyAmount           = 0x040E,
-        AddItem                  = 0x040F, // ushort itemId, int count - negative removes
-        GetItemCount             = 0x0410,
+
+        [FieldOpCode("ADD_MONEY", ArgumentLayout.Sequential, Summary = "Give the party money, up to the game's maximum")]
+        [Argument(0, "amount", ArgumentType.Int)]
+        AddMoney = 0x040D,
+
+        AddItem      = 0x040F, // ushort itemId, int count - negative removes
+        GetItemCount = 0x0410,
+
+        [FieldOpCode("SUBTRACT_MONEY", ArgumentLayout.Sequential, Summary = "Take money from the party, stopping at none")]
+        [Argument(0, "amount", ArgumentType.Int)]
+        SubtractMoney = 0x0411,
 
         // Field models and animation (0x0500)
 

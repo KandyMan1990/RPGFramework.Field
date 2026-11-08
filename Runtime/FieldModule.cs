@@ -65,6 +65,7 @@ namespace RPGFramework.Field
         private readonly ICountdownStore            m_CountdownStore;
         private readonly IGameOverFieldStore        m_GameOverFieldStore;
         private readonly ISongVolumeStore           m_SongVolumeStore;
+        private readonly IMoneyStore                m_MoneyStore;
         private readonly ISettingsStore             m_SettingsStore;
         private readonly ISaveEnabledStore          m_SaveEnabledStore;
         private readonly ILocationNameStore         m_LocationNameStore;
@@ -139,6 +140,7 @@ namespace RPGFramework.Field
                              ILocationNameStore        locationNameStore,
                              IBattleMusicStore         battleMusicStore,
                              ISongVolumeStore          songVolumeStore,
+                             IMoneyStore               moneyStore,
                              IPausedMusicStore         pausedMusicStore,
                              IBattleModeStore          battleModeStore,
                              IBattleCompleteStateStore battleCompleteStateStore,
@@ -170,6 +172,7 @@ namespace RPGFramework.Field
             m_CountdownStore           = countdownStore;
             m_GameOverFieldStore       = gameOverFieldStore;
             m_SongVolumeStore          = songVolumeStore;
+            m_MoneyStore               = moneyStore;
             m_SettingsStore            = settingsStore;
             m_SaveEnabledStore         = saveEnabledStore;
             m_LocationNameStore        = locationNameStore;
@@ -425,6 +428,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusic                       += OnRequestMusic;
             m_FieldContext.VM.RequestMusicCrossfade              += OnRequestMusicCrossfade;
             m_FieldContext.VM.RequestStopMusic                   += OnRequestStopMusic;
+            m_FieldContext.VM.RequestAddMoney                    += OnRequestAddMoney;
             m_FieldContext.VM.RequestMusicVolume                 += OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             += OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              += OnRequestMusicStemState;
@@ -556,6 +560,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusic                       -= OnRequestMusic;
             m_FieldContext.VM.RequestMusicCrossfade              -= OnRequestMusicCrossfade;
             m_FieldContext.VM.RequestStopMusic                   -= OnRequestStopMusic;
+            m_FieldContext.VM.RequestAddMoney                    -= OnRequestAddMoney;
             m_FieldContext.VM.RequestMusicVolume                 -= OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             -= OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              -= OnRequestMusicStemState;
@@ -1090,6 +1095,11 @@ namespace RPGFramework.Field
         private void OnRequestStopMusic()
         {
             m_MusicPlayer.StopAsync(0f).FireAndForget();
+        }
+
+        private void OnRequestAddMoney(int amount)
+        {
+            m_MoneyStore.AddMoney(amount);
         }
 
         private void OnRequestMusicVolume(float volume, float seconds)

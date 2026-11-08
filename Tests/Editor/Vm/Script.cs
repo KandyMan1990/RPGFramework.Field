@@ -110,6 +110,23 @@ namespace RPGFramework.Field.Tests.Vm
             return Op(FieldScriptOpCode.ReturnToAnotherScript).Sources(Source.Immediate, Source.Immediate).UShort(eventId);
         }
 
+        /// <summary>Runs another of this entity's scripts here, by its event.</summary>
+        internal Script Call(ushort eventId)
+        {
+            return Op(FieldScriptOpCode.CallAnotherScript).UShort(eventId);
+        }
+
+        internal Script ReturnFromCall()
+        {
+            return Op(FieldScriptOpCode.ReturnFromCall);
+        }
+
+        /// <summary>Ends this script and any interrupted between it and the slot, which carries on.</summary>
+        internal Script ReturnToPriority(byte priority)
+        {
+            return Op(FieldScriptOpCode.ReturnToPriority).Sources(Source.Immediate, Source.Immediate).Byte(priority);
+        }
+
         /// <summary>Sets the persistent byte at <paramref name="address" /> to the value.</summary>
         internal Script SetByte(ushort address, byte value)
         {

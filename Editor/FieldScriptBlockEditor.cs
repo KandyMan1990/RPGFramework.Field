@@ -822,10 +822,14 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.EventId when TryGetEventOwner(block, out FieldEntityRecord owner):
                     return IndexDropdown(block, argumentIndex, label, current, owner.Scripts.Count, i => DescribeScript(owner.Scripts[i], i));
 
+                case ArgumentType.OwnScript when TryGetEventOwner(block, out FieldEntityRecord caller):
+                    return IndexDropdown(block, argumentIndex, label, current, caller.Scripts.Count, i => DescribeScript(caller.Scripts[i], i));
+
                 case ArgumentType.Byte:
                 case ArgumentType.UShort:
                 case ArgumentType.Int:
                 case ArgumentType.EventId:
+                case ArgumentType.OwnScript:
                 {
                     IntegerField field = new IntegerField(label) { value = ParseInt(current) };
                     field.RegisterValueChangedCallback(e => Set(block, argumentIndex, e.newValue.ToString(System.Globalization.CultureInfo.InvariantCulture)));

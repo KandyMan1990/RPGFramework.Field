@@ -57,6 +57,16 @@ namespace RPGFramework.Field.Tests.Vm
             BinaryPrimitives.WriteInt32LittleEndian(Span(bank, address), value);
         }
 
+        uint IMemoryService.ReadUint(MemoryBank bank, ushort address)
+        {
+            return BinaryPrimitives.ReadUInt32LittleEndian(Span(bank, address));
+        }
+
+        void IMemoryService.WriteUint(MemoryBank bank, ushort address, uint value)
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(Span(bank, address), value);
+        }
+
         float IMemoryService.ReadFloat(MemoryBank bank, ushort address)
         {
             return BitConverter.Int32BitsToSingle(BinaryPrimitives.ReadInt32LittleEndian(Span(bank, address)));

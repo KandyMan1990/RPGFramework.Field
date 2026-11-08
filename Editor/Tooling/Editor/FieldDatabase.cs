@@ -510,6 +510,137 @@ namespace RPGFramework.Field.Editor
 
             ValidateGateway(prefab, fieldEntityRecord, entityName, problems);
             ValidatePushScript(fieldEntityRecord, entityName, problems);
+            ValidateScriptCalls(entityName, fieldEntityRecord.Scripts, problems);
+        }
+
+        private const int ENDLESS_CALLS = -1;
+
+        /// <summary>
+        /// An entity's scripts calling one another. Calls must end and fit the depth a running script has room for, an
+        /// init runs straight through whatever it calls, and a return to a priority must be to a less urgent slot — which
+        /// only a script nothing calls can be judged on, as a called script runs in its caller's slot.
+        /// </summary>
+        internal static void ValidateScriptCalls(string entityName, IReadOnlyList<FieldScriptRecord> scripts, List<string> problems)
+        {
+            string[][]  lines  = new string[scripts.Count][];
+            List<int>[] calls  = new List<int>[scripts.Count];
+            bool[]      called = new bool[scripts.Count];
+
+            for (int i = 0; i < scripts.Count; i++)
+            {
+                lines[i] = (scripts[i].Text ?? string.Empty).Split('\n');
+                calls[i] = CalledScripts(lines[i], scripts.Count);
+
+                for (int c = 0; c < calls[i].Count; c++)
+                {
+                    called[calls[i][c]] = true;
+                }
+            }
+
+            for (int i = 0; i < scripts.Count; i++)
+            {
+                string scriptDescription = $"{entityName} script [{i}] ({scripts[i].Type})";
+                int    depth             = DeepestCall(i, calls, new bool[scripts.Count]);
+
+                if (depth == ENDLESS_CALLS)
+                {
+                    problems.Add($"{scriptDescription} calls itself, directly or through another script, so its calls never end");
+                }
+                else if (depth > FieldScriptContext.MAX_CALL_DEPTH)
+                {
+                    problems.Add($"{scriptDescription} makes {depth} calls inside one another, and a script has room for {FieldScriptContext.MAX_CALL_DEPTH}");
+                }
+                else if (scripts[i].Type == FieldScriptType.Init)
+                {
+                    ValidateScriptsInitCalls(i, calls, lines, new bool[scripts.Count], scriptDescription, problems);
+                }
+
+                if (!called[i])
+                {
+                    ValidateReturnsToPriority(FieldScriptSlots.For(scripts[i].Type, scripts[i].Slot), scriptDescription, lines[i], problems);
+                }
+            }
+        }
+
+        private static List<int> CalledScripts(string[] lines, int scriptCount)
+        {
+            List<int> called = new List<int>();
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = FieldScriptLine.Split(lines[i]);
+
+                if (parts.Length > 1 &&
+                    FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.CallAnotherScript &&
+                    int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out int script) && script < scriptCount)
+                {
+                    called.Add(script);
+                }
+            }
+
+            return called;
+        }
+
+        /// <summary>How many calls can be running inside one another from this script, or <see cref="ENDLESS_CALLS" />.</summary>
+        private static int DeepestCall(int script, List<int>[] calls, bool[] onPath)
+        {
+            int deepest = 0;
+
+            onPath[script] = true;
+
+            for (int i = 0; i < calls[script].Count && deepest != ENDLESS_CALLS; i++)
+            {
+                int callee = calls[script][i];
+                int depth  = onPath[callee] ? ENDLESS_CALLS : DeepestCall(callee, calls, onPath);
+
+                deepest = depth == ENDLESS_CALLS ? ENDLESS_CALLS : Math.Max(deepest, depth + 1);
+            }
+
+            onPath[script] = false;
+
+            return deepest;
+        }
+
+        private static void ValidateScriptsInitCalls(int script, List<int>[] calls, string[][] lines, bool[] visited, string scriptDescription, List<string> problems)
+        {
+            visited[script] = true;
+
+            for (int i = 0; i < calls[script].Count; i++)
+            {
+                int callee = calls[script][i];
+
+                if (visited[callee])
+                {
+                    continue;
+                }
+
+                for (int line = 0; line < lines[callee].Length; line++)
+                {
+                    string name = FieldScriptLine.Split(lines[callee][line])[0];
+
+                    if (FieldOpCodeCatalogue.Project.TryGet(name, out FieldOpCodeInfo opCode) && opCode.StopsInit)
+                    {
+                        problems.Add($"{scriptDescription} calls script [{callee}], which uses {name}, which waits or gives up the frame. Init runs straight through before the field is shown");
+                    }
+                }
+
+                ValidateScriptsInitCalls(callee, calls, lines, visited, scriptDescription, problems);
+            }
+        }
+
+        private static void ValidateReturnsToPriority(byte slot, string scriptDescription, string[] lines, List<string> problems)
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = FieldScriptLine.Split(lines[i]);
+
+                if (parts.Length > 1 &&
+                    FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) && opCode.OpCode == FieldScriptOpCode.ReturnToPriority &&
+                    byte.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out byte priority) && priority >= slot)
+                {
+                    problems.Add($"{scriptDescription} uses {parts[0]} to slot [{priority}], but it runs in slot [{slot}], and only a less urgent slot can carry on from it");
+                }
+            }
         }
 
         /// <summary>
@@ -582,6 +713,11 @@ namespace RPGFramework.Field.Editor
 
                 int entityArgument = ArgumentIndex(opCode, ArgumentType.EntityId);
                 int eventArgument  = ArgumentIndex(opCode, ArgumentType.EventId);
+
+                if (eventArgument < 0)
+                {
+                    eventArgument = ArgumentIndex(opCode, ArgumentType.OwnScript);
+                }
 
                 if (eventArgument < 0 || eventArgument + 1 >= parts.Length || entityArgument + 1 >= parts.Length)
                 {

@@ -84,6 +84,12 @@ namespace RPGFramework.Field
         /// <summary>A script's index within its entity.</summary>
         EventId,
 
+        /// <summary>
+        /// One of this entity's own scripts, by its index. Always written, never a variable, as a jump's label is, so
+        /// export can follow every call.
+        /// </summary>
+        OwnScript,
+
         /// <summary>A priority slot, 0-7.</summary>
         Priority,
 

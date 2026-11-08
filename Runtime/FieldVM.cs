@@ -19,6 +19,7 @@ namespace RPGFramework.Field
         internal event Action<ulong, ulong>                    RequestMusic;
         internal event Action<ulong, ulong, float, float>      RequestMusicCrossfade;
         internal event Action                                  RequestStopMusic;
+        internal event Action<int>                             RequestAddMoney;
         internal Func<bool>                                    IsMusicPlaying;
         internal event Action<float, float>                    RequestMusicVolume;
         internal event Action<float, float, float>             RequestMusicVolumeFrom;
@@ -161,8 +162,8 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilStarted, RunPartyMemberScriptWaitUntilStartedOpcodeHandler },
                        // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilFinished, RunPartyMemberScriptWaitUntilFinishedOpcodeHandler },
                        { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
-                       // { FieldScriptOpCode.CallAnotherScript, CallAnotherScriptOpcodeHandler },
-                       // { FieldScriptOpCode.ReturnFromCall, ReturnFromCallOpcodeHandler },
+                       { FieldScriptOpCode.CallAnotherScript, CallAnotherScriptOpcodeHandler },
+                       { FieldScriptOpCode.ReturnFromCall, ReturnFromCallOpcodeHandler },
                        { FieldScriptOpCode.GotoJump, GotoOpcodeHandler },
                        { FieldScriptOpCode.GotoDirectly, GotoDirectlyOpcodeHandler },
                        { FieldScriptOpCode.CompareBool, ctx => CompareOpcodeHandler(ctx,   VariableWidth.Bool) },
@@ -177,13 +178,11 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.CompareFloat, ctx => CompareOpcodeHandler(ctx,  VariableWidth.Float) },
                        { FieldScriptOpCode.Yield, YieldOpcodeHandler },
                        { FieldScriptOpCode.WaitSeconds, WaitSecondsOpcodeHandler },
-                       // { FieldScriptOpCode.HaltScript, HaltScriptOpcodeHandler },
                        { FieldScriptOpCode.DoNothing, DoNothingOpcodeHandler },
-                       // { FieldScriptOpCode.DebugLog, DebugLogOpcodeHandler },
+                       { FieldScriptOpCode.ReturnToPriority, ReturnToPriorityOpcodeHandler },
 
                        // System and module control
                        { FieldScriptOpCode.JumpToAnotherMap, JumpToAnotherMapOpcodeHandler },
-                       // { FieldScriptOpCode.SetJumpFieldID, SetJumpFieldIDOpcodeHandler },
                        { FieldScriptOpCode.GatewayTriggerActivation, GatewayTriggerActivationOpcodeHandler },
                        { FieldScriptOpCode.SetFieldExitFade, SetFieldExitFadeOpcodeHandler },
                        // { FieldScriptOpCode.WorldMapJump, WorldMapJumpOpcodeHandler },
@@ -339,6 +338,14 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.UnsetBitULong, ctx => UnsetBitOpcodeHandler(ctx,  VariableWidth.ULong) },
                        { FieldScriptOpCode.GetRandomNumber, GetRandomNumberOpcodeHandler },
                        { FieldScriptOpCode.RandomNumberSeed, RandomNumberSeedOpcodeHandler },
+                       { FieldScriptOpCode.BitwiseNotSByte, ctx => BitwiseNotOpcodeHandler(ctx,  VariableWidth.SByte) },
+                       { FieldScriptOpCode.BitwiseNotByte, ctx => BitwiseNotOpcodeHandler(ctx,   VariableWidth.Byte) },
+                       { FieldScriptOpCode.BitwiseNotShort, ctx => BitwiseNotOpcodeHandler(ctx,  VariableWidth.Short) },
+                       { FieldScriptOpCode.BitwiseNotUShort, ctx => BitwiseNotOpcodeHandler(ctx, VariableWidth.UShort) },
+                       { FieldScriptOpCode.BitwiseNotInt, ctx => BitwiseNotOpcodeHandler(ctx,    VariableWidth.Int) },
+                       { FieldScriptOpCode.BitwiseNotUInt, ctx => BitwiseNotOpcodeHandler(ctx,   VariableWidth.UInt) },
+                       { FieldScriptOpCode.BitwiseNotLong, ctx => BitwiseNotOpcodeHandler(ctx,   VariableWidth.Long) },
+                       { FieldScriptOpCode.BitwiseNotULong, ctx => BitwiseNotOpcodeHandler(ctx,  VariableWidth.ULong) },
 
                        // Windowing and menu
                        { FieldScriptOpCode.CreateDialogueWindow, CreateDialogueWindowOpcodeHandler },
@@ -373,10 +380,10 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.GetCharacterHP, GetCharacterHPOpcodeHandler },
                        // { FieldScriptOpCode.SetCharacterMP, SetCharacterMPOpcodeHandler },
                        // { FieldScriptOpCode.GetCharacterMP, GetCharacterMPOpcodeHandler },
-                       // { FieldScriptOpCode.AddMoney, AddMoneyOpcodeHandler },
-                       // { FieldScriptOpCode.GetMoneyAmount, GetMoneyAmountOpcodeHandler },
+                       { FieldScriptOpCode.AddMoney, AddMoneyOpcodeHandler },
                        // { FieldScriptOpCode.AddItem, AddItemOpcodeHandler },
                        // { FieldScriptOpCode.GetItemCount, GetItemCountOpcodeHandler },
+                       { FieldScriptOpCode.SubtractMoney, SubtractMoneyOpcodeHandler },
 
                        // Field models and animation
                        { FieldScriptOpCode.SetPlayerEntity, SetPlayerEntityOpcodeHandler },
@@ -976,6 +983,38 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Run another of this entity's scripts in this slot, carrying on from the next instruction once it returns
+        /// from the call. Export has checked the script exists and that calls end.
+        /// </summary>
+        private void CallAnotherScriptOpcodeHandler(FieldScriptContext ctx)
+        {
+            ushort targetEventId = ctx.NextUshort();
+
+            if (m_Entities[ctx.EntityId].TryGetScriptId(targetEventId, out int targetScriptId))
+            {
+                ctx.EnterCall(m_Scripts[targetScriptId]);
+            }
+        }
+
+        /// <summary>
+        /// Go back to the script that made the call. A script not inside a call ends, so one can be both called and
+        /// run on its own.
+        /// </summary>
+        private void ReturnFromCallOpcodeHandler(FieldScriptContext ctx)
+        {
+            if (!ctx.TryLeaveCall())
+            {
+                EndSlot(ctx.EntityId, ctx.Priority);
+            }
+        }
+
+        private void EndSlot(int entityId, byte priority)
+        {
+            m_Contexts.Remove(new SlotKey(entityId, priority));
+            m_Entities[entityId].ClearSlot(priority);
+        }
+
+        /// <summary>
         /// Move the instruction pointer by a signed offset, counted from the end of this instruction.
         /// </summary>
         private static void GotoOpcodeHandler(FieldScriptContext ctx)
@@ -1066,6 +1105,21 @@ namespace RPGFramework.Field
         private static void DoNothingOpcodeHandler(FieldScriptContext ctx)
         {
             // noop
+        }
+
+        /// <summary>
+        /// End this script and every interrupted script between it and a less urgent slot, which is what runs next.
+        /// </summary>
+        private void ReturnToPriorityOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte priority = ctx.ReadByte();
+
+            EndSlot(ctx.EntityId, ctx.Priority);
+
+            for (int slot = ctx.Priority - 1; slot > priority; slot--)
+            {
+                EndSlot(ctx.EntityId, (byte)slot);
+            }
         }
 
         /// <summary>
@@ -1376,6 +1430,14 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Flip every bit of a variable.
+        /// </summary>
+        private void BitwiseNotOpcodeHandler(FieldScriptContext ctx, VariableWidth width)
+        {
+            ApplyUnary(ctx, width, (current, w) => ScriptArithmetic.BitwiseNot(current, w));
+        }
+
+        /// <summary>
         /// Set where a dialogue channel's window appears and how big it is.
         /// </summary>
         private void CreateDialogueWindowOpcodeHandler(FieldScriptContext ctx)
@@ -1546,6 +1608,26 @@ namespace RPGFramework.Field
         private void ShowDialogueWindowNoWaitDismissibleOpcodeHandler(FieldScriptContext ctx)
         {
             ShowDialogueWindowWithoutWaiting(ctx, true);
+        }
+
+        /// <summary>
+        /// Give the party money.
+        /// </summary>
+        private void AddMoneyOpcodeHandler(FieldScriptContext ctx)
+        {
+            int amount = ctx.ReadInt();
+
+            RequestAddMoney?.Invoke(amount);
+        }
+
+        /// <summary>
+        /// Take money from the party, which is adding a negative amount.
+        /// </summary>
+        private void SubtractMoneyOpcodeHandler(FieldScriptContext ctx)
+        {
+            int amount = ctx.ReadInt();
+
+            RequestAddMoney?.Invoke(-amount);
         }
 
         /// <summary>

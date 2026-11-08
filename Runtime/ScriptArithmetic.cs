@@ -93,6 +93,13 @@ namespace RPGFramework.Field
             return result;
         }
 
+        internal static ulong BitwiseNot(ulong bits, VariableWidth width)
+        {
+            ulong flipped = Truncate(~bits, width);
+
+            return flipped;
+        }
+
         /// <returns>False when dividing by zero.</returns>
         internal static bool TryDivide(ulong a, ulong b, VariableWidth width, out ulong quotient)
         {
