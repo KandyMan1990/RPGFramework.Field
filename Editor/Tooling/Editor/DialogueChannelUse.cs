@@ -44,8 +44,9 @@ namespace RPGFramework.Field.Editor
                     {
                         m_Set.Add(channel);
                     }
-                    else if (opCode.OpCode == FieldScriptOpCode.ShowDialogueWindow       ||
-                             opCode.OpCode == FieldScriptOpCode.ShowDialogueWindowNoWait ||
+                    else if (opCode.OpCode == FieldScriptOpCode.ShowDialogueWindow                  ||
+                             opCode.OpCode == FieldScriptOpCode.ShowDialogueWindowNoWait            ||
+                             opCode.OpCode == FieldScriptOpCode.ShowDialogueWindowNoWaitDismissible ||
                              opCode.OpCode == FieldScriptOpCode.AskPlayerToMakeAChoice)
                     {
                         m_Shown.TryAdd(channel, scriptDescription);

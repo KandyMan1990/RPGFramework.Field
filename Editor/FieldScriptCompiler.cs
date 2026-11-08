@@ -22,6 +22,9 @@ namespace RPGFramework.Field.Editor
 
         private const byte ARGUMENT_IMMEDIATE = 0;
 
+        private const string ASK_PLAYER    = "ASK_PLAYER_TO_MAKE_A_CHOICE";
+        private const string ASK_PLAYER_AT = "ASK_PLAYER_AT";
+
         /// <summary>A question's cancel answer written as whichever answer is last, however many there are.</summary>
         internal const string CANCEL_LAST = "Last";
 
@@ -87,29 +90,43 @@ namespace RPGFramework.Field.Editor
                         CloseComparison(bw, ms, lineIndex + 1, openBlocks);
                         break;
 
-                    case "ASK_PLAYER_TO_MAKE_A_CHOICE":
+                    case ASK_PLAYER:
+                    case ASK_PLAYER_AT:
                     {
-                        if (parts.Length < 7)
+                        // A question at a point has its place between its channel and the question.
+                        bool atAPoint = parts[0] == ASK_PLAYER_AT;
+                        int  question = atAPoint ? 5 : 3;
+
+                        if (parts.Length < question + 4)
                         {
-                            throw new Exception($"line {lineIndex + 1}: ASK_PLAYER_TO_MAKE_A_CHOICE needs a destination, a channel, a question key, a starting answer, a cancel answer and at least one answer key");
+                            throw new Exception($"line {lineIndex + 1}: {parts[0]} needs a destination, a channel, a question key, a starting answer, a cancel answer and at least one answer key");
                         }
 
-                        int  answerCount = parts.Length - 6;
-                        byte starting    = ParseIndex(parts, 4, answerCount, "starting answer", lineIndex + 1);
-                        byte cancel      = ParseCancelAnswer(parts[5], answerCount, lineIndex + 1);
+                        int  answerCount = parts.Length - (question + 3);
+                        byte starting    = ParseIndex(parts, question + 1, answerCount, "starting answer", lineIndex + 1);
+                        byte cancel      = ParseCancelAnswer(parts[question + 2], answerCount, lineIndex + 1);
 
                         ScriptVariable choice = ResolveVariable(parts[1], parts[0], ref variableMap, VariableWidth.Byte);
 
-                        bw.Write((ushort)FieldScriptOpCode.AskPlayerToMakeAChoice);
+                        bw.Write((ushort)(atAPoint ? FieldScriptOpCode.AskPlayerAt : FieldScriptOpCode.AskPlayerToMakeAChoice));
                         bw.Write((byte)choice.Bank);
                         bw.Write(choice.Address);
                         bw.Write(ParseIndex(parts, 2, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, "dialogue channel", lineIndex + 1));
-                        bw.Write(HashDialogueKey(parts, 3, lineIndex + 1));
+
+                        if (atAPoint)
+                        {
+                            int sourcesPosition = -1;
+
+                            WriteSourcedArgument(bw, ms, ArgumentType.Int, parts[3], parts[0], lineIndex + 1, ref sourcesPosition, ref variableMap);
+                            WriteSourcedArgument(bw, ms, ArgumentType.Int, parts[4], parts[0], lineIndex + 1, ref sourcesPosition, ref variableMap);
+                        }
+
+                        bw.Write(HashDialogueKey(parts, question, lineIndex + 1));
                         bw.Write(starting);
                         bw.Write(cancel);
                         bw.Write((byte)answerCount);
 
-                        for (int i = 6; i < parts.Length; i++)
+                        for (int i = question + 3; i < parts.Length; i++)
                         {
                             bw.Write(HashDialogueKey(parts, i, lineIndex + 1));
                         }
@@ -635,7 +652,7 @@ namespace RPGFramework.Field.Editor
 
             if (!byte.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte index) || index >= answerCount)
             {
-                throw new Exception($"line {lineNumber}: ASK_PLAYER_TO_MAKE_A_CHOICE needs a cancel answer from 0 to {answerCount - 1}, {CANCEL_LAST} or {CANCEL_NONE}, got '{token}'");
+                throw new Exception($"line {lineNumber}: a question needs a cancel answer from 0 to {answerCount - 1}, {CANCEL_LAST} or {CANCEL_NONE}, got '{token}'");
             }
 
             return index;

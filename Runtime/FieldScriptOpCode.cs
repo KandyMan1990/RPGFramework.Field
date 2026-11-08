@@ -955,6 +955,39 @@ namespace RPGFramework.Field
         [Argument(1, "dialogue", ArgumentType.LocalisationKey)]
         ShowDialogueWindowNoWaitDismissible = 0x0310,
 
+        [FieldOpCode("SHOW_DIALOGUE_AT", ArgumentLayout.Sequential, Summary = "Show a line of dialogue at a point, in a window sized to its text, and wait for the player to dismiss it", StopsInit = true)]
+        [Argument(0, "channel",       ArgumentType.DialogueChannel)]
+        [Argument(1, "dialogue",      ArgumentType.LocalisationKey)]
+        [Argument(2, "x",             ArgumentType.Int, Description = "the window's left edge, in the units a dialogue window's rectangle is in; it is kept on the screen")]
+        [Argument(3, "y",             ArgumentType.Int, Description = "the window's top edge")]
+        [Argument(4, "blockMovement", ArgumentType.Bool, Description = "On: the player stands still and cannot open menus while this shows. Off: a conversation in the background they can walk away from")]
+        ShowDialogueAt = 0x0311,
+
+        [FieldOpCode("SHOW_DIALOGUE_AT_NO_WAIT", ArgumentLayout.Sequential, Summary = "Show dialogue at a point, in a window sized to its text, and carry on. It stays up until CLOSE_DIALOGUE_WINDOW", StopsInit = true)]
+        [Argument(0, "channel",  ArgumentType.DialogueChannel)]
+        [Argument(1, "dialogue", ArgumentType.LocalisationKey)]
+        [Argument(2, "x",        ArgumentType.Int, Description = "the window's left edge, in the units a dialogue window's rectangle is in; it is kept on the screen")]
+        [Argument(3, "y",        ArgumentType.Int, Description = "the window's top edge")]
+        ShowDialogueAtNoWait = 0x0312,
+
+        [FieldOpCode("SHOW_DIALOGUE_AT_NO_WAIT_DISMISSIBLE", ArgumentLayout.Sequential, Summary = "Show dialogue at a point, in a window sized to its text, and carry on. A press closes it once it has typed, or CLOSE_DIALOGUE_WINDOW does", StopsInit = true)]
+        [Argument(0, "channel",  ArgumentType.DialogueChannel)]
+        [Argument(1, "dialogue", ArgumentType.LocalisationKey)]
+        [Argument(2, "x",        ArgumentType.Int, Description = "the window's left edge, in the units a dialogue window's rectangle is in; it is kept on the screen")]
+        [Argument(3, "y",        ArgumentType.Int, Description = "the window's top edge")]
+        ShowDialogueAtNoWaitDismissible = 0x0313,
+
+        [FieldOpCode("ASK_PLAYER_AT", ArgumentLayout.Sequential, Summary = "Ask a question at a point, in a window sized to it and its answers, and store which answer the player chose", StopsInit = true)]
+        [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
+        [Argument(1, "channel",     ArgumentType.DialogueChannel)]
+        [Argument(2, "x",           ArgumentType.Int, Description = "the window's left edge, in the units a dialogue window's rectangle is in; it is kept on the screen")]
+        [Argument(3, "y",           ArgumentType.Int, Description = "the window's top edge")]
+        [Argument(4, "question",    ArgumentType.LocalisationKey)]
+        [Argument(5, "starting",    ArgumentType.Answer,       Description = "the answer the cursor starts on")]
+        [Argument(6, "cancel",      ArgumentType.CancelAnswer, Description = "the answer cancel moves the cursor to, which the player still confirms; None for none")]
+        [Argument(7, "answers",     ArgumentType.LocalisationKeyList)]
+        AskPlayerAt = 0x0314,
+
         // Party and inventory (0x0400)
         AddCharacterToParty      = 0x0400,
         RemoveCharacterFromParty = 0x0401,

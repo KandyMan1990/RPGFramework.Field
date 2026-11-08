@@ -68,6 +68,7 @@ namespace RPGFramework.Field
         internal event Action<bool>                            RequestSetSaveEnabled;
         internal event Action                                  RequestOpenSaveMenu;
         internal event Action<DialogueWindowArgs>              RequestCreateDialogueWindow;
+        internal event Action<byte, Vector2Int>                RequestFitDialogueWindow;
         internal event Action<byte, ulong, bool>               RequestShowDialogueWindow;
         internal event Action<byte, ulong, bool>               RequestShowDialogueWindowNoWait;
         internal event Action<byte>                            RequestCloseDialogueWindow;
@@ -365,6 +366,10 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetMapNameInMenu, SetMapNameInMenuOpcodeHandler },
                        // { FieldScriptOpCode.RunTutorial, RunTutorialOpcodeHandler },
                        { FieldScriptOpCode.ShowDialogueWindowNoWaitDismissible, ShowDialogueWindowNoWaitDismissibleOpcodeHandler },
+                       { FieldScriptOpCode.ShowDialogueAt, ShowDialogueAtOpcodeHandler },
+                       { FieldScriptOpCode.ShowDialogueAtNoWait, ShowDialogueAtNoWaitOpcodeHandler },
+                       { FieldScriptOpCode.ShowDialogueAtNoWaitDismissible, ShowDialogueAtNoWaitDismissibleOpcodeHandler },
+                       { FieldScriptOpCode.AskPlayerAt, AskPlayerAtOpcodeHandler },
 
                        // Party and inventory
                        // { FieldScriptOpCode.AddCharacterToParty, AddCharacterToPartyOpcodeHandler },
@@ -1553,11 +1558,17 @@ namespace RPGFramework.Field
         /// </summary>
         private void AskPlayerToMakeAChoiceOpcodeHandler(FieldScriptContext ctx)
         {
-            int     instructionStart     = ctx.InstructionPointer - sizeof(ushort);
-            byte    bank                 = ctx.NextByte();
-            ushort  addressToStoreChoice = ctx.NextUshort();
-            byte    channel              = ctx.NextByte();
-            ulong   dialogueId           = ctx.ReadName();
+            AskPlayer(ctx, false);
+        }
+
+        private void AskPlayer(FieldScriptContext ctx, bool atAPoint)
+        {
+            int        instructionStart     = ctx.InstructionPointer - sizeof(ushort);
+            byte       bank                 = ctx.NextByte();
+            ushort     addressToStoreChoice = ctx.NextUshort();
+            byte       channel              = ctx.NextByte();
+            Vector2Int position             = atAPoint ? new Vector2Int(ctx.ReadInt(), ctx.ReadInt()) : default;
+            ulong      dialogueId           = ctx.ReadName();
             byte    startingAnswer       = ctx.NextByte();
             byte    cancelAnswer         = ctx.NextByte();
             byte    answerCount          = ctx.NextByte();
@@ -1576,6 +1587,11 @@ namespace RPGFramework.Field
             MemoryBank choiceBank = (MemoryBank)bank;
 
             QuestionArgs question = new QuestionArgs(channel, dialogueId, answerIds, startingAnswer, cancelAnswer);
+
+            if (atAPoint)
+            {
+                RequestFitDialogueWindow?.Invoke(channel, position);
+            }
 
             RequestAskPlayerToMakeAChoice?.Invoke(question, choice => ctx.WriteVariableByte(choiceBank, addressToStoreChoice, choice));
 
@@ -1608,6 +1624,72 @@ namespace RPGFramework.Field
         private void ShowDialogueWindowNoWaitDismissibleOpcodeHandler(FieldScriptContext ctx)
         {
             ShowDialogueWindowWithoutWaiting(ctx, true);
+        }
+
+        /// <summary>
+        /// Show a line of dialogue at a point, in a window sized to its text, and block until the player dismisses it.
+        /// </summary>
+        private void ShowDialogueAtOpcodeHandler(FieldScriptContext ctx)
+        {
+            int   instructionStart = ctx.InstructionPointer - sizeof(ushort);
+            byte  channel          = ctx.NextByte();
+            ulong dialogueId       = ctx.ReadName();
+            int   x                = ctx.ReadInt();
+            int   y                = ctx.ReadInt();
+            bool  blockMovement    = ctx.ReadBool();
+
+            if (WaitForDialogueChannel(ctx, channel, instructionStart))
+            {
+                return;
+            }
+
+            RequestFitDialogueWindow?.Invoke(channel, new Vector2Int(x, y));
+            RequestShowDialogueWindow?.Invoke(channel, dialogueId, blockMovement);
+
+            ctx.Block(new WaitUntilBlock(() => !IsDialogueWindowOpen(channel)));
+        }
+
+        /// <summary>
+        /// As <c>SHOW_DIALOGUE_WINDOW_NO_WAIT</c>, at a point in a window sized to its text.
+        /// </summary>
+        private void ShowDialogueAtNoWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            ShowDialogueAtWithoutWaiting(ctx, false);
+        }
+
+        /// <summary>
+        /// As <c>SHOW_DIALOGUE_WINDOW_NO_WAIT_DISMISSIBLE</c>, at a point in a window sized to its text.
+        /// </summary>
+        private void ShowDialogueAtNoWaitDismissibleOpcodeHandler(FieldScriptContext ctx)
+        {
+            ShowDialogueAtWithoutWaiting(ctx, true);
+        }
+
+        private void ShowDialogueAtWithoutWaiting(FieldScriptContext ctx, bool dismissible)
+        {
+            int   instructionStart = ctx.InstructionPointer - sizeof(ushort);
+            byte  channel          = ctx.NextByte();
+            ulong dialogueId       = ctx.NextUlong();
+            int   x                = ctx.ReadInt();
+            int   y                = ctx.ReadInt();
+
+            if (WaitForDialogueChannel(ctx, channel, instructionStart))
+            {
+                return;
+            }
+
+            RequestFitDialogueWindow?.Invoke(channel, new Vector2Int(x, y));
+            RequestShowDialogueWindowNoWait?.Invoke(channel, dialogueId, dismissible);
+
+            ctx.YieldRequested = true;
+        }
+
+        /// <summary>
+        /// As <c>ASK_PLAYER_TO_MAKE_A_CHOICE</c>, at a point in a window sized to the question and its answers.
+        /// </summary>
+        private void AskPlayerAtOpcodeHandler(FieldScriptContext ctx)
+        {
+            AskPlayer(ctx, true);
         }
 
         /// <summary>

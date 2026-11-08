@@ -477,6 +477,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetSaveEnabled              += OnRequestSetSaveEnabled;
             m_FieldContext.VM.RequestOpenSaveMenu                += OnRequestOpenSaveMenu;
             m_FieldContext.VM.RequestCreateDialogueWindow        += OnRequestCreateDialogueWindow;
+            m_FieldContext.VM.RequestFitDialogueWindow           += OnRequestFitDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindow          += OnRequestShowDialogueWindow;
             m_FieldContext.VM.RequestShowDialogueWindowNoWait    += OnRequestShowDialogueWindowNoWait;
             m_FieldContext.VM.RequestCloseDialogueWindow         += OnRequestCloseDialogueWindow;
@@ -516,6 +517,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetDialogueWindowStyle      -= OnRequestSetDialogueWindowStyle;
             m_FieldContext.VM.RequestSetMessageVariable          -= OnRequestSetMessageVariable;
             m_FieldContext.VM.RequestCreateDialogueWindow        -= OnRequestCreateDialogueWindow;
+            m_FieldContext.VM.RequestFitDialogueWindow           -= OnRequestFitDialogueWindow;
             m_FieldContext.VM.RequestOpenSaveMenu                -= OnRequestOpenSaveMenu;
             m_FieldContext.VM.RequestSetSaveEnabled              -= OnRequestSetSaveEnabled;
             m_FieldContext.VM.RequestSetMainMenuAccessibility    -= OnRequestSetMainMenuAccessibility;
@@ -1869,6 +1871,14 @@ namespace RPGFramework.Field
             channel.Rect    = args.Rect;
         }
 
+        private void OnRequestFitDialogueWindow(byte channel, Vector2Int position)
+        {
+            FieldDialogueChannel dialogueChannel = m_DialogueChannels[channel];
+
+            dialogueChannel.FitsNext    = true;
+            dialogueChannel.FitPosition = position;
+        }
+
         private void OnRequestSetDialogueWindowStyle(byte channel, DialogueWindowStyle style)
         {
             m_DialogueChannels[channel].Style = style;
@@ -1887,7 +1897,10 @@ namespace RPGFramework.Field
             }
 
             string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
-            Task     running   = RunDialogueAsync(channel, window, new TextDialogueFlow(), dialogues, blockMovement, null);
+
+            FitToTextIfAsked(channel, window, dialogues);
+
+            Task running = RunDialogueAsync(channel, window, new TextDialogueFlow(), dialogues, blockMovement, null);
 
             m_DialogueChannels[channel].Running = running;
             running.FireAndForget();
@@ -1906,7 +1919,10 @@ namespace RPGFramework.Field
             }
 
             string[] dialogues = new[] { m_LocalisationService.Get(dialogueId) };
-            Task     running   = RunDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues, false, null);
+
+            FitToTextIfAsked(channel, window, dialogues);
+
+            Task running = RunDialogueAsync(channel, window, new UnansweredDialogueFlow(), dialogues, false, null);
 
             if (dismissible)
             {
@@ -1942,6 +1958,8 @@ namespace RPGFramework.Field
                 dialogues[i] = m_LocalisationService.Get(question.AnswerIds[i - 1]);
             }
 
+            FitToTextIfAsked(question.Channel, window, dialogues);
+
             ChoiceDialogueFlow flow    = new ChoiceDialogueFlow(m_SfxPlayer, m_SystemSounds, question.StartingAnswer, question.CancelAnswer);
             Task               running = RunDialogueAsync(question.Channel, window, flow, dialogues, true, storeChoice);
 
@@ -1957,7 +1975,7 @@ namespace RPGFramework.Field
         {
             FieldDialogueChannel dialogueChannel = m_DialogueChannels[channel];
 
-            if (!dialogueChannel.HasRect)
+            if (!dialogueChannel.HasRect && !dialogueChannel.FitsNext)
             {
 #if UNITY_EDITOR
                 // Export checks that something in the field sets this channel's rectangle, but not that it runs
@@ -1979,6 +1997,19 @@ namespace RPGFramework.Field
             dialogueChannel.Close  = new CancellationTokenSource();
 
             return true;
+        }
+
+        // The window sets its own size from these as it opens, a message first and a question's answers after it.
+        private void FitToTextIfAsked(byte channel, IDialogueWindow window, string[] dialogues)
+        {
+            FieldDialogueChannel dialogueChannel = m_DialogueChannels[channel];
+
+            if (dialogueChannel.FitsNext)
+            {
+                dialogueChannel.FitsNext = false;
+
+                window.FitToText(dialogueChannel.FitPosition, dialogues[0], dialogues.AsSpan(1));
+            }
         }
 
         /// <summary>

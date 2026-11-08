@@ -16,6 +16,13 @@ namespace RPGFramework.Field
         internal DialogueWindowStyle Style;
 
         /// <summary>
+        /// Whether the next window on this channel is sized to its text at <see cref="FitPosition" /> rather than
+        /// given <see cref="Rect" />.
+        /// </summary>
+        internal bool       FitsNext;
+        internal Vector2Int FitPosition;
+
+        /// <summary>
         /// The window showing on this channel, or null when it is free.
         /// </summary>
         internal IDialogueWindow Window;
