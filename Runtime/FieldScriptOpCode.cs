@@ -1060,7 +1060,16 @@ namespace RPGFramework.Field
         SetEntityPosition = 0x050E,
 
         SetEntityHeightOffset   = 0x050F, // float offset - lift the model, for standing on something
-        SetEntityDrawOffset     = 0x0510,
+
+        [FieldOpCode("SET_ENTITY_DRAW_OFFSET", ArgumentLayout.Sequential, Summary = "Shift where this entity is drawn without moving it, from the offset it has now, at once or over time, and carry on", NeedsBody = true)]
+        [Argument(0, "x",       ArgumentType.Float, Description = "along the world's x")]
+        [Argument(1, "y",       ArgumentType.Float, Description = "along the world's y")]
+        [Argument(2, "z",       ArgumentType.Float, Description = "along the world's z")]
+        [Argument(3, "seconds", ArgumentType.Float, Description = "how long it takes, 0 for at once")]
+        [Argument(4, "easing",  ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        SetEntityDrawOffset = 0x0510,
+
+        [FieldOpCode("WAIT_FOR_ENTITY_DRAW_OFFSET", ArgumentLayout.Sequential, Summary = "Wait until this entity's draw offset has finished moving", StopsInit = true, NeedsBody = true)]
         WaitForEntityDrawOffset = 0x0511,
 
         [FieldOpCode("SET_MOVEMENT_SPEED", ArgumentLayout.Sequential, Summary = "Set how fast this entity moves", NeedsBody = true)]
@@ -1114,9 +1123,29 @@ namespace RPGFramework.Field
         MoveEntityToEntity = 0x051A,
 
         MoveToPartyMember = 0x051B,
-        MakeEntityJump    = 0x051C,
+
+        [FieldOpCode("JUMP_ENTITY_AND_WAIT", ArgumentLayout.Sequential, Summary = "Jump this entity to a point in an arc, through whatever is in the way, waiting until it lands. It does not turn or walk", StopsInit = true, NeedsBody = true)]
+        [Argument(0, "x",       ArgumentType.Float)]
+        [Argument(1, "y",       ArgumentType.Float)]
+        [Argument(2, "z",       ArgumentType.Float)]
+        [Argument(3, "seconds", ArgumentType.Float)]
+        [Argument(4, "height",  ArgumentType.Float, Description = "how far above a straight line to the point the arc peaks")]
+        JumpEntityAndWait = 0x051C,
+
         JumpToPartyMember = 0x051D, // byte partySlot, float seconds
-        ClimbLadder       = 0x051E,
+
+        [FieldOpCode("CLIMB_LADDER_AND_WAIT", ArgumentLayout.Sequential, Summary = "Get on a ladder, climb it and get off, waiting until it has. The player steers the climb up and down and can come back off where it began; with input locked, or for any other entity, it climbs by itself", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "up", ArgumentType.Bool, Description = "On: going up the ladder. Off: going down, the animations played backwards")]
+        [Argument(1, "onX",     ArgumentType.Float, Description = "where getting on ends; where it stands now for no getting on")]
+        [Argument(2, "onY",     ArgumentType.Float)]
+        [Argument(3, "onZ",     ArgumentType.Float)]
+        [Argument(4, "offX",    ArgumentType.Float, Description = "where the climb ends")]
+        [Argument(5, "offY",    ArgumentType.Float)]
+        [Argument(6, "offZ",    ArgumentType.Float)]
+        [Argument(7, "finishX", ArgumentType.Float, Description = "where getting off ends; the same as where the climb ends for no getting off")]
+        [Argument(8, "finishY", ArgumentType.Float)]
+        [Argument(9, "finishZ", ArgumentType.Float)]
+        ClimbLadderAndWait = 0x051E,
 
         [FieldOpCode("WAIT_FOR_MOVEMENT", ArgumentLayout.Sequential, Summary = "Wait until this entity has arrived where a script sent it", StopsInit = true, NeedsBody = true)]
         WaitForMovement = 0x051F,
@@ -1163,7 +1192,11 @@ namespace RPGFramework.Field
         [Argument(0, "state", ArgumentType.AnimationName, Description = "the state it rests in; a locomotion blend tree reads the entity's speed from there")]
         SetBaseAnimation = 0x0528,
 
-        SetLadderAnimations = 0x0529, // the climbing animations, as SetBaseAnimation is for walking
+        [FieldOpCode("SET_LADDER_ANIMATIONS", ArgumentLayout.Sequential, Summary = "Name the animations this entity climbs ladders with, as SET_BASE_ANIMATION names the one it walks with", NeedsBody = true, NeedsAnimator = true)]
+        [Argument(0, "getOn",  ArgumentType.AnimationName, Description = "getting on at the bottom")]
+        [Argument(1, "climb",  ArgumentType.AnimationName, Description = "one cycle of climbing")]
+        [Argument(2, "getOff", ArgumentType.AnimationName, Description = "getting off at the top")]
+        SetLadderAnimations = 0x0529,
 
         [FieldOpCode("PLAY_ANIMATION_AND_WAIT", ArgumentLayout.Sequential, Summary = "Play an animation, wait for it, then go back to the base animation", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "animation", ArgumentType.AnimationName, Description = "the animation to play")]
@@ -1269,6 +1302,14 @@ namespace RPGFramework.Field
         [FieldOpCode("COLLISION_TRIGGER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Turn this entity's collision trigger on or off, and with it the entity's enter and leave scripts", NeedsBody = true)]
         [Argument(0, "enabled", ArgumentType.Bool)]
         CollisionTriggerActivation = 0x0549,
+
+        [FieldOpCode("SET_ENTITY_DRAW_OFFSET_AND_WAIT", ArgumentLayout.Sequential, Summary = "Shift where this entity is drawn without moving it, from the offset it has now, and wait until it has", StopsInit = true, NeedsBody = true)]
+        [Argument(0, "x",       ArgumentType.Float, Description = "along the world's x")]
+        [Argument(1, "y",       ArgumentType.Float, Description = "along the world's y")]
+        [Argument(2, "z",       ArgumentType.Float, Description = "along the world's z")]
+        [Argument(3, "seconds", ArgumentType.Float, Description = "how long it takes, 0 for at once")]
+        [Argument(4, "easing",  ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        SetEntityDrawOffsetAndWait = 0x054A,
 
         // Screen and field effects (0x0600)
         [FieldOpCode("SUBTRACT_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Take a colour from the screen beneath the message windows, fading to it from the colour there now, kept until a fade or another colour")]

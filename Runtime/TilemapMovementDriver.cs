@@ -59,6 +59,8 @@ namespace RPGFramework.Field
             }
         }
 
+        float IMovementDriver.MoveSpeed => m_Speed;
+
         void IMovementDriver.SetMoveSpeed(float speed)
         {
             m_Speed = speed;

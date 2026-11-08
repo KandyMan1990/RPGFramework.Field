@@ -20,18 +20,24 @@ namespace RPGFramework.Field
 
         private CompiledFieldEntity m_Record;
 
-        internal int  EntityId         => m_Record != null ? m_Record.EntityId : NO_ENTITY;
-        internal bool HasVisibleObject => m_VisibleObject != null;
+        internal int EntityId => m_Record != null ? m_Record.EntityId : NO_ENTITY;
 
         private bool IsSolid { get; set; } = true;
         private bool IsShown { get; set; } = true;
 
         private bool m_PushActive = true;
 
+        private Vector3 m_VisibleRestPosition;
+
         internal bool RaisesPush => m_PushActive && IsShown;
 
         private void Awake()
         {
+            if (m_VisibleObject != null)
+            {
+                m_VisibleRestPosition = m_VisibleObject.transform.localPosition;
+            }
+
             SetVisible(false);
         }
 
@@ -48,6 +54,8 @@ namespace RPGFramework.Field
         }
 
 #if UNITY_EDITOR
+        internal bool HasVisibleObject => m_VisibleObject != null;
+
         /// <summary>
         /// Authoring only: what <c>VISIBILITY</c> shows and hides.
         /// </summary>
@@ -105,6 +113,21 @@ namespace RPGFramework.Field
             {
                 entities.Add(entity);
             }
+        }
+
+        /// <summary>
+        /// How far the visible object sits from where it was placed, along the world's axes whichever way the body faces.
+        /// </summary>
+        internal void SetDrawOffset(Vector3 offset)
+        {
+            if (m_VisibleObject == null)
+            {
+                return;
+            }
+
+            Transform visible = m_VisibleObject.transform;
+
+            visible.localPosition = m_VisibleRestPosition + visible.parent.InverseTransformVector(offset);
         }
 
         internal void SetVisible(bool visible)

@@ -16,6 +16,9 @@ namespace RPGFramework.Field
         /// <summary>How fast the entity moves, in units a second.</summary>
         void SetMoveSpeed(float speed);
 
+        /// <summary>What <see cref="SetMoveSpeed" /> last set.</summary>
+        float MoveSpeed { get; }
+
         /// <summary>A frame's movement and turning, for a driver that moves per frame.</summary>
         void Tick(float deltaTime);
 

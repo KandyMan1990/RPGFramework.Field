@@ -6,7 +6,7 @@ namespace RPGFramework.Field
 {
     /// <summary>Which of an entity's values a script has set, or the field took as it was left.</summary>
     [Flags]
-    internal enum FieldEntityValues : ushort
+    internal enum FieldEntityValues : uint
     {
         None                   = 0,
         Pose                   = 1 << 0,
@@ -22,7 +22,10 @@ namespace RPGFramework.Field
         AnimationSpeed         = 1 << 10,
         PlayedAnimation        = 1 << 11,
         CollisionTriggerActive = 1 << 12,
-        InField                = 1 << 13
+        InField                = 1 << 13,
+        DrawOffset             = 1 << 14,
+        Jump                   = 1 << 15,
+        Climb                  = 1 << 16
     }
 
     /// <summary>
@@ -43,6 +46,12 @@ namespace RPGFramework.Field
         internal bool              PushActive;
         internal bool              CollisionTriggerActive;
         internal bool              InField;
+        internal DrawOffset        DrawOffset;
+        internal ScriptedJump      Jump;
+        internal LadderClimb       Climb;
+        internal ulong             LadderGetOn;
+        internal ulong             LadderClimbing;
+        internal ulong             LadderGetOff;
         internal float             InteractionRange;
         internal float             MovementSpeed;
         internal float             AnimationSpeed;
@@ -57,6 +66,36 @@ namespace RPGFramework.Field
         {
             InField =  inField;
             Set     |= FieldEntityValues.InField;
+        }
+
+        internal void MoveDrawOffset(Vector3 offset, float seconds, Easing easing)
+        {
+            DrawOffset.MoveTo(offset, seconds, easing);
+
+            Set |= FieldEntityValues.DrawOffset;
+        }
+
+        internal void StartJump(ScriptedJump jump)
+        {
+            Jump =  jump;
+            Set  |= FieldEntityValues.Jump;
+        }
+
+        internal void ClearJump() => Set &= ~FieldEntityValues.Jump;
+
+        internal void StartClimb(LadderClimb climb)
+        {
+            Climb =  climb;
+            Set   |= FieldEntityValues.Climb;
+        }
+
+        internal void ClearClimb() => Set &= ~FieldEntityValues.Climb;
+
+        internal void SetLadderAnimations(ulong getOn, ulong climbing, ulong getOff)
+        {
+            LadderGetOn    = getOn;
+            LadderClimbing = climbing;
+            LadderGetOff   = getOff;
         }
 
         internal void SetPose(Vector3 position, Quaternion rotation)

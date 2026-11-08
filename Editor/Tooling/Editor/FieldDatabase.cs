@@ -39,8 +39,12 @@ namespace RPGFramework.Field.Editor
             FieldScriptOpCode.GlideEntityAndWait,
             FieldScriptOpCode.GlideEntity,
             FieldScriptOpCode.SlideEntityAndWait,
-            FieldScriptOpCode.SlideEntity
+            FieldScriptOpCode.SlideEntity,
+            FieldScriptOpCode.JumpEntityAndWait
         };
+
+        // Where a ladder's last point starts in its line: after the opcode, the direction and two points.
+        private const int LADDER_FINISH_PART = 8;
 
         private readonly string m_AssetBundlesPath;
 
@@ -494,6 +498,7 @@ namespace RPGFramework.Field.Editor
                 ValidateActionNames(actionNames, scriptDescription, lines, problems);
                 ValidateScriptRequests(fieldEntityRecord, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
+                ValidateDrawOffsets(body, scriptDescription, lines, problems);
                 ValidateMapJumps(scriptDescription, lines, problems);
                 ValidateGatewayScript(script.Type, scriptDescription, lines, problems);
                 dialogueChannels.Read(lines, scriptDescription);
@@ -512,6 +517,7 @@ namespace RPGFramework.Field.Editor
             ValidateGateway(prefab, fieldEntityRecord, entityName, problems);
             ValidatePushScript(fieldEntityRecord, entityName, problems);
             ValidateScriptCalls(entityName, fieldEntityRecord.Scripts, problems);
+            ValidateLadderAnimations(entityName, fieldEntityRecord.Scripts, problems);
         }
 
         private const int ENDLESS_CALLS = -1;
@@ -898,10 +904,17 @@ namespace RPGFramework.Field.Editor
             {
                 string[] parts = FieldScriptLine.Split(lines[i]);
 
-                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) ||
-                    Array.IndexOf(m_MovesToAPoint, opCode.OpCode) < 0                  || parts.Length < 4                      ||
-                    !TryParseFloat(parts[1], out float x)                              || !TryParseFloat(parts[2], out float y) ||
-                    !TryParseFloat(parts[3], out float z))
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                bool isLadder = opCode.OpCode == FieldScriptOpCode.ClimbLadderAndWait;
+                int  first    = isLadder ? LADDER_FINISH_PART : 1;
+
+                if ((!isLadder && Array.IndexOf(m_MovesToAPoint, opCode.OpCode) < 0) || parts.Length < first + 3 ||
+                    !TryParseFloat(parts[first], out float x)                        || !TryParseFloat(parts[first + 1], out float y) ||
+                    !TryParseFloat(parts[first + 2], out float z))
                 {
                     continue;
                 }
@@ -1493,6 +1506,57 @@ namespace RPGFramework.Field.Editor
                 {
                     problems.Add($"{scriptDescription} uses {name}, which waits or gives up the frame. Init runs straight through before the field is shown, so nothing after it would run — move it, and whatever follows it, into a {nameof(FieldScriptType.Default)} script");
                 }
+            }
+        }
+
+        /// <summary>
+        /// A draw offset on a body with nothing to draw, which the field module would shift nothing for.
+        /// </summary>
+        private static void ValidateDrawOffsets(FieldEntity body, string scriptDescription, string[] lines, List<string> problems)
+        {
+            if (body == null || body.HasVisibleObject)
+            {
+                return;
+            }
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string name = FieldScriptLine.Split(lines[i])[0];
+
+                if (FieldOpCodeCatalogue.Project.TryGet(name, out FieldOpCodeInfo opCode) &&
+                    (opCode.OpCode == FieldScriptOpCode.SetEntityDrawOffset || opCode.OpCode == FieldScriptOpCode.SetEntityDrawOffsetAndWait))
+                {
+                    problems.Add($"{scriptDescription} uses {name}, but its entity has no visible object to shift");
+                }
+            }
+        }
+
+        /// <summary>
+        /// A ladder climbed by an entity no script names ladder animations for, which the field module reads without
+        /// looking as the climb begins.
+        /// </summary>
+        internal static void ValidateLadderAnimations(string entityName, IReadOnlyList<FieldScriptRecord> scripts, List<string> problems)
+        {
+            bool climbs = false;
+            bool names  = false;
+
+            for (int i = 0; i < scripts.Count; i++)
+            {
+                string[] lines = (scripts[i].Text ?? string.Empty).Split('\n');
+
+                for (int line = 0; line < lines.Length; line++)
+                {
+                    if (FieldOpCodeCatalogue.Project.TryGet(FieldScriptLine.Split(lines[line])[0], out FieldOpCodeInfo opCode))
+                    {
+                        climbs |= opCode.OpCode == FieldScriptOpCode.ClimbLadderAndWait;
+                        names  |= opCode.OpCode == FieldScriptOpCode.SetLadderAnimations;
+                    }
+                }
+            }
+
+            if (climbs && !names)
+            {
+                problems.Add($"{entityName} uses CLIMB_LADDER_AND_WAIT, but none of its scripts uses SET_LADDER_ANIMATIONS to say how it climbs");
             }
         }
 

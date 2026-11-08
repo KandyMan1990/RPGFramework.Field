@@ -40,6 +40,9 @@ namespace RPGFramework.Field
         private const float MUSIC_RESUME_SECONDS   = 1f;
         private const float ALREADY_FACING_DEGREES = 0.5f;
 
+        private const FieldEntityValues CARRIED_BY_A_SCRIPT = FieldEntityValues.Jump | FieldEntityValues.Climb;
+        private const FieldEntityValues TICKED_MOTIONS      = FieldEntityValues.DrawOffset | CARRIED_BY_A_SCRIPT;
+
         private readonly ICoreModule                m_CoreModule;
         private readonly IDIResolver                m_DIResolver;
         private readonly IInputRouter               m_InputRouter;
@@ -100,6 +103,7 @@ namespace RPGFramework.Field
         private FieldBlocker[]                         m_Blockers;
         private Dictionary<byte, FieldBlocker>         m_BlockersById;
         private FieldDimension                         m_Dimension;
+        private Vector2                                m_PlayerPush;
         private Tilemap                                m_WalkableTilemap;
         private int                                    m_PlayerEntityId;
         private bool                                   m_FieldTransitionRequested;
@@ -370,6 +374,7 @@ namespace RPGFramework.Field
                 }
             }
 
+            UpdateTickedMotions(deltaTime);
             MoveCameraFocus(deltaTime);
             m_CinemachineBrain.ManualUpdate();
 
@@ -473,6 +478,13 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestTurnEntityToEntity          += OnRequestTurnEntityToEntity;
             m_FieldContext.VM.RequestCopyEntityPose              += OnRequestCopyEntityPose;
             m_FieldContext.VM.RequestSetEntityInField            += OnRequestSetEntityInField;
+            m_FieldContext.VM.RequestSetEntityDrawOffset         += OnRequestSetEntityDrawOffset;
+            m_FieldContext.VM.IsEntityDrawOffsetMoving           =  IsEntityDrawOffsetMoving;
+            m_FieldContext.VM.RequestJumpEntity                  += OnRequestJumpEntity;
+            m_FieldContext.VM.IsEntityJumping                    =  IsEntityJumping;
+            m_FieldContext.VM.RequestClimbLadder                 += OnRequestClimbLadder;
+            m_FieldContext.VM.IsEntityClimbing                   =  IsEntityClimbing;
+            m_FieldContext.VM.RequestSetLadderAnimations         += OnRequestSetLadderAnimations;
             m_FieldContext.VM.GetEntityPosition                  =  EntityPosition;
             m_FieldContext.VM.GetEntityDirection                 =  EntityDirection;
             m_FieldContext.VM.IsEntityInRange                    =  IsEntityInRange;
@@ -553,6 +565,13 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsEntityInRange                    =  null;
             m_FieldContext.VM.GetEntityDirection                 =  null;
             m_FieldContext.VM.GetEntityPosition                  =  null;
+            m_FieldContext.VM.RequestSetLadderAnimations         -= OnRequestSetLadderAnimations;
+            m_FieldContext.VM.IsEntityClimbing                   =  null;
+            m_FieldContext.VM.RequestClimbLadder                 -= OnRequestClimbLadder;
+            m_FieldContext.VM.IsEntityJumping                    =  null;
+            m_FieldContext.VM.RequestJumpEntity                  -= OnRequestJumpEntity;
+            m_FieldContext.VM.IsEntityDrawOffsetMoving           =  null;
+            m_FieldContext.VM.RequestSetEntityDrawOffset         -= OnRequestSetEntityDrawOffset;
             m_FieldContext.VM.RequestSetEntityInField            -= OnRequestSetEntityInField;
             m_FieldContext.VM.RequestCopyEntityPose              -= OnRequestCopyEntityPose;
             m_FieldContext.VM.RequestTurnEntityToEntity          -= OnRequestTurnEntityToEntity;
@@ -1398,6 +1417,11 @@ namespace RPGFramework.Field
             {
                 entity.CollisionTrigger.SetActive(state.CollisionTriggerActive);
             }
+
+            if ((apply & FieldEntityValues.DrawOffset) != 0)
+            {
+                entity.Entity.SetDrawOffset(state.DrawOffset.Current);
+            }
         }
 
         private void RaisePushes()
@@ -1454,7 +1478,7 @@ namespace RPGFramework.Field
 
         private FieldInteractionTrigger GetBestInteractionTrigger()
         {
-            if (m_FieldContext.PlayerEntity == null)
+            if (m_FieldContext.PlayerEntity == null || IsPlayerCarried())
             {
                 return null;
             }
@@ -1535,6 +1559,15 @@ namespace RPGFramework.Field
             Vector2 move = m_InputRouter.MovementReaches(m_ExplorationInputContext) ? m_InputAdapter.Movement : Vector2.zero;
             Vector3 up   = m_FieldModuleMonoBehaviour.Up;
 
+            m_PlayerPush = move;
+
+            if (IsPlayerCarried())
+            {
+                MovePlayer(Vector3.zero);
+
+                return;
+            }
+
             Vector3 forward = Vector3.ProjectOnPlane(m_CameraTransformHandle.forward, up);
             Vector3 right   = Vector3.ProjectOnPlane(m_CameraTransformHandle.right,   up).normalized;
 
@@ -1548,6 +1581,11 @@ namespace RPGFramework.Field
             Vector3 worldMove = forward * move.y + right * move.x;
 
             MovePlayer(worldMove);
+        }
+
+        private bool IsPlayerCarried()
+        {
+            return m_PlayerEntityId != FieldEntity.NO_ENTITY && (m_FieldContext.EntityState(m_PlayerEntityId).Set & CARRIED_BY_A_SCRIPT) != 0;
         }
 
         private void MovePlayer(Vector3 worldMove)
@@ -1745,6 +1783,154 @@ namespace RPGFramework.Field
             }
 
             driver.StartRotation(new SetEntityRotationAsyncArgs(driver.RotationAlong(direction), RotationDirection.Closest, duration, easing));
+        }
+
+        private void OnRequestSetEntityDrawOffset(int entityId, Vector3 offset, float seconds, Easing easing)
+        {
+            m_FieldContext.EntityState(entityId).MoveDrawOffset(offset, seconds, easing);
+
+            ApplyEntityState(entityId, FieldEntityValues.DrawOffset);
+        }
+
+        private bool IsEntityDrawOffsetMoving(int entityId)
+        {
+            return m_FieldContext.EntityState(entityId).DrawOffset.IsMoving;
+        }
+
+        private void OnRequestJumpEntity(int entityId, Vector3 target, float seconds, float height)
+        {
+            OnRequestStopMovement(entityId);
+
+            m_FieldContext.EntityState(entityId).StartJump(new ScriptedJump(EntityPosition(entityId), target, seconds, height));
+        }
+
+        private bool IsEntityJumping(int entityId)
+        {
+            return (m_FieldContext.EntityState(entityId).Set & FieldEntityValues.Jump) != 0;
+        }
+
+        private void OnRequestSetLadderAnimations(int entityId, ulong getOn, ulong climbing, ulong getOff)
+        {
+            m_FieldContext.EntityState(entityId).SetLadderAnimations(getOn, climbing, getOff);
+        }
+
+        private void OnRequestClimbLadder(int entityId, LadderClimbArgs args)
+        {
+            OnRequestStopMovement(entityId);
+
+            ref FieldEntityState state     = ref m_FieldContext.EntityState(entityId);
+            IAnimationDriver     animation = GetAnimationDriver(entityId);
+
+            float getOnSeconds  = animation.LengthOf(m_AnimationNames[state.LadderGetOn]);
+            float climbSeconds  = animation.LengthOf(m_AnimationNames[state.LadderClimbing]);
+            float getOffSeconds = animation.LengthOf(m_AnimationNames[state.LadderGetOff]);
+
+            state.StartClimb(new LadderClimb(EntityPosition(entityId), args, GetMovementDriver(entityId).MoveSpeed, getOnSeconds, climbSeconds, getOffSeconds));
+        }
+
+        private bool IsEntityClimbing(int entityId)
+        {
+            return (m_FieldContext.EntityState(entityId).Set & FieldEntityValues.Climb) != 0;
+        }
+
+        /// <summary>
+        /// What a script set going that runs by itself. After the drivers, so a jump or a ladder has the last word on
+        /// where a body is this frame.
+        /// </summary>
+        private void UpdateTickedMotions(float deltaTime)
+        {
+            IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
+
+            for (int i = 0; i < entities.Count; i++)
+            {
+                ref FieldEntityState state = ref m_FieldContext.EntityStateAt(i);
+
+                if ((state.Set & TICKED_MOTIONS) == 0)
+                {
+                    continue;
+                }
+
+                int entityId = entities[i].EntityId;
+
+                if ((state.Set & FieldEntityValues.Climb) != 0)
+                {
+                    UpdateClimb(entityId, ref state, deltaTime);
+                }
+
+                if ((state.Set & FieldEntityValues.Jump) != 0)
+                {
+                    UpdateJump(entityId, ref state, deltaTime);
+                }
+
+                state.DrawOffset.Tick(deltaTime);
+
+                bool    inTheAirOn2D = m_Dimension == FieldDimension.TwoD && (state.Set & FieldEntityValues.Jump) != 0;
+                Vector3 lift         = inTheAirOn2D ? Vector3.up * state.Jump.Lift : Vector3.zero;
+
+                m_Entities[entityId].Entity.SetDrawOffset(state.DrawOffset.Current + lift);
+            }
+        }
+
+        // A 2D body stays on its plane, so there the arc goes on the visible object and a sprite hops.
+        private void UpdateJump(int entityId, ref FieldEntityState state, float deltaTime)
+        {
+            IMovementDriver driver = GetMovementDriver(entityId);
+
+            state.Jump.Tick(deltaTime);
+
+            if (state.Jump.HasLanded)
+            {
+                driver.SetPosition(state.Jump.Target);
+                state.ClearJump();
+
+                return;
+            }
+
+            Vector3 rise = m_Dimension == FieldDimension.TwoD ? Vector3.zero : m_FieldModuleMonoBehaviour.Up * state.Jump.Lift;
+
+            driver.SetPosition(state.Jump.Line + rise);
+        }
+
+        private void UpdateClimb(int entityId, ref FieldEntityState state, float deltaTime)
+        {
+            IAnimationDriver animation = GetAnimationDriver(entityId);
+
+            state.Climb.Tick(deltaTime, ClimbSteer(entityId, state.Climb));
+
+            GetMovementDriver(entityId).SetPosition(state.Climb.Position);
+
+            if (state.Climb.IsFinished)
+            {
+                state.ClearClimb();
+                animation.ReturnToBase();
+
+                return;
+            }
+
+            LadderPose pose = state.Climb.Pose;
+
+            animation.Pose(LadderAnimationName(state, pose.Animation), pose.NormalisedTime);
+        }
+
+        // Only the player steers, and only with control of the player; anything else climbs by itself.
+        private float ClimbSteer(int entityId, in LadderClimb climb)
+        {
+            return entityId == m_PlayerEntityId && !m_FieldContext.IsInputLockedByScript ? climb.SteerFrom(m_PlayerPush.y) : 1f;
+        }
+
+        private string LadderAnimationName(in FieldEntityState state, LadderAnimation animation)
+        {
+            switch (animation)
+            {
+                case LadderAnimation.GetOn:
+                    return m_AnimationNames[state.LadderGetOn];
+
+                case LadderAnimation.GetOff:
+                    return m_AnimationNames[state.LadderGetOff];
+
+                default:
+                    return m_AnimationNames[state.LadderClimbing];
+            }
         }
 
         private void OnRequestCopyEntityPose(int entityId, int sourceEntityId)

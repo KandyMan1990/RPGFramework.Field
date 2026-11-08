@@ -60,6 +60,13 @@ namespace RPGFramework.Field
         internal Func<int, Vector3>                            GetEntityPosition;
         internal Func<int, float>                              GetEntityDirection;
         internal Func<int, int, bool>                          IsEntityInRange;
+        internal event Action<int, Vector3, float, Easing>     RequestSetEntityDrawOffset;
+        internal Func<int, bool>                               IsEntityDrawOffsetMoving;
+        internal event Action<int, Vector3, float, float>      RequestJumpEntity;
+        internal Func<int, bool>                               IsEntityJumping;
+        internal event Action<int, LadderClimbArgs>            RequestClimbLadder;
+        internal Func<int, bool>                               IsEntityClimbing;
+        internal event Action<int, ulong, ulong, ulong>        RequestSetLadderAnimations;
         internal event Action<int, float>                      RequestSetEntityMovementSpeed;
         internal event Action<int, MoveEntityArgs>             RequestMoveEntity;
         internal Func<int, bool>                               IsEntityMoving;
@@ -413,8 +420,8 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SetInteractionRange, SetInteractionRangeOpcodeHandler },
                        { FieldScriptOpCode.SetEntityPosition, SetEntityPositionOpcodeHandler },
                        // { FieldScriptOpCode.SetEntityHeightOffset, SetEntityHeightOffsetOpcodeHandler },
-                       // { FieldScriptOpCode.SetEntityDrawOffset, SetEntityDrawOffsetOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForEntityDrawOffset, WaitForEntityDrawOffsetOpcodeHandler },
+                       { FieldScriptOpCode.SetEntityDrawOffset, SetEntityDrawOffsetOpcodeHandler },
+                       { FieldScriptOpCode.WaitForEntityDrawOffset, WaitForEntityDrawOffsetOpcodeHandler },
                        { FieldScriptOpCode.SetMovementSpeed, SetMovementSpeedOpcodeHandler },
                        { FieldScriptOpCode.MoveEntityAndWait, MoveEntityAndWaitOpcodeHandler },
                        { FieldScriptOpCode.MoveEntity, MoveEntityOpcodeHandler },
@@ -425,9 +432,9 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.MoveEntityToEntityAndWait, MoveEntityToEntityAndWaitOpcodeHandler },
                        { FieldScriptOpCode.MoveEntityToEntity, MoveEntityToEntityOpcodeHandler },
                        // { FieldScriptOpCode.MoveToPartyMember, MoveToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.MakeEntityJump, MakeEntityJumpOpcodeHandler },
+                       { FieldScriptOpCode.JumpEntityAndWait, JumpEntityAndWaitOpcodeHandler },
                        // { FieldScriptOpCode.JumpToPartyMember, JumpToPartyMemberOpcodeHandler },
-                       // { FieldScriptOpCode.ClimbLadder, ClimbLadderOpcodeHandler },
+                       { FieldScriptOpCode.ClimbLadderAndWait, ClimbLadderAndWaitOpcodeHandler },
                        { FieldScriptOpCode.WaitForMovement, WaitForMovementOpcodeHandler },
                        { FieldScriptOpCode.StopMovement, StopMovementOpcodeHandler },
                        { FieldScriptOpCode.SetEntityRotation, SetEntityRotationOpcodeHandler },
@@ -438,7 +445,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.TurnToEntityAndWait, TurnToEntityAndWaitOpcodeHandler },
                        // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.SetBaseAnimation, SetBaseAnimationOpcodeHandler },
-                       // { FieldScriptOpCode.SetLadderAnimations, SetLadderAnimationsOpcodeHandler },
+                       { FieldScriptOpCode.SetLadderAnimations, SetLadderAnimationsOpcodeHandler },
                        { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
                        { FieldScriptOpCode.PlayAnimationStopOnLastFrameWait, PlayAnimationStopOnLastFrameWaitOpcodeHandler },
                        { FieldScriptOpCode.PlayAnimationOnceAsync, PlayAnimationOnceAsyncOpcodeHandler },
@@ -471,6 +478,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.CopyEntityPose, CopyEntityPoseOpcodeHandler },
                        { FieldScriptOpCode.IsEntityInRange, IsEntityInRangeOpcodeHandler },
                        { FieldScriptOpCode.CollisionTriggerActivation, CollisionTriggerActivationOpcodeHandler },
+                       { FieldScriptOpCode.SetEntityDrawOffsetAndWait, SetEntityDrawOffsetAndWaitOpcodeHandler },
 
                        // Screen and field effects
                        { FieldScriptOpCode.SubtractiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx, false) },
@@ -1800,6 +1808,22 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Shift where this entity is drawn, and carry on.
+        /// </summary>
+        private void SetEntityDrawOffsetOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestDrawOffset(ctx);
+        }
+
+        /// <summary>
+        /// Wait until this entity's draw offset has finished moving.
+        /// </summary>
+        private void WaitForEntityDrawOffsetOpcodeHandler(FieldScriptContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsEntityDrawOffsetMoving(ctx.EntityId)));
+        }
+
+        /// <summary>
         /// Set how fast this entity moves.
         /// </summary>
         private void SetMovementSpeedOpcodeHandler(FieldScriptContext ctx)
@@ -1904,6 +1928,37 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Jump this entity to a point and block until it lands.
+        /// </summary>
+        private void JumpEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            float x       = ctx.ReadFloat();
+            float y       = ctx.ReadFloat();
+            float z       = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
+            float height  = ctx.ReadFloat();
+
+            RequestJumpEntity?.Invoke(ctx.EntityId, new Vector3(x, y, z), seconds, height);
+
+            ctx.Block(new WaitUntilBlock(() => !IsEntityJumping(ctx.EntityId)));
+        }
+
+        /// <summary>
+        /// Take this entity over a ladder and block until it is off.
+        /// </summary>
+        private void ClimbLadderAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            bool    up        = ctx.ReadBool();
+            Vector3 onLadder  = ReadPoint(ctx);
+            Vector3 offLadder = ReadPoint(ctx);
+            Vector3 finish    = ReadPoint(ctx);
+
+            RequestClimbLadder?.Invoke(ctx.EntityId, new LadderClimbArgs(up, onLadder, offLadder, finish));
+
+            ctx.Block(new WaitUntilBlock(() => !IsEntityClimbing(ctx.EntityId)));
+        }
+
+        /// <summary>
         /// Wait until this entity has arrived where a script sent it.
         /// </summary>
         private void WaitForMovementOpcodeHandler(FieldScriptContext ctx)
@@ -1993,6 +2048,18 @@ namespace RPGFramework.Field
             ulong stateNameHash = ctx.ReadName();
 
             RequestSetBaseAnimation?.Invoke(ctx.EntityId, stateNameHash);
+        }
+
+        /// <summary>
+        /// Name the animations this entity climbs ladders with.
+        /// </summary>
+        private void SetLadderAnimationsOpcodeHandler(FieldScriptContext ctx)
+        {
+            ulong getOn  = ctx.ReadName();
+            ulong climb  = ctx.ReadName();
+            ulong getOff = ctx.ReadName();
+
+            RequestSetLadderAnimations?.Invoke(ctx.EntityId, getOn, climb, getOff);
         }
 
         /// <summary>
@@ -2190,6 +2257,34 @@ namespace RPGFramework.Field
         {
             bool enabled = ctx.ReadBool();
             RequestSetCollisionTriggerActive?.Invoke(ctx.EntityId, enabled);
+        }
+
+        /// <summary>
+        /// Shift where this entity is drawn and block until it has finished.
+        /// </summary>
+        private void SetEntityDrawOffsetAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestDrawOffset(ctx);
+
+            ctx.Block(new WaitUntilBlock(() => !IsEntityDrawOffsetMoving(ctx.EntityId)));
+        }
+
+        private void RequestDrawOffset(FieldScriptContext ctx)
+        {
+            Vector3 offset  = ReadPoint(ctx);
+            float   seconds = ctx.ReadFloat();
+            Easing  easing  = (Easing)ctx.ReadByte();
+
+            RequestSetEntityDrawOffset?.Invoke(ctx.EntityId, offset, seconds, easing);
+        }
+
+        private static Vector3 ReadPoint(FieldScriptContext ctx)
+        {
+            float x = ctx.ReadFloat();
+            float y = ctx.ReadFloat();
+            float z = ctx.ReadFloat();
+
+            return new Vector3(x, y, z);
         }
 
         /// <summary>

@@ -29,18 +29,21 @@ namespace RPGFramework.Field.Tests.Catalogue
         {
             m_Field = new TestField();
 
-            m_Field.Vm.IsMusicPlaying        = Never;
-            m_Field.Vm.IsMusicVolumeFading   = Never;
-            m_Field.Vm.IsScreenFading        = Never;
-            m_Field.Vm.IsScreenColourFading  = Never;
-            m_Field.Vm.IsScreenScrolling     = Never;
-            m_Field.Vm.IsEntityRotating      = Never;
-            m_Field.Vm.IsEntityMoving        = Never;
-            m_Field.Vm.IsEntityAnimating     = Never;
-            m_Field.Vm.IsDialogueWindowOpen  = Never;
-            m_Field.Vm.GetLastBattleResult   = Won;
-            m_Field.Vm.GetCountdown          = NoTimeLeft;
-            m_Field.Vm.StartWaitingForButton = AlreadyPressed;
+            m_Field.Vm.IsMusicPlaying           = Never;
+            m_Field.Vm.IsMusicVolumeFading      = Never;
+            m_Field.Vm.IsScreenFading           = Never;
+            m_Field.Vm.IsScreenColourFading     = Never;
+            m_Field.Vm.IsScreenScrolling        = Never;
+            m_Field.Vm.IsEntityRotating         = Never;
+            m_Field.Vm.IsEntityMoving           = Never;
+            m_Field.Vm.IsEntityAnimating        = Never;
+            m_Field.Vm.IsEntityDrawOffsetMoving = Never;
+            m_Field.Vm.IsEntityJumping          = Never;
+            m_Field.Vm.IsEntityClimbing         = Never;
+            m_Field.Vm.IsDialogueWindowOpen     = Never;
+            m_Field.Vm.GetLastBattleResult      = Won;
+            m_Field.Vm.GetCountdown             = NoTimeLeft;
+            m_Field.Vm.StartWaitingForButton    = AlreadyPressed;
 
             // Entity 0, which a new block's entity arguments name.
             m_Field.AddEntity(0, new byte[1], m_Field.Add(new Script().Return()));

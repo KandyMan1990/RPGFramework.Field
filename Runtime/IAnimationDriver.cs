@@ -32,6 +32,15 @@ namespace RPGFramework.Field
         /// </summary>
         bool IsPlaying { get; }
 
+        /// <summary>
+        /// Shows a state at a point in it and holds it there, 0 the beginning and 1 the end, for something that runs an
+        /// animation itself, backwards or at the pace of what is steering it. <see cref="ReturnToBase" /> ends it.
+        /// </summary>
+        void Pose(string stateName, float normalisedTime);
+
+        /// <summary>How long a state takes to play through, in seconds; none while the entity's visuals are hidden.</summary>
+        float LengthOf(string stateName);
+
         /// <summary>Stops what was played and goes back to the base animation.</summary>
         void ReturnToBase();
 

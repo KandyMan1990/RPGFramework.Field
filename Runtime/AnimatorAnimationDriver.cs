@@ -120,6 +120,31 @@ namespace RPGFramework.Field
             m_Animator.Play(m_PlayingState, BASE_LAYER, from);
         }
 
+        void IAnimationDriver.Pose(string stateName, float normalisedTime)
+        {
+            m_PlayingState = Animator.StringToHash(stateName);
+            m_Finished     = true;
+            m_Held         = true;
+
+            ApplySpeed();
+
+            m_Animator.Play(m_PlayingState, BASE_LAYER, normalisedTime);
+        }
+
+        // An Animator knows a state's length only once it is in it, so this goes there at once.
+        float IAnimationDriver.LengthOf(string stateName)
+        {
+            if (!m_Animator.isActiveAndEnabled)
+            {
+                return 0f;
+            }
+
+            m_Animator.Play(stateName, BASE_LAYER, 0f);
+            m_Animator.Update(0f);
+
+            return m_Animator.GetCurrentAnimatorStateInfo(BASE_LAYER).length;
+        }
+
         bool IAnimationDriver.IsPlaying => m_PlayingState != 0 && !m_Finished;
 
         void IAnimationDriver.PushState()
