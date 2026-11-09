@@ -5,8 +5,8 @@ characters and objects are **entities**, and each runs **scripts**, authored in 
 compiled to bytecode, for movement, dialogue, music, the menus, saving and starting battles. Fields can be 2D or 3D.
 
 Requires Unity 6000.6 or newer, RPGFramework.Core and its shared types, the Field, Menu and Battle shared types,
-RPGFramework.DI, RPGFramework.Audio, RPGFramework.Localisation, RPGFramework.Hashing, Unity.Mathematics and
-Cinemachine.
+RPGFramework.DI, RPGFramework.Audio, RPGFramework.Localisation, RPGFramework.Hashing, Unity.Mathematics, the Input
+System and Cinemachine.
 
 ---
 
@@ -28,7 +28,9 @@ on.
      pages), `Cancel` and `Menu` (the party menu), and moves with the action you name;
    - the game's up direction, `0,1,0` for a 3D field and `0,0,1` for a 2D one;
    - how wide the player's interaction angle is, 180° by default, and how far above or below them someone can be
-     talked to, 2 by default.
+     talked to, 2 by default;
+   - the sounds a footstep and a ladder's rung make until a script says otherwise, and how far from a perspective camera
+     a step is at its quietest.
 
    It also binds the field module, and its default presentation, loading fields from prefabs.
 2. **A scene installer** binding `IFieldDatabase` to the generated `FieldDatabase` (see Export, below). To show fields
@@ -129,9 +131,6 @@ Particle Systems, VFX Graphs (authored with the Visual Effect Graph package) and
 it. Switched off, its particles stop being made and those already out run their course, then all of it goes off. Any
 script in the field can switch any of its effects.
 
-In the block editor, the `SHAKE_SCREEN` and `SET_VIBRATION` blocks have a ▶ button that tries them with no play mode: a
-shake moves the Scene view until you press it again, and a vibration runs a connected pad for its time.
-
 ### The Field Designer
 
 **RPG Framework > Field Designer Window** lists your game's fields. For each one you set:
@@ -144,7 +143,10 @@ shake moves the Scene view until you press it again, and a vibration runs a conn
   - Edit the selected script in the **block editor**, check it compiles, and save the field.
 
 Entities, blockers, spawn points and cameras can also be made from **GameObject > RPG Framework > Field** while
-editing a field's prefab.
+editing a field's prefab, and effects with an entity selected.
+
+In the block editor, the `SHAKE_SCREEN` and `SET_VIBRATION` blocks have a ▶ button that tries them with no play mode: a
+shake moves the Scene view until you press it again, and a vibration runs a connected pad for its time.
 
 ### Export
 
@@ -271,7 +273,7 @@ opcode of its own, offered in the palette under **Game** and compiled and checke
 2. **Handle it** in a class of your own implementing `IFieldGameOpCodeDatabase`, which holds each opcode's value with the
    method that runs it, a dictionary as the framework's own handlers are; the field puts them in one table with its
    own as each field's VM is made, indexed by the opcode. A method reads every argument, in order, with the read its type takes — `ReadByte` for a
-   `Byte`, an `EntityId` or a `CameraId`, `ReadUShort`, `ReadInt` (also for `Seconds`), `ReadFloat`, `ReadBool`,
+   `Byte` or an id (`EntityId`, `BlockerId`, `EffectId`, `CameraId`), `ReadUShort`, `ReadInt` (also for `Seconds`), `ReadFloat`, `ReadBool`,
    `ReadName` for a hashed name or key, and `ReadDestination` for a `Variable` — then acts. A number can come from a
    variable, as any opcode's can. It writes a result to a destination with `WriteInt` and the rest, at the width the
    destination declares: `Bool`, `Byte`, `UShort`, `Int` or `Float`. The class's constructor takes your game's services.
@@ -420,7 +422,14 @@ last argument or an argument left unread is logged, and the script stops there.
     return, fading it in over a second as the battle's fades out, with its echo and reverb as they were.
   - A battle that keeps the music but plays its victory fanfare leaves the fanfare playing; the script that started it
     fades it out and starts what comes next.
-  - Looping sounds aren't built, so there are none to start again after a battle.
+- **Sounds:**
+  - `PLAY_SOUND` plays a sound at a volume and pan on a channel, 1 to 32, which holds one sound, a new one replacing it;
+    channel 0 keeps none. `STOP_SOUND`, `FADE_SOUND_VOLUME` and `FADE_SOUND_PAN` reach it again by its channel.
+  - A looping sound on a channel stops for a battle and starts again after it, from where it had got to. Looping
+    ambience is a looping sound played in `Init`.
+  - Footsteps are off until a script turns them on, and `SET_PLAYER_ENTITY` turns on the player's. A step sounds at two
+    points of the walk animation, set on the body's Field Entity, panned by where the entity is on the screen and
+    quieter further from a perspective camera.
 
 ---
 
