@@ -68,6 +68,11 @@ namespace RPGFramework.Field
         internal Func<int, int, bool>                          IsEntityInRange;
         internal event Action<int, Vector3, float, Easing>     RequestSetEntityDrawOffset;
         internal Func<int, bool>                               IsEntityDrawOffsetMoving;
+        internal event Action<int, int, float, bool>           RequestHeadLookAtEntity;
+        internal event Action<int, Vector3, float>             RequestHeadLookAtPosition;
+        internal event Action<int, float>                      RequestHeadLookForward;
+        internal event Action<int, float, float>               RequestSetHeadLimits;
+        internal Func<int, bool>                               IsEntityHeadTurning;
         internal event Action<int, Vector3, float, float>      RequestJumpEntity;
         internal Func<int, bool>                               IsEntityJumping;
         internal event Action<int, LadderClimbArgs>            RequestClimbLadder;
@@ -467,13 +472,12 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.StopAnimation, StopAnimationOpcodeHandler },
                        { FieldScriptOpCode.PushAnimationState, PushAnimationStateOpcodeHandler },
                        { FieldScriptOpCode.PopAnimationState, PopAnimationStateOpcodeHandler },
-                       // { FieldScriptOpCode.InitialiseHeadFacing, InitialiseHeadFacingOpcodeHandler },
-                       // { FieldScriptOpCode.SetHeadFacingEntity, SetHeadFacingEntityOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookAtEntity, HeadLookAtEntityOpcodeHandler },
                        // { FieldScriptOpCode.SetHeadFacingPlayer, SetHeadFacingPlayerOpcodeHandler },
-                       // { FieldScriptOpCode.SetHeadFacingLimit, SetHeadFacingLimitOpcodeHandler },
-                       // { FieldScriptOpCode.SetHeadPose, SetHeadPoseOpcodeHandler },
-                       // { FieldScriptOpCode.StopHeadFacing, StopHeadFacingOpcodeHandler },
-                       // { FieldScriptOpCode.WaitForHeadFacing, WaitForHeadFacingOpcodeHandler },
+                       { FieldScriptOpCode.SetHeadLimits, SetHeadLimitsOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookAtPosition, HeadLookAtPositionOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookForward, HeadLookForwardOpcodeHandler },
+                       { FieldScriptOpCode.WaitForHead, WaitForHeadOpcodeHandler },
                        { FieldScriptOpCode.SetFootstepSound, SetFootstepSoundOpcodeHandler },
                        { FieldScriptOpCode.SetFootstepsEnabled, SetFootstepsEnabledOpcodeHandler },
                        // { FieldScriptOpCode.SetEntityShadeLevel, SetEntityShadeLevelOpcodeHandler },
@@ -485,6 +489,9 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.IsEntityInRange, IsEntityInRangeOpcodeHandler },
                        { FieldScriptOpCode.CollisionTriggerActivation, CollisionTriggerActivationOpcodeHandler },
                        { FieldScriptOpCode.SetEntityDrawOffsetAndWait, SetEntityDrawOffsetAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookAtEntityAndWait, HeadLookAtEntityAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookAtPositionAndWait, HeadLookAtPositionAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookForwardAndWait, HeadLookForwardAndWaitOpcodeHandler },
 
                        // Screen and field effects
                        { FieldScriptOpCode.SubtractiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx, false) },
@@ -2213,6 +2220,43 @@ namespace RPGFramework.Field
         /// <summary>
         /// Choose the sound this entity's footsteps make, or every entity's.
         /// </summary>
+        private void HeadLookAtEntityOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte  target  = ctx.ReadByte();
+            float seconds = ctx.ReadFloat();
+            bool  follow  = ctx.ReadBool();
+
+            RequestHeadLookAtEntity?.Invoke(ctx.EntityId, target, seconds, follow);
+        }
+
+        private void SetHeadLimitsOpcodeHandler(FieldScriptContext ctx)
+        {
+            float yaw   = ctx.ReadFloat();
+            float pitch = ctx.ReadFloat();
+
+            RequestSetHeadLimits?.Invoke(ctx.EntityId, yaw, pitch);
+        }
+
+        private void HeadLookAtPositionOpcodeHandler(FieldScriptContext ctx)
+        {
+            Vector3 point   = ReadPoint(ctx);
+            float   seconds = ctx.ReadFloat();
+
+            RequestHeadLookAtPosition?.Invoke(ctx.EntityId, point, seconds);
+        }
+
+        private void HeadLookForwardOpcodeHandler(FieldScriptContext ctx)
+        {
+            float seconds = ctx.ReadFloat();
+
+            RequestHeadLookForward?.Invoke(ctx.EntityId, seconds);
+        }
+
+        private void WaitForHeadOpcodeHandler(FieldScriptContext ctx)
+        {
+            ctx.Block(new WaitUntilBlock(() => !IsEntityHeadTurning(ctx.EntityId)));
+        }
+
         private void SetFootstepSoundOpcodeHandler(FieldScriptContext ctx)
         {
             ulong sound       = ctx.ReadName();
@@ -2297,6 +2341,24 @@ namespace RPGFramework.Field
             RequestDrawOffset(ctx);
 
             ctx.Block(new WaitUntilBlock(() => !IsEntityDrawOffsetMoving(ctx.EntityId)));
+        }
+
+        private void HeadLookAtEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            HeadLookAtEntityOpcodeHandler(ctx);
+            WaitForHeadOpcodeHandler(ctx);
+        }
+
+        private void HeadLookAtPositionAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            HeadLookAtPositionOpcodeHandler(ctx);
+            WaitForHeadOpcodeHandler(ctx);
+        }
+
+        private void HeadLookForwardAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            HeadLookForwardOpcodeHandler(ctx);
+            WaitForHeadOpcodeHandler(ctx);
         }
 
         private void RequestDrawOffset(FieldScriptContext ctx)

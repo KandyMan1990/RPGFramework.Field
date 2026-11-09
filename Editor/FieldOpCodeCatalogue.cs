@@ -45,6 +45,7 @@ namespace RPGFramework.Field.Editor
         public bool              NeedsBody     { get; }
         public bool              TargetsBody   { get; }
         public bool              NeedsAnimator { get; }
+        public bool              NeedsHead     { get; }
         public string            Package       { get; }
 
         /// <summary>One of the game's own, from <c>0x8000</c> up, run by the handler the game added for it.</summary>
@@ -63,6 +64,7 @@ namespace RPGFramework.Field.Editor
             NeedsBody     = attribute.NeedsBody;
             TargetsBody   = attribute.TargetsBody;
             NeedsAnimator = attribute.NeedsAnimator;
+            NeedsHead     = attribute.NeedsHead;
             Package       = attribute.Package;
             Arguments     = arguments;
         }

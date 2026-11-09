@@ -25,7 +25,8 @@ namespace RPGFramework.Field
         InField                = 1 << 13,
         DrawOffset             = 1 << 14,
         Jump                   = 1 << 15,
-        Climb                  = 1 << 16
+        Climb                  = 1 << 16,
+        Head                   = 1 << 17
     }
 
     /// <summary>
@@ -49,6 +50,7 @@ namespace RPGFramework.Field
         internal DrawOffset        DrawOffset;
         internal ScriptedJump      Jump;
         internal LadderClimb       Climb;
+        internal HeadLook          Head;
         internal ulong             LadderGetOn;
         internal ulong             LadderClimbing;
         internal ulong             LadderGetOff;
@@ -92,6 +94,22 @@ namespace RPGFramework.Field
         }
 
         internal void ClearClimb() => Set &= ~FieldEntityValues.Climb;
+
+        internal void LookAt(Vector3 point, int followedEntity, float seconds)
+        {
+            Head.LookAt(point, followedEntity, seconds);
+
+            Set |= FieldEntityValues.Head;
+        }
+
+        internal void LookForward(float seconds)
+        {
+            Head.LookForward(seconds);
+
+            Set |= FieldEntityValues.Head;
+        }
+
+        internal void ClearHead() => Set &= ~FieldEntityValues.Head;
 
         internal void SetLadderAnimations(ulong getOn, ulong climbing, ulong getOff)
         {

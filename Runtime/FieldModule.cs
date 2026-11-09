@@ -35,7 +35,7 @@ using UnityEngine.UIElements;
 
 namespace RPGFramework.Field
 {
-    internal sealed partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable
+    internal sealed partial class FieldModule : IFieldModule, IUpdatable, IFixedUpdatable, ILateUpdatable
     {
         private const float MUSIC_RESUME_SECONDS   = 1f;
         private const float ALREADY_FACING_DEGREES = 0.5f;
@@ -384,6 +384,7 @@ namespace RPGFramework.Field
             }
 
             UpdateTickedMotions(deltaTime);
+            UpdateHeads(deltaTime);
             MoveCameraFocus(deltaTime);
             m_CinemachineBrain.ManualUpdate();
 
@@ -427,6 +428,21 @@ namespace RPGFramework.Field
             if (m_BattleTransitionRequested)
             {
                 TriggerBattleTransitionAsync().FireAndForget();
+            }
+        }
+
+        void ILateUpdatable.LateUpdate()
+        {
+            IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
+
+            for (int i = 0; i < entities.Count; i++)
+            {
+                ref FieldEntityState state = ref m_FieldContext.EntityStateAt(i);
+
+                if ((state.Set & FieldEntityValues.Head) != 0 && !state.IsLeftOut)
+                {
+                    m_Entities[entities[i].EntityId].Entity.TurnHead(state.Head.Angles);
+                }
             }
         }
 
@@ -495,6 +511,11 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityInField            += OnRequestSetEntityInField;
             m_FieldContext.VM.RequestSetEntityDrawOffset         += OnRequestSetEntityDrawOffset;
             m_FieldContext.VM.IsEntityDrawOffsetMoving           =  IsEntityDrawOffsetMoving;
+            m_FieldContext.VM.RequestHeadLookAtEntity            += OnRequestHeadLookAtEntity;
+            m_FieldContext.VM.RequestHeadLookAtPosition          += OnRequestHeadLookAtPosition;
+            m_FieldContext.VM.RequestHeadLookForward             += OnRequestHeadLookForward;
+            m_FieldContext.VM.RequestSetHeadLimits               += OnRequestSetHeadLimits;
+            m_FieldContext.VM.IsEntityHeadTurning                =  IsEntityHeadTurning;
             m_FieldContext.VM.RequestJumpEntity                  += OnRequestJumpEntity;
             m_FieldContext.VM.IsEntityJumping                    =  IsEntityJumping;
             m_FieldContext.VM.RequestClimbLadder                 += OnRequestClimbLadder;
@@ -586,6 +607,11 @@ namespace RPGFramework.Field
             m_FieldContext.VM.IsEntityJumping                    =  null;
             m_FieldContext.VM.RequestJumpEntity                  -= OnRequestJumpEntity;
             m_FieldContext.VM.IsEntityDrawOffsetMoving           =  null;
+            m_FieldContext.VM.IsEntityHeadTurning                =  null;
+            m_FieldContext.VM.RequestHeadLookAtEntity            -= OnRequestHeadLookAtEntity;
+            m_FieldContext.VM.RequestHeadLookAtPosition          -= OnRequestHeadLookAtPosition;
+            m_FieldContext.VM.RequestHeadLookForward             -= OnRequestHeadLookForward;
+            m_FieldContext.VM.RequestSetHeadLimits               -= OnRequestSetHeadLimits;
             m_FieldContext.VM.RequestSetEntityDrawOffset         -= OnRequestSetEntityDrawOffset;
             m_FieldContext.VM.RequestSetEntityInField            -= OnRequestSetEntityInField;
             m_FieldContext.VM.RequestCopyEntityPose              -= OnRequestCopyEntityPose;
@@ -1107,6 +1133,7 @@ namespace RPGFramework.Field
 
             UpdateManager.RegisterUpdatable(this);
             UpdateManager.RegisterFixedUpdatable(this);
+            UpdateManager.RegisterLateUpdatable(this);
 
             m_ExplorationInputContext = new FieldExplorationInputContext(GetBestInteractionTrigger, OpenPartyMenu);
             m_InputRouter.Push(m_ExplorationInputContext);
@@ -1140,6 +1167,7 @@ namespace RPGFramework.Field
 
             UpdateManager.UnregisterUpdatable(this);
             UpdateManager.UnregisterFixedUpdatable(this);
+            UpdateManager.UnregisterLateUpdatable(this);
 
             SetAnimationsPaused(true);
 
@@ -1904,6 +1932,66 @@ namespace RPGFramework.Field
             m_FieldContext.EntityState(entityId).MoveDrawOffset(offset, seconds, easing);
 
             ApplyEntityState(entityId, FieldEntityValues.DrawOffset);
+        }
+
+        private void OnRequestHeadLookAtEntity(int entityId, int targetEntityId, float seconds, bool follow)
+        {
+            Vector3 point = m_Entities[targetEntityId].Entity.LookPoint;
+
+            m_FieldContext.EntityState(entityId).LookAt(point, follow ? targetEntityId : FieldEntity.NO_ENTITY, seconds);
+        }
+
+        private void OnRequestHeadLookAtPosition(int entityId, Vector3 point, float seconds)
+        {
+            m_FieldContext.EntityState(entityId).LookAt(point, FieldEntity.NO_ENTITY, seconds);
+        }
+
+        private void OnRequestHeadLookForward(int entityId, float seconds)
+        {
+            m_FieldContext.EntityState(entityId).LookForward(seconds);
+        }
+
+        private void OnRequestSetHeadLimits(int entityId, float yaw, float pitch)
+        {
+            m_FieldContext.EntityState(entityId).Head.SetLimits(yaw, pitch);
+        }
+
+        private bool IsEntityHeadTurning(int entityId)
+        {
+            ref FieldEntityState state = ref m_FieldContext.EntityState(entityId);
+
+            return (state.Set & FieldEntityValues.Head) != 0 && state.Head.IsTurning;
+        }
+
+        private void UpdateHeads(float deltaTime)
+        {
+            IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
+
+            for (int i = 0; i < entities.Count; i++)
+            {
+                ref FieldEntityState state = ref m_FieldContext.EntityStateAt(i);
+
+                if ((state.Set & FieldEntityValues.Head) == 0 || state.IsLeftOut)
+                {
+                    continue;
+                }
+
+                if (state.Head.NeedsAim)
+                {
+                    FieldEntity entity = m_Entities[entities[i].EntityId].Entity;
+                    int         target = state.Head.FollowedEntity;
+                    Vector3     point  = target != FieldEntity.NO_ENTITY ? m_Entities[target].Entity.LookPoint : state.Head.Point;
+
+                    state.Head.Aim(entity.transform.rotation, entity.LookPoint, point);
+                }
+
+                state.Head.Tick(deltaTime);
+
+                if (state.Head.HasGoneForward)
+                {
+                    state.ClearHead();
+                }
+            }
         }
 
         private bool IsEntityDrawOffsetMoving(int entityId)

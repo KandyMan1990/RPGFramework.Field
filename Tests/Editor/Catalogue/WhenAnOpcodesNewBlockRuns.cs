@@ -38,6 +38,7 @@ namespace RPGFramework.Field.Tests.Catalogue
             m_Field.Vm.IsEntityMoving           = Never;
             m_Field.Vm.IsEntityAnimating        = Never;
             m_Field.Vm.IsEntityDrawOffsetMoving = Never;
+            m_Field.Vm.IsEntityHeadTurning      = Never;
             m_Field.Vm.IsEntityJumping          = Never;
             m_Field.Vm.IsEntityClimbing         = Never;
             m_Field.Vm.IsDialogueWindowOpen     = Never;

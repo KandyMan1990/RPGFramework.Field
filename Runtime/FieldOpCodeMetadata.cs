@@ -254,6 +254,12 @@ namespace RPGFramework.Field
         public bool NeedsAnimator { get; set; }
 
         /// <summary>
+        /// True when the opcode turns the entity's head. A humanoid has one and a generic rig names its bone on its
+        /// body; a sprite has none, so export refuses one of these on an entity whose body cannot turn a head.
+        /// </summary>
+        public bool NeedsHead { get; set; }
+
+        /// <summary>
         /// The package the opcode acts through, for one that does nothing without an optional package installed. The
         /// editor offers it only where that package is; a script that already uses it still compiles and runs.
         /// </summary>

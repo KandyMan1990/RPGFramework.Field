@@ -494,6 +494,7 @@ namespace RPGFramework.Field.Editor
                 ValidateIdTargets(ArgumentType.BlockerId, blockerIds, "blocker", nameof(FieldBlocker), scriptDescription, lines, problems);
                 ValidateIdTargets(ArgumentType.CameraId, cameraIds, "camera", nameof(FieldCamera), scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
+                ValidateHeadOpcodes(body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
                 ValidateActionNames(actionNames, scriptDescription, lines, problems);
                 ValidateScriptRequests(fieldEntityRecord, scriptCounts, scriptDescription, lines, problems);
@@ -1311,6 +1312,27 @@ namespace RPGFramework.Field.Editor
                 }
 
                 ValidateAnimationNames(animator, opCode, parts, scriptDescription, problems);
+            }
+        }
+
+        /// <summary>
+        /// A head needs a bone to turn: a humanoid has one, a generic rig names its own, and a sprite has none.
+        /// </summary>
+        internal static void ValidateHeadOpcodes(FieldEntity body, string scriptDescription, string[] lines, List<string> problems)
+        {
+            if (body == null || body.HasHead)
+            {
+                return;
+            }
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = FieldScriptLine.Split(lines[i]);
+
+                if (FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) && opCode.NeedsHead)
+                {
+                    problems.Add($"{scriptDescription} uses {parts[0]}, but the entity's body has no head to turn. Give a generic rig's body its head bone on its Field Entity, or move the opcode to an entity that has one");
+                }
             }
         }
 

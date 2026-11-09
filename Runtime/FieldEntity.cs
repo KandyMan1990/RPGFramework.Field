@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace RPGFramework.Field
@@ -17,6 +18,10 @@ namespace RPGFramework.Field
         [Tooltip("Root entity always exists.  VisibleObject is the renderable representation controlled by the VISIBILITY op code.  Can be left empty")]
         [SerializeField]
         private GameObject m_VisibleObject;
+
+        [Tooltip("The bone a script turns to make this entity look at something. A humanoid's head is found for you, so leave this empty; on a generic rig, pick its head bone")]
+        [SerializeField]
+        private Transform m_Head;
 
         [Tooltip("Where in the walk animation's loop one foot touches the ground, and a footstep sounds: 0 is the start of the loop and 1 the end. In a one-second walk with a foot landing 0.3 seconds in, this is 0.3. Move it if steps sound early or late")]
         [SerializeField]
@@ -43,7 +48,13 @@ namespace RPGFramework.Field
 
         private Vector3 m_VisibleRestPosition;
 
+        private Quaternion m_HeadAnimated;
+        private Quaternion m_HeadLeftAt;
+
         internal bool RaisesPush => m_PushActive && IsShown;
+
+        /// <summary>Where a head looks to find this entity: its own head, or where it stands if it has none.</summary>
+        internal Vector3 LookPoint => m_Head != null ? m_Head.position : transform.position;
 
         private void Awake()
         {
@@ -57,6 +68,11 @@ namespace RPGFramework.Field
             if (animator != null)
             {
                 animator.fireEvents = m_RaisesAnimationEvents;
+
+                if (m_Head == null && animator.isHuman)
+                {
+                    m_Head = animator.GetBoneTransform(HumanBodyBones.Head);
+                }
             }
 
             SetVisible(false);
@@ -76,6 +92,22 @@ namespace RPGFramework.Field
 
 #if UNITY_EDITOR
         internal bool HasVisibleObject => m_VisibleObject != null;
+
+        /// <summary>Authoring only: whether a script can turn this body's head, read before anything has run.</summary>
+        internal bool HasHead
+        {
+            get
+            {
+                if (m_Head != null)
+                {
+                    return true;
+                }
+
+                Animator animator = GetComponentInChildren<Animator>(true);
+
+                return animator != null && animator.avatar != null && animator.avatar.isHuman;
+            }
+        }
 
         /// <summary>
         /// Authoring only: what <c>VISIBILITY</c> shows and hides.
@@ -155,6 +187,25 @@ namespace RPGFramework.Field
             Transform visible = m_VisibleObject.transform;
 
             visible.localPosition = m_VisibleRestPosition + visible.parent.InverseTransformVector(offset);
+        }
+
+        /// <summary>
+        /// Turns the head from where its animation put it, about the body's own axes so a rig need not say which way its
+        /// bone points. An Animator that has not written the bone since leaves last frame's turn on it, so that is
+        /// taken off rather than added to.
+        /// </summary>
+        internal void TurnHead(float2 angles)
+        {
+            if (m_Head.localRotation != m_HeadLeftAt)
+            {
+                m_HeadAnimated = m_Head.localRotation;
+            }
+
+            Quaternion body     = transform.rotation;
+            Quaternion animated = m_Head.parent.rotation * m_HeadAnimated;
+
+            m_Head.rotation = body * Quaternion.Euler(-angles.y, angles.x, 0f) * Quaternion.Inverse(body) * animated;
+            m_HeadLeftAt    = m_Head.localRotation;
         }
 
         internal void SetVisible(bool visible)

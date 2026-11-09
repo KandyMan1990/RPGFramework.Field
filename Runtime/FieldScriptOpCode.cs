@@ -1264,13 +1264,32 @@ namespace RPGFramework.Field
         [FieldOpCode("POP_ANIMATION_STATE", ArgumentLayout.Sequential, Summary = "Put back what PUSH_ANIMATION_STATE remembered", NeedsBody = true, NeedsAnimator = true)]
         PopAnimationState = 0x0538,
 
-        InitialiseHeadFacing    = 0x0539, // begin head tracking on this entity, before any SetHeadFacing*
-        SetHeadFacingEntity     = 0x053A, // int targetEntityId, int frameCount - turn the head only, body unchanged
-        SetHeadFacingPlayer     = 0x053B, // int frameCount - track the player entity with the head only
-        SetHeadFacingLimit      = 0x053C, // byte yawLimit, byte pitchLimit, byte rollLimit - stop the head over-rotating
-        SetHeadPose             = 0x053D, // byte pose (0 neutral, 1 up, 2 down)
-        StopHeadFacing          = 0x053E, // return the head to neutral and leave tracking
-        WaitForHeadFacing       = 0x053F, // wait until the head has reached where it was sent
+        [FieldOpCode("HEAD_LOOK_AT_ENTITY", ArgumentLayout.Sequential, Summary = "Turn this entity's head towards another and carry on, leaving the body as it is", NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "targetEntityId", ArgumentType.EntityId)]
+        [Argument(1, "seconds",        ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        [Argument(2, "follow",         ArgumentType.Bool, Description = "On: keep looking at it as it moves. Off: look at where it is now and stay that way")]
+        HeadLookAtEntity = 0x053A,
+
+        SetHeadFacingPlayer = 0x053B, // int frameCount - track the player entity with the head only
+
+        [FieldOpCode("SET_HEAD_LIMITS", ArgumentLayout.Sequential, Summary = "Say how far this entity's head may turn, for the next time it looks at something. Until a script says, it may go 90 degrees to either side and 45 up or down", NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "yaw",   ArgumentType.Float, Description = "how far to either side, in degrees")]
+        [Argument(1, "pitch", ArgumentType.Float, Description = "how far up or down, in degrees")]
+        SetHeadLimits = 0x053C,
+
+        [FieldOpCode("HEAD_LOOK_AT_POSITION", ArgumentLayout.Sequential, Summary = "Turn this entity's head towards a point and carry on, leaving the body as it is", NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "x",       ArgumentType.Float)]
+        [Argument(1, "y",       ArgumentType.Float)]
+        [Argument(2, "z",       ArgumentType.Float)]
+        [Argument(3, "seconds", ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        HeadLookAtPosition = 0x053D,
+
+        [FieldOpCode("HEAD_LOOK_FORWARD", ArgumentLayout.Sequential, Summary = "Turn this entity's head back to its animation and carry on", NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "seconds", ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        HeadLookForward = 0x053E,
+
+        [FieldOpCode("WAIT_FOR_HEAD", ArgumentLayout.Sequential, Summary = "Wait until this entity's head has finished turning", StopsInit = true, NeedsBody = true, NeedsHead = true)]
+        WaitForHead = 0x053F,
 
         [FieldOpCode("SET_FOOTSTEP_SOUND", ArgumentLayout.Sequential, Summary = "Choose the sound this entity's footsteps make, or every entity's. Left empty goes back to the game's own")]
         [Argument(0, "sound",       ArgumentType.OptionalSoundName, Description = "the sound or collection's name, as it appears in the SFX provider")]
@@ -1319,6 +1338,23 @@ namespace RPGFramework.Field
         [Argument(3, "seconds", ArgumentType.Float, Description = "how long it takes, 0 for at once")]
         [Argument(4, "easing",  ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
         SetEntityDrawOffsetAndWait = 0x054A,
+
+        [FieldOpCode("HEAD_LOOK_AT_ENTITY_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity's head towards another, waiting until it has, and leave the body as it is", StopsInit = true, NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "targetEntityId", ArgumentType.EntityId)]
+        [Argument(1, "seconds",        ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        [Argument(2, "follow",         ArgumentType.Bool, Description = "On: keep looking at it as it moves. Off: look at where it is now and stay that way")]
+        HeadLookAtEntityAndWait = 0x054B,
+
+        [FieldOpCode("HEAD_LOOK_AT_POSITION_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity's head towards a point, waiting until it has, and leave the body as it is", StopsInit = true, NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "x",       ArgumentType.Float)]
+        [Argument(1, "y",       ArgumentType.Float)]
+        [Argument(2, "z",       ArgumentType.Float)]
+        [Argument(3, "seconds", ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        HeadLookAtPositionAndWait = 0x054C,
+
+        [FieldOpCode("HEAD_LOOK_FORWARD_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity's head back to its animation, waiting until it has", StopsInit = true, NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "seconds", ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        HeadLookForwardAndWait = 0x054D,
 
         // Screen and field effects (0x0600)
         [FieldOpCode("SUBTRACT_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Take a colour from the screen beneath the message windows, fading to it from the colour there now, kept until a fade or another colour")]
