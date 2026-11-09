@@ -3,6 +3,7 @@
     "rootNamespace": "RPGFramework.Field.Editor",
     "references": [
         "RPGFramework.Audio",
+        "RPGFramework.Battle.SharedTypes",
         "RPGFramework.Field",
         "RPGFramework.Core.SharedTypes",
         "RPGFramework.Core",

@@ -204,6 +204,7 @@ namespace RPGFramework.Field.Editor
             HashSet<string> localisationKeys = new HashSet<string>(AllLocalisationKeys(), StringComparer.Ordinal);
             AudioNames      audioNames       = AudioNames.FromProject();
             List<string>    actionNames      = InputActionNames.Gather();
+            List<string>    arenaNames       = ArenaNames.Gather();
 
             for (int i = 0; i < m_Fields.Count; i++)
             {
@@ -277,7 +278,7 @@ namespace RPGFramework.Field.Editor
                 {
                     FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, effectIds, dialogueChannels, audioNames, actionNames, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, effectIds, dialogueChannels, audioNames, actionNames, arenaNames, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -428,6 +429,7 @@ namespace RPGFramework.Field.Editor
                                     DialogueChannelUse   dialogueChannels,
                                     AudioNames           audioNames,
                                     List<string>         actionNames,
+                                    List<string>         arenaNames,
                                     List<string>         problems)
         {
             string      entityName = $"{prefab.name} / '{fieldEntityRecord.Name}'";
@@ -507,6 +509,7 @@ namespace RPGFramework.Field.Editor
                 ValidateHeadOpcodes(body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
                 ValidateActionNames(actionNames, scriptDescription, lines, problems);
+                ValidateArenaNames(arenaNames, scriptDescription, lines, problems);
                 ValidateScriptRequests(fieldEntityRecord, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
                 ValidateDrawOffsets(body, scriptDescription, lines, problems);
@@ -1224,6 +1227,30 @@ namespace RPGFramework.Field.Editor
                             }
 
                             break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>An arena is hashed as written, so a name no arena database holds compiles and the battle cannot load.</summary>
+        internal static void ValidateArenaNames(List<string> arenaNames, string scriptDescription, string[] lines, List<string> problems)
+        {
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = FieldScriptLine.Split(lines[i]);
+
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode))
+                {
+                    continue;
+                }
+
+                for (int argument = 0; argument < opCode.Arguments.Count; argument++)
+                {
+                    string name = ArgumentOf(parts, argument);
+
+                    if (opCode.Arguments[argument].Type == ArgumentType.ArenaName && !arenaNames.Contains(name))
+                    {
+                        problems.Add($"{scriptDescription} uses {parts[0]} on arena [{name}], which no arena database holds. Pick one from the list, or add the arena to the database.");
                     }
                 }
             }

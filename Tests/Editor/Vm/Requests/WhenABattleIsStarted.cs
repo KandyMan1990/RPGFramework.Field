@@ -4,10 +4,11 @@ using RPGFramework.Core.SharedTypes;
 
 namespace RPGFramework.Field.Tests.Vm.Requests
 {
-    /// <summary>A battle carries its own arena, enemies, flags, level and transition, and ends the script's frame.</summary>
+    /// <summary>A battle carries what is fought, where, its flags and its transition, and ends the script's frame.</summary>
     internal sealed class WhenABattleIsStarted
     {
         private const BattleFlags FLAGS      = BattleFlags.DISABLE_ESCAPE | BattleFlags.USE_CURRENT_MUSIC;
+        private const ulong       ARENA      = 0x0102030405060708UL;
         private const ulong       TRANSITION = 0x1122334455667788UL;
         private const ushort      MARK       = 1000;
 
@@ -22,15 +23,9 @@ namespace RPGFramework.Field.Tests.Vm.Requests
 
             m_Field.Vm.RequestStartBattle += OnStartBattle;
 
-            m_Field.Run(new Script().Op(FieldScriptOpCode.StartBattle).Sources(Source.Immediate, Source.Immediate).UShort(7).UShort(3)
-                                    .Sources(Source.Immediate, Source.Immediate).UShort((ushort)FLAGS).Byte(12).ULong(TRANSITION)
+            m_Field.Run(new Script().Op(FieldScriptOpCode.StartBattle).Sources(Source.Immediate, Source.Immediate).UShort(3).ULong(ARENA)
+                                    .UShort((ushort)FLAGS).ULong(TRANSITION)
                                     .SetByte(MARK, 1).Return());
-        }
-
-        [Test]
-        public void ThenItAsksForItsArena()
-        {
-            Assert.AreEqual(7, m_Battle.Arena);
         }
 
         [Test]
@@ -40,15 +35,15 @@ namespace RPGFramework.Field.Tests.Vm.Requests
         }
 
         [Test]
-        public void ThenItAsksForItsFlags()
+        public void ThenItAsksForItsArena()
         {
-            Assert.AreEqual(FLAGS, m_Battle.Flags);
+            Assert.AreEqual(ARENA, m_Battle.Arena);
         }
 
         [Test]
-        public void ThenItAsksForItsEnemiesLevel()
+        public void ThenItAsksForItsFlags()
         {
-            Assert.AreEqual(12, m_Battle.EnemyLevel);
+            Assert.AreEqual(FLAGS, m_Battle.Flags);
         }
 
         [Test]

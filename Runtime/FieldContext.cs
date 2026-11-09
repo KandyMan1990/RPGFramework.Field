@@ -9,17 +9,18 @@ namespace RPGFramework.Field
     /// </summary>
     internal sealed class FieldContext
     {
-        internal IReadOnlyList<FieldEntityRuntime>     Entities              => m_Entities;
-        internal FieldVM                               VM                    => m_VM;
-        internal FieldEntityRuntime                    PlayerEntity          => m_PlayerEntity;
-        internal int                                   BlockerCount          => m_Blockers.Length;
-        internal int                                   EffectCount           => m_Effects.Length;
-        internal bool                                  GatewaysActive        => m_GatewaysActive;
-        internal bool                                  MainMenuAccessible    => m_MainMenuAccessible;
-        internal bool                                  IsInputLockedByScript => m_IsInputLockedByScript;
-        internal IReadOnlyList<ButtonWaitInputContext> ButtonWaits           => m_ButtonWaits;
-        internal CameraFocus                           CameraFocus           => m_CameraFocus;
-        internal byte                                  LiveCamera            => m_LiveCamera;
+        internal IReadOnlyList<FieldEntityRuntime>     Entities                => m_Entities;
+        internal FieldVM                               VM                      => m_VM;
+        internal FieldEntityRuntime                    PlayerEntity            => m_PlayerEntity;
+        internal int                                   BlockerCount            => m_Blockers.Length;
+        internal int                                   EffectCount             => m_Effects.Length;
+        internal bool                                  GatewaysActive          => m_GatewaysActive;
+        internal bool                                  MainMenuAccessible      => m_MainMenuAccessible;
+        internal bool                                  RandomEncountersEnabled => m_RandomEncountersEnabled;
+        internal bool                                  IsInputLockedByScript   => m_IsInputLockedByScript;
+        internal IReadOnlyList<ButtonWaitInputContext> ButtonWaits             => m_ButtonWaits;
+        internal CameraFocus                           CameraFocus             => m_CameraFocus;
+        internal byte                                  LiveCamera              => m_LiveCamera;
 
         private readonly FieldVM                      m_VM;
         private readonly FieldEntityRuntime[]         m_Entities;
@@ -34,26 +35,28 @@ namespace RPGFramework.Field
         private          FieldEntityRuntime           m_PlayerEntity;
         private          bool                         m_GatewaysActive;
         private          bool                         m_MainMenuAccessible;
+        private          bool                         m_RandomEncountersEnabled;
         private          bool                         m_IsInputLockedByScript;
         private          byte                         m_LiveCamera;
         private          ScreenShake                  m_Shake;
 
         internal FieldContext(FieldVM vm, FieldEntityRuntime[] entities, byte[] blockerIds, byte[] effectIds, byte liveCamera)
         {
-            m_VM                 = vm;
-            m_Entities           = entities;
-            m_EntityStates       = new FieldEntityState[entities.Length];
-            m_EntityIndices      = new Dictionary<int, int>(entities.Length);
-            m_Blockers           = new FieldBlockerState[blockerIds.Length];
-            m_BlockerIndices     = new Dictionary<byte, int>(blockerIds.Length);
-            m_Effects            = new FieldEffectState[effectIds.Length];
-            m_EffectIndices      = new Dictionary<byte, int>(effectIds.Length);
-            m_Shake              = default;
-            m_ButtonWaits        = new List<ButtonWaitInputContext>();
-            m_CameraFocus        = new CameraFocus();
-            m_GatewaysActive     = true;
-            m_MainMenuAccessible = true;
-            m_LiveCamera         = liveCamera;
+            m_VM                      = vm;
+            m_Entities                = entities;
+            m_EntityStates            = new FieldEntityState[entities.Length];
+            m_EntityIndices           = new Dictionary<int, int>(entities.Length);
+            m_Blockers                = new FieldBlockerState[blockerIds.Length];
+            m_BlockerIndices          = new Dictionary<byte, int>(blockerIds.Length);
+            m_Effects                 = new FieldEffectState[effectIds.Length];
+            m_EffectIndices           = new Dictionary<byte, int>(effectIds.Length);
+            m_Shake                   = default;
+            m_ButtonWaits             = new List<ButtonWaitInputContext>();
+            m_CameraFocus             = new CameraFocus();
+            m_GatewaysActive          = true;
+            m_MainMenuAccessible      = true;
+            m_RandomEncountersEnabled = true;
+            m_LiveCamera              = liveCamera;
 
             for (int i = 0; i < entities.Length; i++)
             {
@@ -94,6 +97,8 @@ namespace RPGFramework.Field
         internal void SetPlayerEntity(FieldEntityRuntime playerEntity) => m_PlayerEntity = playerEntity;
 
         internal void SetGatewaysActive(bool active) => m_GatewaysActive = active;
+
+        internal void SetRandomEncountersEnabled(bool enabled) => m_RandomEncountersEnabled = enabled;
 
         internal void SetMainMenuAccessible(bool accessible) => m_MainMenuAccessible = accessible;
 

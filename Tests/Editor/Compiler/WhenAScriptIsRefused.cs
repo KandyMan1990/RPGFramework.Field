@@ -35,8 +35,8 @@ namespace RPGFramework.Field.Tests.Compiler
 
         [TestCase("REQUEST_SCRIPT 3 7 12",   "takes 2 argument(s)")]
         [TestCase("CALL_SCRIPT $which",      "needs the number of one of this entity's scripts")]
-        [TestCase("START_BATTLE 0 3 512 15", "includes DISABLE_GAME_OVER_ON_DEFEAT, which START_BATTLE does not read")]
-        [TestCase("SET_BATTLE_MODE 513",     "includes DISABLE_ESCAPE, which SET_BATTLE_MODE does not read")]
+        [TestCase("START_BATTLE 3 Forest 512", "includes DISABLE_GAME_OVER_ON_DEFEAT, which START_BATTLE does not read")]
+        [TestCase("SET_BATTLE_MODE 1024",    "includes 1024, which SET_BATTLE_MODE does not read")]
         public void ThenAnArgumentItCannotUseSaysWhy(string source, string why)
         {
             StringAssert.Contains(why, Refusal(source));

@@ -272,6 +272,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.LocalisationKeyList:
                 case ArgumentType.Label:
                 case ArgumentType.TransitionName:
+                case ArgumentType.ArenaName:
                 case ArgumentType.OptionalSoundName:
                     return string.Empty;
 

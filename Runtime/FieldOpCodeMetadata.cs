@@ -116,6 +116,10 @@ namespace RPGFramework.Field
         /// hash. Left empty, or left off the end of a line, it is <c>0</c>: whatever the router chooses.
         /// </summary>
         TransitionName,
+
+        /// <summary>An arena in the game's arena database, authored by name and encoded as that name's 64-bit hash.</summary>
+        ArenaName,
+
         /// <summary>A sound's name hash as <see cref="SoundName" />, or left empty, <c>0</c>, for the game's own.</summary>
         OptionalSoundName,
 
@@ -457,6 +461,7 @@ namespace RPGFramework.Field
                 case ArgumentType.MusicStateName:
                 case ArgumentType.ActionName:
                 case ArgumentType.TransitionName:
+                case ArgumentType.ArenaName:
                 case ArgumentType.OptionalSoundName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.LocalisationKey:
@@ -523,10 +528,10 @@ namespace RPGFramework.Field
                                                 BattleFlags.DISABLE_PREEMPTIVE_AND_BACK_ATTACK);
 
         /// <summary>
-        /// The battle mode's: whether losing a battle or a countdown running out ends the game. Random battles' own
-        /// flags join these once random battles are built.
+        /// The battle mode's: the flags every random battle is fought with, and whether losing a battle or a countdown
+        /// running out ends the game.
         /// </summary>
-        internal const long BATTLE_MODE = (long)(BattleFlags.DISABLE_GAME_OVER_ON_TIME_OUT |
-                                                 BattleFlags.DISABLE_GAME_OVER_ON_DEFEAT);
+        internal const long BATTLE_MODE = ONE_BATTLE | (long)(BattleFlags.DISABLE_GAME_OVER_ON_TIME_OUT |
+                                                              BattleFlags.DISABLE_GAME_OVER_ON_DEFEAT);
     }
 }

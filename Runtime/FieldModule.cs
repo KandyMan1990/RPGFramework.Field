@@ -495,6 +495,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntitySolid              += OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetPushScriptActive         += OnRequestSetPushScriptActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    += OnRequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetRandomEncountersEnabled  += OnRequestSetRandomEncountersEnabled;
             m_FieldContext.VM.RequestSetInteractionTriggerActive += OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetCollisionTriggerActive   += OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetBlockerActive            += OnRequestSetBlockerActive;
@@ -654,6 +655,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetCollisionTriggerActive   -= OnRequestSetCollisionTriggerActive;
             m_FieldContext.VM.RequestSetInteractionTriggerActive -= OnRequestSetInteractionTriggerActive;
             m_FieldContext.VM.RequestSetGatewayTriggersActive    -= OnRequestSetGatewayTriggersActive;
+            m_FieldContext.VM.RequestSetRandomEncountersEnabled  -= OnRequestSetRandomEncountersEnabled;
             m_FieldContext.VM.RequestSetPushScriptActive         -= OnRequestSetPushScriptActive;
             m_FieldContext.VM.RequestSetEntitySolid              -= OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetEntityVisible            -= OnRequestSetEntityVisible;
@@ -1788,6 +1790,11 @@ namespace RPGFramework.Field
         private void OnRequestSetGatewayTriggersActive(bool active)
         {
             m_FieldContext.SetGatewaysActive(active);
+        }
+
+        private void OnRequestSetRandomEncountersEnabled(bool enabled)
+        {
+            m_FieldContext.SetRandomEncountersEnabled(enabled);
         }
 
         private void OnRequestSetBlockerActive(byte blockerId, bool active)

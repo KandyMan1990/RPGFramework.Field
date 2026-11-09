@@ -141,22 +141,23 @@ namespace RPGFramework.Field
 
         WorldMapJump = 0x0104, // int spawnIndex
 
-        [FieldOpCode("SET_BATTLE_MODE", ArgumentLayout.Sequential, Summary = "Set whether losing a battle or a countdown running out ends the game, for every battle from now on, kept in the save until set again")]
-        [Argument(0, "mode", ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.BATTLE_MODE, Description = "whether losing ends the game; a battle's own flags are START_BATTLE's")]
+        [FieldOpCode("SET_BATTLE_MODE", ArgumentLayout.Sequential, Summary = "Set the flags every random battle is fought with, and whether losing any battle or a countdown running out ends the game, kept in the save until set again")]
+        [Argument(0, "mode", ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.BATTLE_MODE, Description = "random battles' flags, and whether losing ends the game; a scripted battle's own flags are START_BATTLE's")]
         SetBattleMode = 0x0105,
 
         [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin a battle. The script carries on after it. Ignored if the field is already changing", StopsInit = true)]
-        [Argument(0, "arena",      ArgumentType.UShort)]
-        [Argument(1, "enemyGroup", ArgumentType.UShort)]
+        [Argument(0, "enemyGroup", ArgumentType.UShort, Description = "what is fought")]
+        [Argument(1, "arena",      ArgumentType.ArenaName, Description = "where it is fought")]
         [Argument(2, "flags",      ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.ONE_BATTLE, Description = "this battle's own; whether losing ends the game is SET_BATTLE_MODE's")]
-        [Argument(3, "enemyLevel", ArgumentType.Byte)]
-        [Argument(4, "transition", ArgumentType.TransitionName, Description = "what covers the screen as it starts; empty for the router's battle transition")]
+        [Argument(3, "transition", ArgumentType.TransitionName, Description = "what covers the screen as it starts; empty for the router's battle transition")]
         StartBattle = 0x0106,
 
         [FieldOpCode("GET_LAST_BATTLE_RESULT", ArgumentLayout.BankUnary, Summary = "Store how the last battle ended: 1 defeat, 2 escape, 3 out of time, 4 victory")]
         [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
         GetLastBattleResult = 0x0107,
 
+        [FieldOpCode("SET_RANDOM_ENCOUNTERS_ENABLED", ArgumentLayout.Sequential, Summary = "Allow or stop random battles until the player leaves this field. Every field starts with them allowed, and a script's own battles are not affected")]
+        [Argument(0, "enabled", ArgumentType.Bool)]
         RandomEncounters = 0x0108,
 
         [FieldOpCode("GAME_OVER", ArgumentLayout.Sequential, Summary = "End the game and go back to the title", StopsInit = true)]
@@ -1007,12 +1008,12 @@ namespace RPGFramework.Field
         [Argument(0, "amount", ArgumentType.Int)]
         AddMoney = 0x040D,
 
-        AddItem      = 0x040F, // ushort itemId, int count - negative removes
-        GetItemCount = 0x0410,
+        AddItem      = 0x040E, // ushort itemId, int count - negative removes
+        GetItemCount = 0x040F,
 
         [FieldOpCode("SUBTRACT_MONEY", ArgumentLayout.Sequential, Summary = "Take money from the party, stopping at none")]
         [Argument(0, "amount", ArgumentType.Int)]
-        SubtractMoney = 0x0411,
+        SubtractMoney = 0x0410,
 
         // Field models and animation (0x0500)
 

@@ -235,7 +235,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | | |
 | --- | --- |
 | **Flow** | `RETURN` `REQUEST_SCRIPT` `REQUEST_SCRIPT_WAIT_START` `REQUEST_SCRIPT_WAIT_END` `RETURN_TO_SCRIPT` `RETURN_TO_PRIORITY` `CALL_SCRIPT` `RETURN_FROM_CALL` `GOTO_JUMP` `GOTO_DIRECTLY` `IF_BOOL` to `IF_FLOAT` `YIELD` `WAIT_SECONDS` `NOP` |
-| **The field, saving, battles and game over** | `JUMP_TO_MAP` `GATEWAY_TRIGGER_ACTIVATION` `SET_FIELD_EXIT_FADE` `SAVE_ACCESSIBILITY` `SET_BATTLE_MODE` `START_BATTLE` `GET_LAST_BATTLE_RESULT` `GAME_OVER` |
+| **The field, saving, battles and game over** | `JUMP_TO_MAP` `GATEWAY_TRIGGER_ACTIVATION` `SET_FIELD_EXIT_FADE` `SAVE_ACCESSIBILITY` `SET_BATTLE_MODE` `START_BATTLE` `GET_LAST_BATTLE_RESULT` `SET_RANDOM_ENCOUNTERS_ENABLED` `GAME_OVER` |
 | **Variables** | `SET_` at each width from `BOOL` to `FLOAT`; `ADD_`, `SUB_`, `MUL_` and `DIV_` from `SBYTE` to `FLOAT`; `MOD_`, `INC_`, `DEC_`, `AND_`, `OR_`, `XOR_`, `NOT_`, `SET_BIT_` and `UNSET_BIT_` from `SBYTE` to `ULONG`; `_CLAMPED` forms of `ADD_`, `SUB_`, `INC_` and `DEC_`; `GET_RANDOM` `RANDOM_SEED` |
 | **Dialogue and menus** | `CREATE_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW_NO_WAIT` `SHOW_DIALOGUE_WINDOW_NO_WAIT_DISMISSIBLE` `SHOW_DIALOGUE_AT` `SHOW_DIALOGUE_AT_NO_WAIT` `SHOW_DIALOGUE_AT_NO_WAIT_DISMISSIBLE` `ASK_PLAYER_AT` `WAIT_FOR_DIALOGUE_WINDOW` `CLOSE_DIALOGUE_WINDOW` `SET_DIALOGUE_WINDOW_STYLE` `SET_MESSAGE_VARIABLE` `ASK_PLAYER_TO_MAKE_A_CHOICE` `MAIN_MENU_ACCESSIBILITY` `OPEN_SAVE_MENU` |
 | **Money** | `ADD_MONEY` `SUBTRACT_MONEY` |
@@ -392,7 +392,7 @@ last argument or an argument left unread is logged, and the script stops there.
   the menu or a battle, or after a load. The menu button opens the party menu when the field allows it and the screen
   is clear — not while it fades in, nor while a script's fade plays or holds it covered — and a script can start a
   battle or end the game.
-  - A battle carries its own arena, enemies, flags and level. Whether losing it, or a countdown running out, ends the
+  - A battle names what is fought and where, separately, and carries its own flags. Whether losing it, or a countdown running out, ends the
     game is the battle mode's, which a script sets and the game saves; after the battle, a script reads how it ended.
     There are no random encounters yet: a battle starts only when a script starts it.
   - A game over sends the player to the game-over field your map names, entered afresh: a field like any other, whose

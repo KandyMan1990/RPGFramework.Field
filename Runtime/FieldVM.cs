@@ -40,6 +40,7 @@ namespace RPGFramework.Field
         internal event Action<int, bool>                       RequestSetEntitySolid;
         internal event Action<int, bool>                       RequestSetPushScriptActive;
         internal event Action<bool>                            RequestSetGatewayTriggersActive;
+        internal event Action<bool>                            RequestSetRandomEncountersEnabled;
         internal event Action<int, bool>                       RequestSetInteractionTriggerActive;
         internal event Action<int, bool>                       RequestSetCollisionTriggerActive;
         internal event Action<byte, bool>                      RequestSetBlockerActive;
@@ -219,7 +220,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SetBattleMode, SetBattleModeOpcodeHandler },
                        { FieldScriptOpCode.StartBattle, StartBattleOpcodeHandler },
                        { FieldScriptOpCode.GetLastBattleResult, GetLastBattleResultOpcodeHandler },
-                       // { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
+                       { FieldScriptOpCode.RandomEncounters, RandomEncountersOpcodeHandler },
                        { FieldScriptOpCode.GameOver, GameOverOpcodeHandler },
                        { FieldScriptOpCode.SaveAccessibility, SaveAccessibilityOpcodeHandler },
 
@@ -1214,13 +1215,12 @@ namespace RPGFramework.Field
         /// </summary>
         private void StartBattleOpcodeHandler(FieldScriptContext ctx)
         {
-            ushort arena       = ctx.ReadUShort();
             ushort enemyGroup  = ctx.ReadUShort();
+            ulong  arena       = ctx.ReadName();
             ushort battleFlags = ctx.ReadUShort();
-            byte   enemyLevel  = ctx.ReadByte();
             ulong  transition  = ctx.ReadName();
 
-            BattleArgs args = new BattleArgs(arena, enemyGroup, (BattleFlags)battleFlags, enemyLevel, transition);
+            BattleArgs args = new BattleArgs(enemyGroup, arena, (BattleFlags)battleFlags, transition);
 
             RequestStartBattle?.Invoke(args);
 
@@ -1237,6 +1237,12 @@ namespace RPGFramework.Field
             byte result = (byte)GetLastBattleResult();
 
             ctx.WriteVariableByte(bank, address, result);
+        }
+
+        private void RandomEncountersOpcodeHandler(FieldScriptContext ctx)
+        {
+            bool enabled = ctx.ReadBool();
+            RequestSetRandomEncountersEnabled?.Invoke(enabled);
         }
 
         /// <summary>

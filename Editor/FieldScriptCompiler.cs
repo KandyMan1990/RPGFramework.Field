@@ -583,6 +583,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicStateName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.ActionName:
+                case ArgumentType.ArenaName:
                     bw.Write(Fnv1a64.Hash(parts[part]));
                     break;
 
