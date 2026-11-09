@@ -10,7 +10,7 @@
             <ui:Button text="Export Runtime Data" name="ExportButton"/>
         </ui:VisualElement>
         <ui:VisualElement name="DataViewer" style="flex-grow: 1;">
-            <ui:VisualElement name="Header" style="flex-direction: row;">
+            <ui:VisualElement name="Header" style="flex-direction: row; height: 21px; flex-shrink: 0;">
                 <ui:Button text="Prefab" name="PrefabButton"/>
                 <ui:Button text="Text" name="TextButton"/>
                 <ui:Button text="Scripts" name="ScriptsButton"/>
