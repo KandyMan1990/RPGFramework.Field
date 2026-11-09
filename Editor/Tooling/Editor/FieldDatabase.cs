@@ -236,6 +236,7 @@ namespace RPGFramework.Field.Editor
                 HashSet<FieldEntity> bodies           = new HashSet<FieldEntity>();
                 HashSet<int>         blockerIds       = new HashSet<int>();
                 HashSet<int>         cameraIds        = new HashSet<int>();
+                HashSet<int>         effectIds        = new HashSet<int>();
                 DialogueChannelUse   dialogueChannels = new DialogueChannelUse();
 
                 FieldBlocker[] blockers = prefab.GetComponentsInChildren<FieldBlocker>(true);
@@ -245,6 +246,13 @@ namespace RPGFramework.Field.Editor
                     FieldBlocker blocker = blockers[j];
 
                     ValidateBlocker(fieldEntities.Dimension, blocker, prefab.name, blockerIds, problems);
+                }
+
+                FieldEffect[] effects = prefab.GetComponentsInChildren<FieldEffect>(true);
+
+                for (int j = 0; j < effects.Length; j++)
+                {
+                    ValidateEffect(effects[j], prefab.name, effectIds, problems);
                 }
 
                 ValidateTileField(prefab, fieldEntities, problems);
@@ -269,7 +277,7 @@ namespace RPGFramework.Field.Editor
                 {
                     FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, dialogueChannels, audioNames, actionNames, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, effectIds, dialogueChannels, audioNames, actionNames, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -416,6 +424,7 @@ namespace RPGFramework.Field.Editor
                                     HashSet<int>         withBodies,
                                     HashSet<int>         blockerIds,
                                     HashSet<int>         cameraIds,
+                                    HashSet<int>         effectIds,
                                     DialogueChannelUse   dialogueChannels,
                                     AudioNames           audioNames,
                                     List<string>         actionNames,
@@ -493,6 +502,7 @@ namespace RPGFramework.Field.Editor
                 ValidateEntityTargets(scriptCounts, withBodies, scriptDescription, lines, problems);
                 ValidateIdTargets(ArgumentType.BlockerId, blockerIds, "blocker", nameof(FieldBlocker), scriptDescription, lines, problems);
                 ValidateIdTargets(ArgumentType.CameraId, cameraIds, "camera", nameof(FieldCamera), scriptDescription, lines, problems);
+                ValidateIdTargets(ArgumentType.EffectId, effectIds, "effect", nameof(FieldEffect), scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
                 ValidateHeadOpcodes(body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
@@ -1312,6 +1322,24 @@ namespace RPGFramework.Field.Editor
                 }
 
                 ValidateAnimationNames(animator, opCode, parts, scriptDescription, problems);
+            }
+        }
+
+        /// <summary>
+        /// An effect is an entity's, so it has to sit under one, and a script names it by an id no other effect has.
+        /// </summary>
+        internal static void ValidateEffect(FieldEffect effect, string fieldName, HashSet<int> effectIds, List<string> problems)
+        {
+            string effectName = $"{fieldName} / effect '{effect.name}' ({effect.Id})";
+
+            if (!effectIds.Add(effect.Id))
+            {
+                problems.Add($"{effectName} reuses id [{effect.Id}], which another effect in this field already has");
+            }
+
+            if (effect.GetComponentInParent<FieldEntity>(true) == null)
+            {
+                problems.Add($"{effectName} is not under an entity. Place it under the body of the entity it belongs to");
             }
         }
 

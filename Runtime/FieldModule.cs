@@ -50,6 +50,7 @@ namespace RPGFramework.Field
         private readonly IInputRouter               m_InputRouter;
         private readonly IMusicPlayer               m_MusicPlayer;
         private readonly ISfxPlayer                 m_SfxPlayer;
+        private readonly IVibrationService          m_VibrationService;
         private readonly FieldSoundChannels         m_SoundChannels;
         private readonly ISystemSoundConfig         m_SystemSounds;
         private readonly IFieldDatabase             m_FieldDatabase;
@@ -105,6 +106,8 @@ namespace RPGFramework.Field
         private Dictionary<ulong, string>              m_AnimationNames;
         private FieldBlocker[]                         m_Blockers;
         private Dictionary<byte, FieldBlocker>         m_BlockersById;
+        private FieldEffect[]                          m_Effects;
+        private Dictionary<byte, FieldEffect>          m_EffectsById;
         private FieldDimension                         m_Dimension;
         private Vector2                                m_PlayerPush;
         private Tilemap                                m_WalkableTilemap;
@@ -127,6 +130,7 @@ namespace RPGFramework.Field
                              IInputRouter              inputRouter,
                              IMusicPlayer              musicPlayer,
                              ISfxPlayer                sfxPlayer,
+                             IVibrationService         vibrationService,
                              ISystemSoundConfig        systemSounds,
                              IFieldDatabase            fieldDatabase,
                              IFieldGameOpCodeDatabase  opCodeDatabase,
@@ -161,6 +165,7 @@ namespace RPGFramework.Field
             m_InputRouter              = inputRouter;
             m_MusicPlayer              = musicPlayer;
             m_SfxPlayer                = sfxPlayer;
+            m_VibrationService         = vibrationService;
             m_SoundChannels            = new FieldSoundChannels(new FieldSoundPlayer(sfxPlayer));
             m_SystemSounds             = systemSounds;
             m_FieldDatabase            = fieldDatabase;
@@ -284,6 +289,8 @@ namespace RPGFramework.Field
             UpdateManager.UnregisterUpdatable(this);
             UpdateManager.UnregisterFixedUpdatable(this);
 
+            m_VibrationService.Stop();
+
             Freeze();
 
             // One set of sheets resident at a time: what opens over the field loads its own, which may share some.
@@ -385,8 +392,10 @@ namespace RPGFramework.Field
 
             UpdateTickedMotions(deltaTime);
             UpdateHeads(deltaTime);
+            UpdateEffects();
             MoveCameraFocus(deltaTime);
             m_CinemachineBrain.ManualUpdate();
+            ShakeScreen(deltaTime);
 
             m_Countdown.Tick(Time.unscaledDeltaTime);
 
@@ -511,6 +520,10 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetEntityInField            += OnRequestSetEntityInField;
             m_FieldContext.VM.RequestSetEntityDrawOffset         += OnRequestSetEntityDrawOffset;
             m_FieldContext.VM.IsEntityDrawOffsetMoving           =  IsEntityDrawOffsetMoving;
+            m_FieldContext.VM.RequestSetEffectActive             += OnRequestSetEffectActive;
+            m_FieldContext.VM.RequestShakeScreen                 += OnRequestShakeScreen;
+            m_FieldContext.VM.RequestStopScreenShake             += OnRequestStopScreenShake;
+            m_FieldContext.VM.RequestSetVibration                += OnRequestSetVibration;
             m_FieldContext.VM.RequestHeadLookAtEntity            += OnRequestHeadLookAtEntity;
             m_FieldContext.VM.RequestHeadLookAtPosition          += OnRequestHeadLookAtPosition;
             m_FieldContext.VM.RequestHeadLookForward             += OnRequestHeadLookForward;
@@ -608,6 +621,10 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestJumpEntity                  -= OnRequestJumpEntity;
             m_FieldContext.VM.IsEntityDrawOffsetMoving           =  null;
             m_FieldContext.VM.IsEntityHeadTurning                =  null;
+            m_FieldContext.VM.RequestSetEffectActive             -= OnRequestSetEffectActive;
+            m_FieldContext.VM.RequestShakeScreen                 -= OnRequestShakeScreen;
+            m_FieldContext.VM.RequestStopScreenShake             -= OnRequestStopScreenShake;
+            m_FieldContext.VM.RequestSetVibration                -= OnRequestSetVibration;
             m_FieldContext.VM.RequestHeadLookAtEntity            -= OnRequestHeadLookAtEntity;
             m_FieldContext.VM.RequestHeadLookAtPosition          -= OnRequestHeadLookAtPosition;
             m_FieldContext.VM.RequestHeadLookForward             -= OnRequestHeadLookForward;
@@ -780,6 +797,15 @@ namespace RPGFramework.Field
                 m_BlockersById.Add(blocker.Id, blocker);
             }
 
+            m_Effects     = fieldGameObject.GetComponentsInChildren<FieldEffect>(true);
+            m_EffectsById = new Dictionary<byte, FieldEffect>(m_Effects.Length);
+
+            for (int i = 0; i < m_Effects.Length; i++)
+            {
+                m_Effects[i].Bind();
+                m_EffectsById.Add(m_Effects[i].Id, m_Effects[i]);
+            }
+
             FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
             m_Dimension       = fieldEntities.Dimension;
             m_WalkableTilemap = FindWalkableTilemap(fieldGameObject);
@@ -912,7 +938,14 @@ namespace RPGFramework.Field
                 blockerIds[i] = m_Blockers[i].Id;
             }
 
-            m_FieldContext = new FieldContext(vm, entities, blockerIds, m_StartingCamera);
+            byte[] effectIds = new byte[m_Effects.Length];
+
+            for (int i = 0; i < m_Effects.Length; i++)
+            {
+                effectIds[i] = m_Effects[i].Id;
+            }
+
+            m_FieldContext = new FieldContext(vm, entities, blockerIds, effectIds, m_StartingCamera);
 
             SubscribeVm();
 
@@ -1121,6 +1154,20 @@ namespace RPGFramework.Field
                 }
             }
 
+            for (int i = 0; i < m_FieldContext.EffectCount; i++)
+            {
+                FieldEffectState effect = m_FieldContext.EffectStateAt(i);
+
+                if (effect.Set && effect.Active)
+                {
+                    m_EffectsById[effect.EffectId].SwitchOn();
+                }
+                else if (effect.Set)
+                {
+                    m_EffectsById[effect.EffectId].SwitchOffAtOnce();
+                }
+            }
+
             PostFieldLoad();
         }
 
@@ -1170,6 +1217,9 @@ namespace RPGFramework.Field
             UpdateManager.UnregisterLateUpdatable(this);
 
             SetAnimationsPaused(true);
+
+            m_VibrationService.Stop();
+            m_FieldModuleMonoBehaviour.Camera.ResetProjectionMatrix();
 
             UnsubscribeVm();
 
@@ -1745,6 +1795,68 @@ namespace RPGFramework.Field
             m_FieldContext.BlockerState(blockerId).SetActive(active);
 
             m_BlockersById[blockerId].SetBlocking(active);
+        }
+
+        private void OnRequestSetEffectActive(byte effectId, bool active)
+        {
+            ref FieldEffectState state = ref m_FieldContext.EffectState(effectId);
+
+            state.Set    = true;
+            state.Active = active;
+
+            if (active)
+            {
+                m_EffectsById[effectId].SwitchOn();
+            }
+            else
+            {
+                m_EffectsById[effectId].SwitchOff();
+            }
+        }
+
+        private void UpdateEffects()
+        {
+            for (int i = 0; i < m_Effects.Length; i++)
+            {
+                m_Effects[i].Tick();
+            }
+        }
+
+        private void OnRequestShakeScreen(float amplitudeX, float swingSecondsX, float amplitudeY, float swingSecondsY)
+        {
+            m_FieldContext.Shake.Start(amplitudeX, swingSecondsX, amplitudeY, swingSecondsY);
+        }
+
+        private void OnRequestStopScreenShake()
+        {
+            m_FieldContext.Shake.Stop();
+        }
+
+        private void OnRequestSetVibration(float low, float high, float seconds)
+        {
+            m_VibrationService.Vibrate(low, high, seconds);
+        }
+
+        // After the cameras have moved. Reset first, as the shift is on top of whatever lens they left.
+        private void ShakeScreen(float deltaTime)
+        {
+            ref ScreenShake shake = ref m_FieldContext.Shake;
+
+            if (shake.IsStill)
+            {
+                return;
+            }
+
+            shake.Tick(deltaTime, UnityEngine.Random.value, UnityEngine.Random.value);
+
+            Camera camera = m_FieldModuleMonoBehaviour.Camera;
+
+            camera.ResetProjectionMatrix();
+
+            if (!shake.IsStill)
+            {
+                camera.projectionMatrix = ScreenShake.Shifted(camera.projectionMatrix, shake.Offset, camera.aspect);
+            }
         }
 
         private void OnRequestFieldExitFade(bool fades)

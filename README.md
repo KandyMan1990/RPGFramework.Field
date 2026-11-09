@@ -122,6 +122,16 @@ The `HEAD_` opcodes turn a body's head on top of its animation, leaving the body
 you; on a generic rig, pick its head bone in **Head** on the body's Field Entity. A model imported with *Optimize Game
 Objects* must expose that bone. A sprite has no head, so export refuses these opcodes on a body without one.
 
+An **effect** is something an entity has that a script switches with `EFFECT_ACTIVATION`: a torch, steam, sparks. With an
+entity selected, GameObject › RPG Framework › Field › Effect makes one under its body, with a Particle System to start
+from; it moves with the entity, and export refuses one that is not under an entity. Put what it shows on it or under it:
+Particle Systems, VFX Graphs (authored with the Visual Effect Graph package) and lights. It starts the way the prefab has
+it. Switched off, its particles stop being made and those already out run their course, then all of it goes off. Any
+script in the field can switch any of its effects.
+
+In the block editor, the `SHAKE_SCREEN` and `SET_VIBRATION` blocks have a ▶ button that tries them with no play mode: a
+shake moves the Scene view until you press it again, and a vibration runs a connected pad for its time.
+
 ### The Field Designer
 
 **RPG Framework > Field Designer Window** lists your game's fields. For each one you set:
@@ -232,10 +242,10 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | **Animation** | `SET_BASE_ANIMATION`; `PLAY_ANIMATION` and `PLAY_PART_OF_ANIMATION`, each also `_AND_WAIT`, `_AND_HOLD`, `_HOLDING` and `_LOOPING`; `SET_ANIMATION_SPEED` `WAIT_FOR_ANIMATION` `STOP_ANIMATION` `PUSH_ANIMATION_STATE` `POP_ANIMATION_STATE` |
 | **The head** | `HEAD_LOOK_AT_ENTITY` `HEAD_LOOK_AT_POSITION` `HEAD_LOOK_FORWARD`, each also `_AND_WAIT`; `WAIT_FOR_HEAD` `SET_HEAD_LIMITS` |
 | **The camera** | `SCROLL_SCREEN_TO_POSITION` `SCROLL_SCREEN_TO_ENTITY` `WAIT_FOR_SCROLLING` `SET_CAMERA` |
-| **The screen and blockers** | `FADE_SCREEN` `FADE_SCREEN_AND_WAIT` `WAIT_FOR_FADE` `SUBTRACT_SCREEN_COLOUR` `ADD_SCREEN_COLOUR` `WAIT_FOR_SCREEN_COLOUR` `BLOCKER_ACTIVATION` |
+| **The screen, effects and blockers** | `FADE_SCREEN` `FADE_SCREEN_AND_WAIT` `WAIT_FOR_FADE` `SUBTRACT_SCREEN_COLOUR` `ADD_SCREEN_COLOUR` `WAIT_FOR_SCREEN_COLOUR` `SHAKE_SCREEN` `STOP_SCREEN_SHAKE` `EFFECT_ACTIVATION` `BLOCKER_ACTIVATION` |
 | **Music and sounds** | `PLAY_MUSIC` `CROSSFADE_MUSIC` `STOP_MUSIC` `MUSIC_STEM_STATE` `IS_MUSIC_PLAYING` `SET_MUSIC_VOLUME` `FADE_MUSIC_VOLUME` `FADE_MUSIC_VOLUME_FROM` `WAIT_FOR_MUSIC_VOLUME` `SET_BATTLE_MUSIC` `PLAY_SOUND` `STOP_SOUND` `FADE_SOUND_VOLUME` `FADE_SOUND_PAN` `SET_ALL_SOUND_VOLUME` `FADE_ALL_SOUND_VOLUME` `SET_REVERB_PRESET` `SET_REVERB_VOLUME` |
 | **The countdown** | `SET_COUNTDOWN_TIMER` `SHOW_COUNTDOWN_TIMER` `HIDE_COUNTDOWN_TIMER` `GET_COUNTDOWN_TIMER` |
-| **Input** | `WAIT_FOR_BUTTON` |
+| **Input** | `WAIT_FOR_BUTTON` `SET_VIBRATION` |
 
 ### A game's own opcodes
 

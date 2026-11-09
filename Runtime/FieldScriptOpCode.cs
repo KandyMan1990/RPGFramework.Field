@@ -1374,7 +1374,10 @@ namespace RPGFramework.Field
         [FieldOpCode("WAIT_FOR_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Wait until the screen's colour has reached the colour it was sent to", StopsInit = true)]
         WaitForScreenColour = 0x0602,
 
-        ParticleActivation = 0x0603, // ushort effectId, bool active - a named effect placed in the field
+        [FieldOpCode("EFFECT_ACTIVATION", ArgumentLayout.Sequential, Summary = "Switch one of this field's effects on, or off. Switched off, its particles stop being made and those already out run their course")]
+        [Argument(0, "effect", ArgumentType.EffectId, Description = "the id on a FieldEffect in this field")]
+        [Argument(1, "active", ArgumentType.Bool)]
+        EffectActivation = 0x0603,
 
         [FieldOpCode("BLOCKER_ACTIVATION", ArgumentLayout.Sequential, Summary = "Close part of this field with one of its blockers, or open it again")]
         [Argument(0, "blocker",    ArgumentType.BlockerId, Description = "the id on a FieldBlocker in this field")]
@@ -1397,6 +1400,11 @@ namespace RPGFramework.Field
         [FieldOpCode("WAIT_FOR_FADE", ArgumentLayout.Sequential, Summary = "Wait until the screen has faded out or back in", StopsInit = true)]
         WaitForFade = 0x0702,
 
+        [FieldOpCode("SHAKE_SCREEN", ArgumentLayout.Sequential, Summary = "Shake the whole picture until STOP_SCREEN_SHAKE, each axis on its own. Shaking again changes it from the next swing")]
+        [Argument(0, "amplitudeX",    ArgumentType.Float, Description = "how far it swings across at most, on a screen 1920 wide; 0 for none")]
+        [Argument(1, "swingSecondsX", ArgumentType.Float, Description = "how long one swing across takes")]
+        [Argument(2, "amplitudeY",    ArgumentType.Float, Description = "how far it swings up and down at most, on a screen 1920 wide; 0 for none")]
+        [Argument(3, "swingSecondsY", ArgumentType.Float, Description = "how long one swing up or down takes")]
         ShakeScreen = 0x0703,
 
         [FieldOpCode("SCROLL_SCREEN_TO_POSITION", ArgumentLayout.Sequential, Summary = "Move the view onto a point, where it stays until another scroll; only a camera that follows scrolls")]
@@ -1423,6 +1431,9 @@ namespace RPGFramework.Field
         [Argument(1, "seconds", ArgumentType.Float,    Description = "how long the blend takes; 0 cuts at once")]
         [Argument(2, "easing",  ArgumentType.Byte,     EnumType = typeof(Easing), Description = "whether a blend eases in and out")]
         SetCamera = 0x0708,
+
+        [FieldOpCode("STOP_SCREEN_SHAKE", ArgumentLayout.Sequential, Summary = "Stop the shake, finishing the swing it is on and coming back to rest over one more")]
+        StopScreenShake = 0x0709,
 
         // Audio (0x0800)
 
@@ -1537,7 +1548,11 @@ namespace RPGFramework.Field
         HideCountdownTimer = 0x0A03,
 
         // Input and haptics (0x0B00)
-        SetVibration = 0x0B00, // float lowFrequency, float highFrequency, float duration
+        [FieldOpCode("SET_VIBRATION", ArgumentLayout.Sequential, Summary = "Run the motors of the player's gamepad, in place of whatever they were doing")]
+        [Argument(0, "low",     ArgumentType.Float, Description = "the heavy motor, 0 to 1")]
+        [Argument(1, "high",    ArgumentType.Float, Description = "the light motor, 0 to 1")]
+        [Argument(2, "seconds", ArgumentType.Float, Description = "how long for; 0 stops them")]
+        SetVibration = 0x0B00,
 
         [FieldOpCode("WAIT_FOR_BUTTON", ArgumentLayout.Sequential, Summary = "Wait until the player presses a button", StopsInit = true)]
         [Argument(0, "action", ArgumentType.ActionName, Description = "a button action in the game's input actions, by name")]

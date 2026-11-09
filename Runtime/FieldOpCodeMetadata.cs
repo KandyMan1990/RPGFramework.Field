@@ -148,6 +148,11 @@ namespace RPGFramework.Field
         BlockerId,
 
         /// <summary>
+        /// An effect in this field, encoded as the id on its <c>FieldEffect</c> component.
+        /// </summary>
+        EffectId,
+
+        /// <summary>
         /// A camera in this field, encoded as the id on its <c>FieldCamera</c> component.
         /// </summary>
         CameraId,
@@ -370,6 +375,7 @@ namespace RPGFramework.Field
                 case ArgumentType.EntityId:
                 case ArgumentType.Priority:
                 case ArgumentType.BlockerId:
+                case ArgumentType.EffectId:
                 case ArgumentType.CameraId:
                     width = VariableWidth.Byte;
                     return true;
@@ -425,6 +431,7 @@ namespace RPGFramework.Field
                 case ArgumentType.EntityId:
                 case ArgumentType.Priority:
                 case ArgumentType.BlockerId:
+                case ArgumentType.EffectId:
                 case ArgumentType.CameraId:
                     read = GameArgumentRead.Byte;
                     return true;

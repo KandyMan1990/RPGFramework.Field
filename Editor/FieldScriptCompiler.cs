@@ -484,6 +484,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.Byte:
                 case ArgumentType.EntityId:
                 case ArgumentType.BlockerId:
+                case ArgumentType.EffectId:
                 case ArgumentType.CameraId:
                     bw.Write(byte.Parse(token, CultureInfo.InvariantCulture));
                     break;

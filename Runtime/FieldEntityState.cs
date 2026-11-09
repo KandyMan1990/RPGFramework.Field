@@ -214,6 +214,14 @@ namespace RPGFramework.Field
     }
 
     /// <summary>A blocker's state that outlives the field module, once a script has switched it.</summary>
+    /// <summary>Whether a script has switched an effect on or off, kept so it is put back on a return.</summary>
+    internal struct FieldEffectState
+    {
+        internal byte EffectId;
+        internal bool Set;
+        internal bool Active;
+    }
+
     internal struct FieldBlockerState
     {
         internal byte BlockerId;

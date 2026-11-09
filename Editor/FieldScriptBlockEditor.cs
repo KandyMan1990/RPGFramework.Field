@@ -31,6 +31,7 @@ namespace RPGFramework.Field.Editor
         private readonly FieldEntityRecord                     m_Entity;
         private readonly IReadOnlyList<LocalisationSheetAsset> m_Sheets;
         private readonly Dictionary<string, List<SpawnChoice>> m_SpawnChoices;
+        private readonly FieldBlockPreview                     m_Preview;
 
         private List<string>     m_DialogueKeys;
         private List<string>     m_AnimationNames;
@@ -49,6 +50,9 @@ namespace RPGFramework.Field.Editor
             m_Sheets            = sheets;
             m_Blocks            = FieldScriptBlocks.Parse(scriptText);
             m_SpawnChoices      = new Dictionary<string, List<SpawnChoice>>();
+            m_Preview           = new FieldBlockPreview();
+
+            RegisterCallback<DetachFromPanelEvent>(_ => m_Preview.Stop());
 
             Add(BuildToolbar());
 
@@ -302,6 +306,12 @@ namespace RPGFramework.Field.Editor
             name.tooltip                       = block.IsLabel ? "A place a jump can go to. Emits nothing" : block.IsRecognised ? block.OpCode.Summary : block.RawLine;
 
             header.Add(name);
+
+            if (FieldBlockPreview.CanTry(block))
+            {
+                header.Add(MakeSmallButton("▶", FieldBlockPreview.Description(block), () => m_Preview.Try(block)));
+            }
+
             header.Add(MakeSmallButton("▲", "Move up",   () => Move(owner, index, -1)));
             header.Add(MakeSmallButton("▼", "Move down", () => Move(owner, index, 1)));
             header.Add(MakeSmallButton("✕", "Remove",    () => Remove(owner, index)));
@@ -635,6 +645,23 @@ namespace RPGFramework.Field.Editor
             return IdDropdown(block, argumentIndex, label, current, names, ids);
         }
 
+        private VisualElement EffectDropdown(FieldScriptBlock block, int argumentIndex, string label, string current)
+        {
+            FieldEffect[] effects = m_Field.GetComponentsInChildren<FieldEffect>(true);
+            string[]      names   = new string[effects.Length];
+            byte[]        ids     = new byte[effects.Length];
+
+            for (int i = 0; i < effects.Length; i++)
+            {
+                FieldEntity owner = effects[i].GetComponentInParent<FieldEntity>(true);
+
+                names[i] = owner != null ? $"{owner.name} / {effects[i].name}" : effects[i].name;
+                ids[i]   = effects[i].Id;
+            }
+
+            return IdDropdown(block, argumentIndex, label, current, names, ids);
+        }
+
         private VisualElement CameraDropdown(FieldScriptBlock block, int argumentIndex, string label, string current)
         {
             FieldCamera[] cameras = m_Field.GetComponentsInChildren<FieldCamera>(true);
@@ -816,6 +843,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.BlockerId:
                     return BlockerDropdown(block, argumentIndex, label, current);
+
+                case ArgumentType.EffectId:
+                    return EffectDropdown(block, argumentIndex, label, current);
 
                 case ArgumentType.CameraId:
                     return CameraDropdown(block, argumentIndex, label, current);

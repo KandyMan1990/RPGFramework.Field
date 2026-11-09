@@ -13,6 +13,7 @@ namespace RPGFramework.Field
         internal FieldVM                               VM                    => m_VM;
         internal FieldEntityRuntime                    PlayerEntity          => m_PlayerEntity;
         internal int                                   BlockerCount          => m_Blockers.Length;
+        internal int                                   EffectCount           => m_Effects.Length;
         internal bool                                  GatewaysActive        => m_GatewaysActive;
         internal bool                                  MainMenuAccessible    => m_MainMenuAccessible;
         internal bool                                  IsInputLockedByScript => m_IsInputLockedByScript;
@@ -26,6 +27,8 @@ namespace RPGFramework.Field
         private readonly Dictionary<int, int>         m_EntityIndices;
         private readonly FieldBlockerState[]          m_Blockers;
         private readonly Dictionary<byte, int>        m_BlockerIndices;
+        private readonly FieldEffectState[]           m_Effects;
+        private readonly Dictionary<byte, int>        m_EffectIndices;
         private readonly List<ButtonWaitInputContext> m_ButtonWaits;
         private readonly CameraFocus                  m_CameraFocus;
         private          FieldEntityRuntime           m_PlayerEntity;
@@ -33,8 +36,9 @@ namespace RPGFramework.Field
         private          bool                         m_MainMenuAccessible;
         private          bool                         m_IsInputLockedByScript;
         private          byte                         m_LiveCamera;
+        private          ScreenShake                  m_Shake;
 
-        internal FieldContext(FieldVM vm, FieldEntityRuntime[] entities, byte[] blockerIds, byte liveCamera)
+        internal FieldContext(FieldVM vm, FieldEntityRuntime[] entities, byte[] blockerIds, byte[] effectIds, byte liveCamera)
         {
             m_VM                 = vm;
             m_Entities           = entities;
@@ -42,6 +46,9 @@ namespace RPGFramework.Field
             m_EntityIndices      = new Dictionary<int, int>(entities.Length);
             m_Blockers           = new FieldBlockerState[blockerIds.Length];
             m_BlockerIndices     = new Dictionary<byte, int>(blockerIds.Length);
+            m_Effects            = new FieldEffectState[effectIds.Length];
+            m_EffectIndices      = new Dictionary<byte, int>(effectIds.Length);
+            m_Shake              = default;
             m_ButtonWaits        = new List<ButtonWaitInputContext>();
             m_CameraFocus        = new CameraFocus();
             m_GatewaysActive     = true;
@@ -58,6 +65,12 @@ namespace RPGFramework.Field
                 m_Blockers[i].BlockerId = blockerIds[i];
                 m_BlockerIndices.Add(blockerIds[i], i);
             }
+
+            for (int i = 0; i < effectIds.Length; i++)
+            {
+                m_Effects[i].EffectId = effectIds[i];
+                m_EffectIndices.Add(effectIds[i], i);
+            }
         }
 
         /// <summary>The entity's record, written in place.</summary>
@@ -70,6 +83,13 @@ namespace RPGFramework.Field
         internal ref FieldBlockerState BlockerState(byte blockerId) => ref m_Blockers[m_BlockerIndices[blockerId]];
 
         internal ref FieldBlockerState BlockerStateAt(int index) => ref m_Blockers[index];
+
+        internal ref FieldEffectState EffectState(byte effectId) => ref m_Effects[m_EffectIndices[effectId]];
+
+        internal ref FieldEffectState EffectStateAt(int index) => ref m_Effects[index];
+
+        /// <summary>The screen's shake, kept here so that it carries on after a battle.</summary>
+        internal ref ScreenShake Shake => ref m_Shake;
 
         internal void SetPlayerEntity(FieldEntityRuntime playerEntity) => m_PlayerEntity = playerEntity;
 

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Tilemaps;
 
 namespace RPGFramework.Field.Editor
@@ -105,6 +106,29 @@ namespace RPGFramework.Field.Editor
             AddSolid(blockerObject, dimension);
 
             return blocker;
+        }
+
+        /// <summary>
+        /// An effect under the body of the entity it belongs to, with a Particle System to start from, which the author
+        /// can change or swap for a VFX Graph.
+        /// </summary>
+        internal static FieldEffect BuildEffect(FieldEntity entity, Transform fieldRoot)
+        {
+            byte id = FieldEffect.NextId(fieldRoot, null);
+
+            GameObject effectObject = new GameObject($"Effect{id}");
+            effectObject.transform.SetParent(entity.transform, false);
+
+            FieldEffect effect = effectObject.AddComponent<FieldEffect>();
+            effect.SetId(id);
+
+            effectObject.AddComponent<ParticleSystem>();
+
+            RenderPipelineAsset pipeline = GraphicsSettings.currentRenderPipeline;
+
+            effectObject.GetComponent<ParticleSystemRenderer>().sharedMaterial = pipeline != null ? pipeline.defaultParticleMaterial : AssetDatabase.GetBuiltinExtraResource<Material>("Default-ParticleSystem.mat");
+
+            return effect;
         }
 
         /// <summary>
@@ -349,6 +373,25 @@ namespace RPGFramework.Field.Editor
             FieldBlocker  blocker = BuildBlocker(field.gameObject, field.Dimension);
 
             Place(blocker.gameObject, context, field, "Create Blocker");
+        }
+
+        [MenuItem(MENU + "Effect", false, MENU_PRIORITY)]
+        private static void CreateEffect(MenuCommand command)
+        {
+            GameObject    context = command.context as GameObject;
+            FieldEntities field   = FindField(context);
+            FieldEntity   entity  = context.GetComponentInParent<FieldEntity>(true);
+            FieldEffect   effect  = BuildEffect(entity, field.transform);
+
+            Place(effect.gameObject, entity.gameObject, field, "Create Effect");
+        }
+
+        [MenuItem(MENU + "Effect", true)]
+        private static bool IsOnAnEntity()
+        {
+            GameObject selected = Selection.activeGameObject;
+
+            return selected != null && FindField(selected) != null && selected.GetComponentInParent<FieldEntity>(true) != null;
         }
 
         [MenuItem(MENU + "Spawn Point", false, MENU_PRIORITY)]

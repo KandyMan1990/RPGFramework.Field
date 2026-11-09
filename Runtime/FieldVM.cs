@@ -68,6 +68,10 @@ namespace RPGFramework.Field
         internal Func<int, int, bool>                          IsEntityInRange;
         internal event Action<int, Vector3, float, Easing>     RequestSetEntityDrawOffset;
         internal Func<int, bool>                               IsEntityDrawOffsetMoving;
+        internal event Action<byte, bool>                      RequestSetEffectActive;
+        internal event Action<float, float, float, float>      RequestShakeScreen;
+        internal event Action                                  RequestStopScreenShake;
+        internal event Action<float, float, float>             RequestSetVibration;
         internal event Action<int, int, float, bool>           RequestHeadLookAtEntity;
         internal event Action<int, Vector3, float>             RequestHeadLookAtPosition;
         internal event Action<int, float>                      RequestHeadLookForward;
@@ -497,19 +501,20 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SubtractiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx, false) },
                        { FieldScriptOpCode.AdditiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx,    true) },
                        { FieldScriptOpCode.WaitForScreenColour, WaitForScreenColourOpcodeHandler },
-                       // { FieldScriptOpCode.ParticleActivation, ParticleActivationOpcodeHandler },
+                       { FieldScriptOpCode.EffectActivation, EffectActivationOpcodeHandler },
                        { FieldScriptOpCode.BlockerActivation, BlockerActivationOpcodeHandler },
 
                        // Camera and screen movement
                        { FieldScriptOpCode.FadeScreen, FadeScreenOpcodeHandler },
                        { FieldScriptOpCode.FadeScreenWait, FadeScreenAndWaitOpcodeHandler },
                        { FieldScriptOpCode.WaitForFade, WaitForFadeOpcodeHandler },
-                       // { FieldScriptOpCode.ShakeScreen, ShakeScreenOpcodeHandler },
+                       { FieldScriptOpCode.ShakeScreen, ShakeScreenOpcodeHandler },
                        { FieldScriptOpCode.ScrollScreenToPosition, ScrollScreenToPositionOpcodeHandler },
                        { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
                        // { FieldScriptOpCode.ScrollToPartyMember, ScrollToPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.WaitForScrolling, WaitForScrollingOpcodeHandler },
                        { FieldScriptOpCode.SetCamera, SetCameraOpcodeHandler },
+                       { FieldScriptOpCode.StopScreenShake, StopScreenShakeOpcodeHandler },
 
                        // Audio
                        { FieldScriptOpCode.PlayMusic, PlayMusicOpcodeHandler },
@@ -543,7 +548,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.HideCountdownTimer, HideCountdownTimerOpcodeHandler },
 
                        // Input and haptics
-                       // { FieldScriptOpCode.SetVibration, SetVibrationOpcodeHandler },
+                       { FieldScriptOpCode.SetVibration, SetVibrationOpcodeHandler },
                        { FieldScriptOpCode.WaitForButton, WaitForButtonOpcodeHandler },
                    };
         }
@@ -2217,9 +2222,6 @@ namespace RPGFramework.Field
             RequestPopAnimationState?.Invoke(ctx.EntityId);
         }
 
-        /// <summary>
-        /// Choose the sound this entity's footsteps make, or every entity's.
-        /// </summary>
         private void HeadLookAtEntityOpcodeHandler(FieldScriptContext ctx)
         {
             byte  target  = ctx.ReadByte();
@@ -2257,6 +2259,9 @@ namespace RPGFramework.Field
             ctx.Block(new WaitUntilBlock(() => !IsEntityHeadTurning(ctx.EntityId)));
         }
 
+        /// <summary>
+        /// Choose the sound this entity's footsteps make, or every entity's.
+        /// </summary>
         private void SetFootstepSoundOpcodeHandler(FieldScriptContext ctx)
         {
             ulong sound       = ctx.ReadName();
@@ -2401,6 +2406,17 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
+        /// Switch one of the field's effects on or off.
+        /// </summary>
+        private void EffectActivationOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte effect = ctx.ReadByte();
+            bool active = ctx.ReadBool();
+
+            RequestSetEffectActive?.Invoke(effect, active);
+        }
+
+        /// <summary>
         /// Close part of the field with one of its blockers, or open it again.
         /// </summary>
         private void BlockerActivationOpcodeHandler(FieldScriptContext ctx)
@@ -2437,6 +2453,19 @@ namespace RPGFramework.Field
         private void WaitForFadeOpcodeHandler(FieldScriptContext ctx)
         {
             ctx.Block(new WaitUntilBlock(() => !IsScreenFading()));
+        }
+
+        /// <summary>
+        /// Shake the whole picture until it is stopped.
+        /// </summary>
+        private void ShakeScreenOpcodeHandler(FieldScriptContext ctx)
+        {
+            float amplitudeX    = ctx.ReadFloat();
+            float swingSecondsX = ctx.ReadFloat();
+            float amplitudeY    = ctx.ReadFloat();
+            float swingSecondsY = ctx.ReadFloat();
+
+            RequestShakeScreen?.Invoke(amplitudeX, swingSecondsX, amplitudeY, swingSecondsY);
         }
 
         /// <summary>
@@ -2483,6 +2512,14 @@ namespace RPGFramework.Field
             Easing easing  = (Easing)ctx.ReadByte();
 
             RequestSetCamera?.Invoke(camera, seconds, easing);
+        }
+
+        /// <summary>
+        /// Stop the screen's shake.
+        /// </summary>
+        private void StopScreenShakeOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestStopScreenShake?.Invoke();
         }
 
         /// <summary>
@@ -2717,6 +2754,18 @@ namespace RPGFramework.Field
         private void HideCountdownTimerOpcodeHandler(FieldScriptContext ctx)
         {
             RequestHideCountdown?.Invoke();
+        }
+
+        /// <summary>
+        /// Run the motors of the player's gamepad for a time.
+        /// </summary>
+        private void SetVibrationOpcodeHandler(FieldScriptContext ctx)
+        {
+            float low     = ctx.ReadFloat();
+            float high    = ctx.ReadFloat();
+            float seconds = ctx.ReadFloat();
+
+            RequestSetVibration?.Invoke(low, high, seconds);
         }
 
         /// <summary>
