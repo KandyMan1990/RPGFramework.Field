@@ -18,6 +18,20 @@ namespace RPGFramework.Field
         [SerializeField]
         private GameObject m_VisibleObject;
 
+        [Tooltip("Where in the walk animation's loop one foot touches the ground, and a footstep sounds: 0 is the start of the loop and 1 the end. In a one-second walk with a foot landing 0.3 seconds in, this is 0.3. Move it if steps sound early or late")]
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float m_FirstFootDown;
+
+        [Tooltip("Where in the walk animation's loop the other foot touches the ground, 0 the start of the loop and 1 the end")]
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float m_SecondFootDown = 0.5f;
+
+        [Tooltip("Leave off unless a component of your own beside the Animator receives the events on its clips. With none to receive them Unity logs an error for each one")]
+        [SerializeField]
+        private bool m_RaisesAnimationEvents;
+
         private CompiledFieldEntity m_Record;
 
         internal int EntityId => m_Record != null ? m_Record.EntityId : NO_ENTITY;
@@ -36,6 +50,13 @@ namespace RPGFramework.Field
             if (m_VisibleObject != null)
             {
                 m_VisibleRestPosition = m_VisibleObject.transform.localPosition;
+            }
+
+            Animator animator = GetComponentInChildren<Animator>(true);
+
+            if (animator != null)
+            {
+                animator.fireEvents = m_RaisesAnimationEvents;
             }
 
             SetVisible(false);
@@ -113,6 +134,12 @@ namespace RPGFramework.Field
             {
                 entities.Add(entity);
             }
+        }
+
+        /// <summary>Whether a foot has landed as a cycle went forward from one point to another.</summary>
+        internal bool FootLandedBetween(float previous, float current)
+        {
+            return Footsteps.Crossed(previous, current, m_FirstFootDown) || Footsteps.Crossed(previous, current, m_SecondFootDown);
         }
 
         /// <summary>

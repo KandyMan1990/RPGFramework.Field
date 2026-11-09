@@ -57,6 +57,7 @@ namespace RPGFramework.Field
         private float m_Elapsed;
         private float m_Cycle;
         private bool  m_BackedOff;
+        private int   m_Steps;
 
         /// <param name="start">Where the entity stands as it begins.</param>
         /// <param name="path">The ladder's points and which way it is taken.</param>
@@ -83,11 +84,24 @@ namespace RPGFramework.Field
             m_Elapsed   = 0f;
             m_Cycle     = 0f;
             m_BackedOff = false;
+            m_Steps     = 0;
 
             SkipPartsWithNoLength();
         }
 
         internal readonly bool IsFinished => m_Part == Part.Finished;
+
+        /// <summary>Whether it is on the rungs, as opposed to getting on or off.</summary>
+        internal readonly bool IsClimbing => m_Part == Part.Climbing;
+
+        /// <summary>How far through a cycle of the climb animation it has got, 0 to 1.</summary>
+        internal readonly float Cycle => m_Cycle;
+
+        /// <summary>Which way a steer runs the climb animation, positive forward; going down runs it backward.</summary>
+        internal readonly float CycleDirection(float steer)
+        {
+            return m_GoingUp ? steer : -steer;
+        }
 
         internal readonly Vector3 Position
         {
@@ -160,6 +174,9 @@ namespace RPGFramework.Field
             return push > 0f == m_GoingUp ? 1f : -1f;
         }
 
+        /// <returns>How many steps it had taken on the rungs since it last held still.</returns>
+        internal int TakeStep() => m_Steps++;
+
         /// <param name="deltaTime">The frame's time.</param>
         /// <param name="steer">During the climb: 1 goes on, -1 goes back and 0 stays put.</param>
         internal void Tick(float deltaTime, float steer)
@@ -190,6 +207,11 @@ namespace RPGFramework.Field
         private void Climb(float deltaTime, float steer)
         {
             m_Elapsed += deltaTime * steer;
+
+            if (steer == 0f)
+            {
+                m_Steps = 0;
+            }
 
             if (m_CycleSeconds > 0f)
             {

@@ -40,6 +40,8 @@ namespace RPGFramework.Field
         private const float MUSIC_RESUME_SECONDS   = 1f;
         private const float ALREADY_FACING_DEGREES = 0.5f;
 
+        private const float MIN_WALKING_SQR = 0.0001f;
+
         private const FieldEntityValues CARRIED_BY_A_SCRIPT = FieldEntityValues.Jump | FieldEntityValues.Climb;
         private const FieldEntityValues TICKED_MOTIONS      = FieldEntityValues.DrawOffset | CARRIED_BY_A_SCRIPT;
 
@@ -376,6 +378,8 @@ namespace RPGFramework.Field
                     Vector3 facing = FacingOf(entity);
 
                     entity.AnimationDriver.Tick(velocity, new Vector2(Vector3.Dot(facing, east), Vector3.Dot(facing, north)));
+
+                    UpdateFootsteps(entity, velocity);
                 }
             }
 
@@ -455,6 +459,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestReverbPreset                += OnRequestReverbPreset;
             m_FieldContext.VM.RequestReverbVolume                += OnRequestReverbVolume;
             m_FieldContext.VM.RequestSfx                         += OnRequestSfx;
+            m_FieldContext.VM.RequestSetFootstepSound            += OnRequestSetFootstepSound;
+            m_FieldContext.VM.RequestSetFootstepsEnabled         += OnRequestSetFootstepsEnabled;
             m_FieldContext.VM.RequestStopSound                   += OnRequestStopSound;
             m_FieldContext.VM.RequestFadeSoundVolume             += OnRequestFadeSoundVolume;
             m_FieldContext.VM.RequestFadeSoundPan                += OnRequestFadeSoundPan;
@@ -613,6 +619,8 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestFadeSoundPan                -= OnRequestFadeSoundPan;
             m_FieldContext.VM.RequestFadeSoundVolume             -= OnRequestFadeSoundVolume;
             m_FieldContext.VM.RequestStopSound                   -= OnRequestStopSound;
+            m_FieldContext.VM.RequestSetFootstepsEnabled         -= OnRequestSetFootstepsEnabled;
+            m_FieldContext.VM.RequestSetFootstepSound            -= OnRequestSetFootstepSound;
             m_FieldContext.VM.RequestSfx                         -= OnRequestSfx;
             m_FieldContext.VM.RequestMusic                       -= OnRequestMusic;
             m_FieldContext.VM.RequestMusicCrossfade              -= OnRequestMusicCrossfade;
@@ -1245,6 +1253,72 @@ namespace RPGFramework.Field
             m_SoundChannels.Play(nameHash, volume, pan, channel);
         }
 
+        private void OnRequestSetFootstepSound(int entityId, ulong sound, bool allEntities)
+        {
+            if (!allEntities)
+            {
+                m_FieldContext.EntityState(entityId).FootstepSound = sound;
+
+                return;
+            }
+
+            for (int i = 0; i < m_FieldContext.Entities.Count; i++)
+            {
+                m_FieldContext.EntityStateAt(i).FootstepSound = sound;
+            }
+        }
+
+        private void OnRequestSetFootstepsEnabled(int entityId, bool enabled, bool allEntities)
+        {
+            if (!allEntities)
+            {
+                m_FieldContext.EntityState(entityId).FootstepsEnabled = enabled;
+
+                return;
+            }
+
+            for (int i = 0; i < m_FieldContext.Entities.Count; i++)
+            {
+                m_FieldContext.EntityStateAt(i).FootstepsEnabled = enabled;
+            }
+        }
+
+        private void UpdateFootsteps(FieldEntityComponents entity, Vector3 velocity)
+        {
+            if (velocity.sqrMagnitude < MIN_WALKING_SQR || !entity.AnimationDriver.TryGetBaseCycle(out float cycle))
+            {
+                entity.ClearWalkCycle();
+
+                return;
+            }
+
+            if (entity.HasWalkCycle && entity.Entity.FootLandedBetween(entity.WalkCycle, cycle))
+            {
+                FieldEntityState state = m_FieldContext.EntityState(entity.Entity.EntityId);
+
+                if (state.FootstepsEnabled)
+                {
+                    PlayFootstep(entity, state.FootstepSound != 0UL ? state.FootstepSound : m_FieldModuleMonoBehaviour.FootstepSound, entity.TakeStep());
+                }
+            }
+
+            entity.SetWalkCycle(cycle);
+        }
+
+        private void PlayFootstep(FieldEntityComponents entity, ulong sound, int position)
+        {
+            if (sound == 0UL)
+            {
+                return;
+            }
+
+            Camera  camera   = m_FieldModuleMonoBehaviour.Camera;
+            Vector3 viewport = camera.WorldToViewportPoint(entity.Entity.transform.position);
+            float   distance = camera.orthographic ? 0f : viewport.z;
+
+            m_SfxPlayer.PlayAsync(sound, Footsteps.Volume(distance, m_FieldModuleMonoBehaviour.FootstepFarDistance), Footsteps.Pan(viewport.x), 0f, position).FireAndForget();
+        }
+
         private void OnRequestStopSound(byte channel)
         {
             m_SoundChannels.Stop(channel);
@@ -1283,6 +1357,7 @@ namespace RPGFramework.Field
         private void OnRequestSetPlayerEntity(FieldEntityRuntime entity)
         {
             m_FieldContext.SetPlayerEntity(entity);
+            m_FieldContext.EntityState(entity.EntityId).FootstepsEnabled = true;
 
             m_PlayerMovementDriver?.SetMoveInput(Vector3.zero);
 
@@ -1934,9 +2009,18 @@ namespace RPGFramework.Field
         {
             IAnimationDriver animation = GetAnimationDriver(entityId);
 
-            state.Climb.Tick(deltaTime, ClimbSteer(entityId, state.Climb));
+            float steer   = ClimbSteer(entityId, state.Climb);
+            float before  = state.Climb.Cycle;
+            bool  onRungs = state.Climb.IsClimbing;
+
+            state.Climb.Tick(deltaTime, steer);
 
             GetMovementDriver(entityId).SetPosition(state.Climb.Position);
+
+            if (onRungs && state.Climb.IsClimbing && state.FootstepsEnabled && FootLandedOnRung(entityId, before, state.Climb.Cycle, state.Climb.CycleDirection(steer)))
+            {
+                PlayFootstep(m_Entities[entityId], m_FieldModuleMonoBehaviour.LadderSound, state.Climb.TakeStep());
+            }
 
             if (state.Climb.IsFinished)
             {
@@ -1949,6 +2033,13 @@ namespace RPGFramework.Field
             LadderPose pose = state.Climb.Pose;
 
             animation.Pose(LadderAnimationName(state, pose.Animation), pose.NormalisedTime);
+        }
+
+        private bool FootLandedOnRung(int entityId, float before, float after, float direction)
+        {
+            FieldEntity body = m_Entities[entityId].Entity;
+
+            return direction > 0f ? body.FootLandedBetween(before, after) : direction < 0f && body.FootLandedBetween(after, before);
         }
 
         // Only the player steers, and only with control of the player; anything else climbs by itself.

@@ -587,6 +587,7 @@ namespace RPGFramework.Field.Editor
 
                 // Left off by a line written before the argument existed, it is the same as left empty.
                 case ArgumentType.TransitionName:
+                case ArgumentType.OptionalSoundName:
                     bw.Write(part < parts.Length && parts[part].Length > 0 ? Fnv1a64.Hash(parts[part]) : 0UL);
                     break;
 

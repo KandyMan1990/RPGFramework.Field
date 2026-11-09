@@ -1,3 +1,4 @@
+using RPGFramework.Core.Audio;
 using RPGFramework.Core;
 using RPGFramework.Core.Input;
 using RPGFramework.DI;
@@ -19,6 +20,9 @@ namespace RPGFramework.Field
         public Camera           Camera                 => m_CinemachineBrain.OutputCamera;
         public CinemachineBrain CinemachineBrain       => m_CinemachineBrain;
         public bool             VisibleWhileSuspended  => m_VisibleWhileSuspended;
+        public ulong            FootstepSound          => m_FootstepSound;
+        public ulong            LadderSound            => m_LadderSound;
+        public float            FootstepFarDistance    => m_FootstepFarDistance;
 
         /// <summary>
         /// Which way is up the screen for a camera looking the usual way over the field, along the ground: forward in a
@@ -61,6 +65,21 @@ namespace RPGFramework.Field
         [Tooltip("Keep the field on screen, frozen, under a module opened over it, such as the menu. Off, its camera is switched off until the field resumes.")]
         [SerializeField]
         private bool m_VisibleWhileSuspended;
+
+        [Tooltip("What footsteps sound like unless a script gives an entity its own. A collection varies them")]
+        [SerializeField]
+        [SoundName]
+        private ulong m_FootstepSound;
+
+        [Tooltip("What climbing a ladder sounds like, whatever an entity's footsteps are")]
+        [SerializeField]
+        [SoundName]
+        private ulong m_LadderSound;
+
+        [Tooltip("How far from a camera with perspective a footstep has faded to its quietest, in the field's units. 0 keeps them all near")]
+        [SerializeField]
+        [Min(0f)]
+        private float m_FootstepFarDistance = 30f;
 
         void IModuleBindings.Bind(IDIContainer sceneContainer)
         {

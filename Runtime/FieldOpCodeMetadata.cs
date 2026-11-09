@@ -116,6 +116,8 @@ namespace RPGFramework.Field
         /// hash. Left empty, or left off the end of a line, it is <c>0</c>: whatever the router chooses.
         /// </summary>
         TransitionName,
+        /// <summary>A sound's name hash as <see cref="SoundName" />, or left empty, <c>0</c>, for the game's own.</summary>
+        OptionalSoundName,
 
         /// <summary>
         /// An animation on this entity, authored by name and encoded as that name's 64-bit hash. Export keeps the
@@ -442,6 +444,7 @@ namespace RPGFramework.Field
                 case ArgumentType.MusicStateName:
                 case ArgumentType.ActionName:
                 case ArgumentType.TransitionName:
+                case ArgumentType.OptionalSoundName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.LocalisationKey:
                     read = GameArgumentRead.Name;

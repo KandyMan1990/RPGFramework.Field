@@ -1,3 +1,4 @@
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace RPGFramework.Field
@@ -143,6 +144,20 @@ namespace RPGFramework.Field
             m_Animator.Update(0f);
 
             return m_Animator.GetCurrentAnimatorStateInfo(BASE_LAYER).length;
+        }
+
+        bool IAnimationDriver.TryGetBaseCycle(out float cycle)
+        {
+            cycle = 0f;
+
+            if (m_PlayingState != 0 || !m_Animator.isActiveAndEnabled)
+            {
+                return false;
+            }
+
+            cycle = math.frac(m_Animator.GetCurrentAnimatorStateInfo(BASE_LAYER).normalizedTime);
+
+            return true;
         }
 
         bool IAnimationDriver.IsPlaying => m_PlayingState != 0 && !m_Finished;

@@ -1196,6 +1196,7 @@ namespace RPGFramework.Field.Editor
                             break;
 
                         case ArgumentType.SoundName:
+                        case ArgumentType.OptionalSoundName when name.Length > 0:
                             if (!audioNames.Sounds.Contains(name))
                             {
                                 problems.Add($"{scriptDescription} uses {parts[0]} on sound [{name}], which no SFX provider lists. Pick a sound the block editor offers");

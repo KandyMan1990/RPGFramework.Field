@@ -27,6 +27,8 @@ namespace RPGFramework.Field
         internal event Action<ulong, float>                    RequestMusicStemState;
         internal event Action<ulong>                           RequestBattleMusic;
         internal event Action<ulong, float, float, byte>       RequestSfx;
+        internal event Action<int, ulong, bool>                RequestSetFootstepSound;
+        internal event Action<int, bool, bool>                 RequestSetFootstepsEnabled;
         internal event Action<byte>                            RequestStopSound;
         internal event Action<byte, float, float>              RequestFadeSoundVolume;
         internal event Action<byte, float, float>              RequestFadeSoundPan;
@@ -472,8 +474,8 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetHeadPose, SetHeadPoseOpcodeHandler },
                        // { FieldScriptOpCode.StopHeadFacing, StopHeadFacingOpcodeHandler },
                        // { FieldScriptOpCode.WaitForHeadFacing, WaitForHeadFacingOpcodeHandler },
-                       // { FieldScriptOpCode.SetFootstepSound, SetFootstepSoundOpcodeHandler },
-                       // { FieldScriptOpCode.SetFootstepsEnabled, SetFootstepsEnabledOpcodeHandler },
+                       { FieldScriptOpCode.SetFootstepSound, SetFootstepSoundOpcodeHandler },
+                       { FieldScriptOpCode.SetFootstepsEnabled, SetFootstepsEnabledOpcodeHandler },
                        // { FieldScriptOpCode.SetEntityShadeLevel, SetEntityShadeLevelOpcodeHandler },
                        { FieldScriptOpCode.GetEntityPosition, GetEntityPositionOpcodeHandler },
                        { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
@@ -2206,6 +2208,28 @@ namespace RPGFramework.Field
         private void PopAnimationStateOpcodeHandler(FieldScriptContext ctx)
         {
             RequestPopAnimationState?.Invoke(ctx.EntityId);
+        }
+
+        /// <summary>
+        /// Choose the sound this entity's footsteps make, or every entity's.
+        /// </summary>
+        private void SetFootstepSoundOpcodeHandler(FieldScriptContext ctx)
+        {
+            ulong sound       = ctx.ReadName();
+            bool  allEntities = ctx.ReadBool();
+
+            RequestSetFootstepSound?.Invoke(ctx.EntityId, sound, allEntities);
+        }
+
+        /// <summary>
+        /// Turn this entity's footsteps on or off, or every entity's.
+        /// </summary>
+        private void SetFootstepsEnabledOpcodeHandler(FieldScriptContext ctx)
+        {
+            bool enabled     = ctx.ReadBool();
+            bool allEntities = ctx.ReadBool();
+
+            RequestSetFootstepsEnabled?.Invoke(ctx.EntityId, enabled, allEntities);
         }
 
         /// <summary>

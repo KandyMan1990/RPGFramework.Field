@@ -37,7 +37,7 @@ namespace RPGFramework.Field
 
         async Task<IFieldSound> IFieldSoundPlayer.PlayAsync(ulong nameHash, float volume, float pan, float startSeconds)
         {
-            ISfxReference reference = await m_SfxPlayer.PlayAsync(nameHash, volume, pan, startSeconds);
+            ISfxReference reference = await m_SfxPlayer.PlayAsync(nameHash, volume, pan, startSeconds, ISfxPlayer.NEXT_IN_ORDER);
 
             return new FieldSound(m_SfxPlayer, reference);
         }

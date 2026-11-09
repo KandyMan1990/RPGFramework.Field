@@ -38,6 +38,7 @@ namespace RPGFramework.Field.Editor
         private List<string>     m_FieldNames;
         private AudioNames       m_AudioNames;
         private List<string>     m_TransitionNames;
+        private List<string>     m_OptionalSoundNames;
         private List<string>     m_ActionNames;
 
         public FieldScriptBlockEditor(string scriptText, FieldEntities field, FieldEntityRecord entity, IReadOnlyList<LocalisationSheetAsset> sheets, Action<string> onChanged)
@@ -886,6 +887,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicNameHint:
                 case ArgumentType.MusicStateName:
                 case ArgumentType.TransitionName:
+                case ArgumentType.OptionalSoundName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.ActionName:
                 case ArgumentType.LocalisationKey:
@@ -911,7 +913,7 @@ namespace RPGFramework.Field.Editor
                     // Opening a script must not quietly repoint it at the first name in the list.
                     field.SetValueWithoutNotify(current);
 
-                    if (argument.Type == ArgumentType.TransitionName)
+                    if (argument.Type == ArgumentType.TransitionName || argument.Type == ArgumentType.OptionalSoundName)
                     {
                         field.formatSelectedValueCallback = DescribeTransition;
                         field.formatListItemCallback      = DescribeTransition;
@@ -1141,6 +1143,15 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.TransitionName:
                     return m_TransitionNames ??= GatherTransitionNames();
+
+                case ArgumentType.OptionalSoundName:
+                    if (m_OptionalSoundNames == null)
+                    {
+                        m_OptionalSoundNames = new List<string> { string.Empty };
+                        m_OptionalSoundNames.AddRange(Audio.Sounds);
+                    }
+
+                    return m_OptionalSoundNames;
 
                 case ArgumentType.AnimationName:
                     return m_AnimationNames ??= GatherAnimationNames();

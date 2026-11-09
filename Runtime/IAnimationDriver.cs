@@ -41,6 +41,12 @@ namespace RPGFramework.Field
         /// <summary>How long a state takes to play through, in seconds; none while the entity's visuals are hidden.</summary>
         float LengthOf(string stateName);
 
+        /// <summary>
+        /// How far through its cycle the base animation has got, 0 to 1. False while a script's animation plays over it
+        /// or the visuals are hidden.
+        /// </summary>
+        bool TryGetBaseCycle(out float cycle);
+
         /// <summary>Stops what was played and goes back to the base animation.</summary>
         void ReturnToBase();
 

@@ -1271,9 +1271,18 @@ namespace RPGFramework.Field
         SetHeadPose             = 0x053D, // byte pose (0 neutral, 1 up, 2 down)
         StopHeadFacing          = 0x053E, // return the head to neutral and leave tracking
         WaitForHeadFacing       = 0x053F, // wait until the head has reached where it was sent
-        SetFootstepSound        = 0x0540, // byte surfaceKey, byte soundSetId - per-surface footsteps for this entity
-        SetFootstepsEnabled     = 0x0541, // bool enabled
-        SetEntityShadeLevel     = 0x0542, // float level
+
+        [FieldOpCode("SET_FOOTSTEP_SOUND", ArgumentLayout.Sequential, Summary = "Choose the sound this entity's footsteps make, or every entity's. Left empty goes back to the game's own")]
+        [Argument(0, "sound",       ArgumentType.OptionalSoundName, Description = "the sound or collection's name, as it appears in the SFX provider")]
+        [Argument(1, "allEntities", ArgumentType.Bool, Description = "On: every entity in the field. Off: this one")]
+        SetFootstepSound = 0x0540,
+
+        [FieldOpCode("SET_FOOTSTEPS_ENABLED", ArgumentLayout.Sequential, Summary = "Turn this entity's footsteps on or off, or every entity's. The player has them from the start, anyone else only once a script says")]
+        [Argument(0, "enabled",     ArgumentType.Bool)]
+        [Argument(1, "allEntities", ArgumentType.Bool, Description = "On: every entity in the field. Off: this one")]
+        SetFootstepsEnabled = 0x0541,
+
+        SetEntityShadeLevel = 0x0542, // float level
 
         [FieldOpCode("GET_ENTITY_POSITION", ArgumentLayout.Sequential, Summary = "Store where an entity is", TargetsBody = true)]
         [Argument(0, "entity", ArgumentType.EntityId)]

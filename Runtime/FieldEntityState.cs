@@ -52,6 +52,8 @@ namespace RPGFramework.Field
         internal ulong             LadderGetOn;
         internal ulong             LadderClimbing;
         internal ulong             LadderGetOff;
+        internal bool              FootstepsEnabled;
+        internal ulong             FootstepSound;
         internal float             InteractionRange;
         internal float             MovementSpeed;
         internal float             AnimationSpeed;
