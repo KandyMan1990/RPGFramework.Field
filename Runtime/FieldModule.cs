@@ -85,6 +85,8 @@ namespace RPGFramework.Field
         private readonly IModuleScene               m_ModuleScene;
         private readonly BlockAllInputContext       m_SuspendedInputBlock;
         private readonly List<InteractionCandidate> m_InteractionCandidates;
+        private readonly IFieldEncounterDriver      m_EncounterDriver;
+        private readonly PlayerWalk                 m_PlayerWalk;
 
         private Task                                   m_MusicVolumeFade;
         private FieldModuleMonoBehaviour               m_FieldModuleMonoBehaviour;
@@ -135,6 +137,7 @@ namespace RPGFramework.Field
                              IFieldDatabase            fieldDatabase,
                              IFieldGameOpCodeDatabase  opCodeDatabase,
                              IFieldPresentation        fieldPresentation,
+                             IFieldEncounterDriver     encounterDriver,
                              ILocalisationService      localisationService,
                              IMemoryService            memoryService,
                              ITempMemoryArgs           tempMemoryArgs,
@@ -201,6 +204,8 @@ namespace RPGFramework.Field
             m_ModuleScene              = moduleScene;
             m_SuspendedInputBlock      = new BlockAllInputContext();
             m_InteractionCandidates    = new List<InteractionCandidate>();
+            m_EncounterDriver          = encounterDriver;
+            m_PlayerWalk               = new PlayerWalk();
             m_ExitFades                = true;
             m_Revealed                 = false;
 
@@ -391,6 +396,7 @@ namespace RPGFramework.Field
             }
 
             UpdateTickedMotions(deltaTime);
+            UpdateEncounters(deltaTime);
             UpdateHeads(deltaTime);
             UpdateEffects();
             MoveCameraFocus(deltaTime);
@@ -811,6 +817,7 @@ namespace RPGFramework.Field
             FieldEntities fieldEntities = fieldGameObject.GetComponent<FieldEntities>();
             m_Dimension       = fieldEntities.Dimension;
             m_WalkableTilemap = FindWalkableTilemap(fieldGameObject);
+            m_EncounterDriver.Enter(fieldGameObject);
             m_PlayerCameras   = fieldGameObject.GetComponentsInChildren<FollowPlayer>(true);
             m_Cameras         = fieldGameObject.GetComponentsInChildren<FieldCamera>(true);
             m_StartingCamera  = byte.MaxValue;
@@ -1775,6 +1782,39 @@ namespace RPGFramework.Field
             Vector3 worldMove = forward * move.y + right * move.x;
 
             MovePlayer(worldMove);
+        }
+
+        /// <summary>
+        /// Tells the encounter driver how far the player walked, when the walk could bring a random battle: the player's
+        /// own, not a script's, with random battles allowed, the field on show and clear of any fade, and nothing else
+        /// asked for.
+        /// </summary>
+        private void UpdateEncounters(float deltaTime)
+        {
+            if (m_PlayerEntityId == FieldEntity.NO_ENTITY || m_PlayerMovementDriver == null)
+            {
+                return;
+            }
+
+            Vector3        position = m_Entities[m_PlayerEntityId].Entity.transform.position;
+            PlayerWalkArgs walk     = m_PlayerWalk.Take(position, m_PlayerMovementDriver.MoveSpeed, deltaTime, Time.fixedDeltaTime);
+
+            bool counts = walk.Seconds > 0f                              &&
+                          m_PlayerPush != Vector2.zero                   &&
+                          !IsPlayerCarried()                             &&
+                          !m_PlayerMovementDriver.IsMovingToTarget       &&
+                          m_FieldContext.RandomEncountersEnabled         &&
+                          m_Revealed                                     &&
+                          m_Screen.IsClear                               &&
+                          !m_FieldTransitionRequested                    &&
+                          !m_MenuTransitionRequested                     &&
+                          !m_BattleTransitionRequested                   &&
+                          !m_GameOverRequested;
+
+            if (counts && m_EncounterDriver.TryStartBattle(walk, out BattleArgs args))
+            {
+                OnRequestStartBattle(args);
+            }
         }
 
         private bool IsPlayerCarried()

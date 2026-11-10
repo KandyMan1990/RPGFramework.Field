@@ -51,6 +51,8 @@ Field's variables:
 | `PlayerPositionX`, `PlayerPositionY`, `PlayerPositionZ`, `PlayerFacing` | Persistent | where the player stood, and which way they faced, when the game was saved |
 | `GameOverField`, `GameOverSpawn` | Session | where a lost battle sends the player; only their defaults are used |
 | `ScreenFade`, `ScreenFadeTransition`, `ScreenColour` | Persistent | how a script left the field's screen: faded, and by which transition, or tinted |
+| `EncounterDanger`, `EncounterStepFraction`, `LastEnemyGroup` | Session | how near the next random battle is, across fields and a scripted battle |
+| `EncounterRate` | Persistent | multiplies every field's rate of random battles: 0.5 half as often, 0 none; its default is 1 |
 
 ---
 
@@ -394,7 +396,12 @@ last argument or an argument left unread is logged, and the script stops there.
   battle or end the game.
   - A battle names what is fought and where, separately, and carries its own flags. Whether losing it, or a countdown running out, ends the
     game is the battle mode's, which a script sets and the game saves; after the battle, a script reads how it ended.
-    There are no random encounters yet: a battle starts only when a script starts it.
+  - Random battles come from a **Field Encounters** component on a field's root: the seconds of walking between them on
+    average, and four slots of what is fought and where, the first picked half the time, then a quarter, three
+    sixteenths and a sixteenth, so a group in two slots comes up more often. Only the player's own walking counts, not
+    while the screen fades or is held covered, and a script can stop them on a field. A game wanting its own kind binds an
+    `IFieldEncounterDriver` in the field scene's installer; one with enemies on the field starts its battles from their
+    scripts.
   - A game over sends the player to the game-over field your map names, entered afresh: a field like any other, whose
     scripts decide what it shows and when the game goes back to the title.
   - Returning from the menu or a battle puts the field back as it was: positions, animations, visibility, blockers, the

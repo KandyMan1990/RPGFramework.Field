@@ -61,6 +61,18 @@ namespace RPGFramework.Field
         /// <summary>The colour taken from or added to the screen, red, green and blue a byte each, red highest.</summary>
         public const string SCREEN_COLOUR = "ScreenColour";
 
+        /// <summary>How near the next random battle is: it rises with each check the player walks into, and a battle clears it.</summary>
+        public const string ENCOUNTER_DANGER = "EncounterDanger";
+
+        /// <summary>How far the player has walked toward the next check, from 0 to 1.</summary>
+        public const string ENCOUNTER_STEP_FRACTION = "EncounterStepFraction";
+
+        /// <summary>The enemy group the last random battle fought, which the next does not repeat where it can help it.</summary>
+        public const string LAST_ENEMY_GROUP = "LastEnemyGroup";
+
+        /// <summary>Multiplies every field's rate of random battles: 0.5 half as often, 0 none. Its default, 1, is a new game's.</summary>
+        public const string ENCOUNTER_RATE = "EncounterRate";
+
 #if UNITY_EDITOR
         private static readonly RequiredVariable[] m_Variables =
         {
@@ -74,7 +86,11 @@ namespace RPGFramework.Field
             new RequiredVariable(GAME_OVER_SPAWN,        MemoryBank.Session,    VariableWidth.Int,   "The spawn point the player arrives at in the game-over field. Only its default is used"),
             new RequiredVariable(SCREEN_FADE,            MemoryBank.Persistent, VariableWidth.Byte,  "Where a script left the field's screen: clear, faded out, or a colour taken from it or added. Its default, 0, is clear"),
             new RequiredVariable(SCREEN_FADE_TRANSITION, MemoryBank.Persistent, VariableWidth.ULong, "The transition a faded-out screen is covered by. Its default is not used"),
-            new RequiredVariable(SCREEN_COLOUR,          MemoryBank.Persistent, VariableWidth.Int,   "The colour taken from or added to the field's screen. Its default is not used")
+            new RequiredVariable(SCREEN_COLOUR,          MemoryBank.Persistent, VariableWidth.Int,   "The colour taken from or added to the field's screen. Its default is not used"),
+            new RequiredVariable(ENCOUNTER_DANGER,        MemoryBank.Session,    VariableWidth.UShort, "How near the next random battle is: it rises with each check the player walks into, and a battle clears it"),
+            new RequiredVariable(ENCOUNTER_STEP_FRACTION, MemoryBank.Session,    VariableWidth.Float,  "How far the player has walked toward the next random battle's check, from 0 to 1"),
+            new RequiredVariable(LAST_ENEMY_GROUP,        MemoryBank.Session,    VariableWidth.UShort, "The enemy group the last random battle fought, which the next does not repeat where it can help it"),
+            new RequiredVariable(ENCOUNTER_RATE,          MemoryBank.Persistent, VariableWidth.Float,  "Multiplies every field's rate of random battles: 0.5 half as often, 0 none. Its default is a new game's", (uint)System.BitConverter.SingleToInt32Bits(1f))
         };
 
         IReadOnlyList<RequiredVariable> IRequiredVariables.Variables => m_Variables;

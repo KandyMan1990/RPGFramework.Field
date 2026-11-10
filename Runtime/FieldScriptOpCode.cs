@@ -1008,12 +1008,12 @@ namespace RPGFramework.Field
         [Argument(0, "amount", ArgumentType.Int)]
         AddMoney = 0x040D,
 
-        AddItem      = 0x040E, // ushort itemId, int count - negative removes
-        GetItemCount = 0x040F,
+        AddItem      = 0x040F, // ushort itemId, int count - negative removes
+        GetItemCount = 0x0410,
 
         [FieldOpCode("SUBTRACT_MONEY", ArgumentLayout.Sequential, Summary = "Take money from the party, stopping at none")]
         [Argument(0, "amount", ArgumentType.Int)]
-        SubtractMoney = 0x0410,
+        SubtractMoney = 0x0411,
 
         // Field models and animation (0x0500)
 
