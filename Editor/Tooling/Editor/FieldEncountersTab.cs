@@ -14,7 +14,8 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class FieldEncountersTab
     {
-        private const string NONE = "(none)";
+        private const string NONE               = "(none)";
+        private const float  PICKER_LABEL_WIDTH = 70f;
 
         private readonly VisualElement m_Root;
         private readonly Action        m_Changed;
@@ -194,11 +195,15 @@ namespace RPGFramework.Field.Editor
 
         private static DropdownField Picker(string label, string tooltip, List<string> names, ulong chosen, Action<ulong> write)
         {
+            // Each picker takes half of the row whatever its name's length, and its label a fixed width, so rows line up.
             DropdownField picker = new DropdownField(label, names, 0)
                                    {
                                        tooltip = tooltip,
-                                       style   = { flexGrow = 1 }
+                                       style   = { flexGrow = 1, flexShrink = 1, flexBasis = 0 }
                                    };
+
+            picker.labelElement.style.minWidth = PICKER_LABEL_WIDTH;
+            picker.labelElement.style.width    = PICKER_LABEL_WIDTH;
 
             // What is already written stays shown when nothing answers to it, so opening a field cannot repoint it.
             picker.SetValueWithoutNotify(NameOf(chosen, names));
