@@ -30,7 +30,10 @@ on.
    - how wide the player's interaction angle is, 180° by default, and how far above or below them someone can be
      talked to, 2 by default;
    - the sounds a footstep and a ladder's rung make until a script says otherwise, and how far from a perspective camera
-     a step is at its quietest.
+     a step is at its quietest;
+   - the **Encounter Config** random battles are counted by: how a field's rate brings checks, how far each raises the
+     danger, and how a roll divides among a table's four slots. Field's own is set as the module is made; to change
+     them, make your own (Assets > Create > RPG Framework > Field > Encounter Config) and set it here.
 
    It also binds the field module, and its default presentation, loading fields from prefabs.
 2. **A scene installer** binding `IFieldDatabase` to the generated `FieldDatabase` (see Export, below). To show fields
@@ -51,7 +54,7 @@ Field's variables:
 | `PlayerPositionX`, `PlayerPositionY`, `PlayerPositionZ`, `PlayerFacing` | Persistent | where the player stood, and which way they faced, when the game was saved |
 | `GameOverField`, `GameOverSpawn` | Session | where a lost battle sends the player; only their defaults are used |
 | `ScreenFade`, `ScreenFadeTransition`, `ScreenColour` | Persistent | how a script left the field's screen: faded, and by which transition, or tinted |
-| `EncounterDanger`, `EncounterStepFraction`, `LastEnemyGroup` | Session | how near the next random battle is, across fields and a scripted battle |
+| `EncounterDanger`, `EncounterStepFraction`, `LastEncounter` | Session | how near the next random battle is, across fields and a scripted battle |
 | `EncounterRate` | Persistent | multiplies every field's rate of random battles: 0.5 half as often, 0 none; its default is 1 |
 
 ---

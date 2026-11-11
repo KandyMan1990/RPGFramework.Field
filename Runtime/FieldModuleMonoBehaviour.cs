@@ -81,8 +81,21 @@ namespace RPGFramework.Field
         [Min(0f)]
         private float m_FootstepFarDistance = 30f;
 
+        [Tooltip("How the default random battles count; Field's own unless the game makes another")]
+        [SerializeField]
+        private FieldEncounterConfig m_EncounterConfig;
+
+#if UNITY_EDITOR
+        private void Reset()
+        {
+            m_EncounterConfig = FieldEncounterConfig.LoadDefault();
+        }
+#endif
+
         void IModuleBindings.Bind(IDIContainer sceneContainer)
         {
+            sceneContainer.BindSingletonFromInstance(m_EncounterConfig);
+
             sceneContainer.BindSingletonIfNotRegistered<IFieldPresentation, PrefabFieldPresentation>();
             sceneContainer.BindSingletonIfNotRegistered<IFieldGameOpCodeDatabase, NullFieldGameOpCodeDatabase>();
             sceneContainer.BindSingletonIfNotRegistered<IFieldEncounterStore, FieldEncounterStore>();

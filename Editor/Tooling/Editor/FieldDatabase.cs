@@ -205,6 +205,7 @@ namespace RPGFramework.Field.Editor
             AudioNames      audioNames       = AudioNames.FromProject();
             List<string>    actionNames      = InputActionNames.Gather();
             List<string>    arenaNames       = ArenaNames.Gather();
+            List<string>    encounterNames   = EncounterNames.Gather();
 
             for (int i = 0; i < m_Fields.Count; i++)
             {
@@ -259,7 +260,7 @@ namespace RPGFramework.Field.Editor
                 ValidateTileField(prefab, fieldEntities, problems);
                 ValidateCamera(prefab, cameraIds, problems);
                 ValidateScrolls(prefab, fieldEntities, problems);
-                ValidateEncounters(prefab, arenaNames, problems);
+                ValidateEncounters(prefab, encounterNames, arenaNames, problems);
 
                 List<FieldEntityRecord> fieldEntityRecords = fieldEntities.Entities;
 
@@ -279,7 +280,7 @@ namespace RPGFramework.Field.Editor
                 {
                     FieldEntityRecord fieldEntityRecord = fieldEntityRecords[j];
 
-                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, effectIds, dialogueChannels, audioNames, actionNames, arenaNames, problems);
+                    ValidateEntity(prefab, fieldEntities.Dimension, fieldEntityRecord, entityIds, bodies, scriptCounts, withBodies, blockerIds, cameraIds, effectIds, dialogueChannels, audioNames, actionNames, encounterNames, arenaNames, problems);
                 }
 
                 ValidateDialogueKeys(prefab, m_Fields[i].LocalisationSheets, fieldEntities, problems);
@@ -430,6 +431,7 @@ namespace RPGFramework.Field.Editor
                                     DialogueChannelUse   dialogueChannels,
                                     AudioNames           audioNames,
                                     List<string>         actionNames,
+                                    List<string>         encounterNames,
                                     List<string>         arenaNames,
                                     List<string>         problems)
         {
@@ -510,6 +512,7 @@ namespace RPGFramework.Field.Editor
                 ValidateHeadOpcodes(body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
                 ValidateActionNames(actionNames, scriptDescription, lines, problems);
+                ValidateEncounterNames(encounterNames, scriptDescription, lines, problems);
                 ValidateArenaNames(arenaNames, scriptDescription, lines, problems);
                 ValidateScriptRequests(fieldEntityRecord, scriptCounts, scriptDescription, lines, problems);
                 ValidateTriggerSwitches(body, scriptDescription, lines, problems);
@@ -1234,10 +1237,10 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// A field's random battles are read from its root alone, one table, and a slot's arena is a name's hash, so a table
-        /// elsewhere or a second is never read and an arena no database holds cannot load.
+        /// A field's random battles are read from its root alone, one table, and a slot's encounter and arena are names'
+        /// hashes, so a table elsewhere or a second is never read and a name no database holds cannot start or load.
         /// </summary>
-        internal static void ValidateEncounters(GameObject field, List<string> arenaNames, List<string> problems)
+        internal static void ValidateEncounters(GameObject field, List<string> encounterNames, List<string> arenaNames, List<string> problems)
         {
             FieldEncounters[] tables = field.GetComponentsInChildren<FieldEncounters>(true);
 
@@ -1258,7 +1261,12 @@ namespace RPGFramework.Field.Editor
 
                 for (int j = 0; j < slots.Length; j++)
                 {
-                    if (!IsArenaName(slots[j].Arena, arenaNames))
+                    if (!IsName(slots[j].Encounter, encounterNames))
+                    {
+                        problems.Add($"{field.name}'s random battles: slot {j + 1} names an encounter no encounter database holds. Pick one in the Field Designer's Encounters tab");
+                    }
+
+                    if (!IsName(slots[j].Arena, arenaNames))
                     {
                         problems.Add($"{field.name}'s random battles: slot {j + 1} is fought in an arena no arena database holds. Pick one in the Field Designer's Encounters tab");
                     }
@@ -1266,11 +1274,11 @@ namespace RPGFramework.Field.Editor
             }
         }
 
-        private static bool IsArenaName(ulong hash, List<string> arenaNames)
+        private static bool IsName(ulong hash, List<string> names)
         {
-            for (int i = 0; i < arenaNames.Count; i++)
+            for (int i = 0; i < names.Count; i++)
             {
-                if (Fnv1a64.Hash(arenaNames[i]) == hash)
+                if (Fnv1a64.Hash(names[i]) == hash)
                 {
                     return true;
                 }
@@ -1279,8 +1287,19 @@ namespace RPGFramework.Field.Editor
             return false;
         }
 
+        /// <summary>An encounter is hashed as written, so a name no encounter database holds compiles and the battle cannot start.</summary>
+        internal static void ValidateEncounterNames(List<string> encounterNames, string scriptDescription, string[] lines, List<string> problems)
+        {
+            ValidateBattleNames(ArgumentType.EncounterName, encounterNames, "encounter", scriptDescription, lines, problems);
+        }
+
         /// <summary>An arena is hashed as written, so a name no arena database holds compiles and the battle cannot load.</summary>
         internal static void ValidateArenaNames(List<string> arenaNames, string scriptDescription, string[] lines, List<string> problems)
+        {
+            ValidateBattleNames(ArgumentType.ArenaName, arenaNames, "arena", scriptDescription, lines, problems);
+        }
+
+        private static void ValidateBattleNames(ArgumentType type, List<string> names, string kind, string scriptDescription, string[] lines, List<string> problems)
         {
             for (int i = 0; i < lines.Length; i++)
             {
@@ -1295,9 +1314,9 @@ namespace RPGFramework.Field.Editor
                 {
                     string name = ArgumentOf(parts, argument);
 
-                    if (opCode.Arguments[argument].Type == ArgumentType.ArenaName && !arenaNames.Contains(name))
+                    if (opCode.Arguments[argument].Type == type && !names.Contains(name))
                     {
-                        problems.Add($"{scriptDescription} uses {parts[0]} on arena [{name}], which no arena database holds. Pick one from the list, or add the arena to the database.");
+                        problems.Add($"{scriptDescription} uses {parts[0]} on {kind} [{name}], which no {kind} database holds. Pick one from the list, or add the {kind} to a database.");
                     }
                 }
             }

@@ -18,11 +18,11 @@ namespace RPGFramework.Field
         /// <summary>Sets how far the player has walked toward the next check.</summary>
         void SetStepFraction(float fraction);
 
-        /// <summary>The enemy group the last random battle fought, which the next does not repeat where it can help it.</summary>
-        ushort LastEnemyGroup { get; }
+        /// <summary>The encounter the last random battle fought, which the next does not repeat where it can help it.</summary>
+        ulong LastEncounter { get; }
 
-        /// <summary>Sets the enemy group the last random battle fought.</summary>
-        void SetLastEnemyGroup(ushort group);
+        /// <summary>Sets the encounter the last random battle fought.</summary>
+        void SetLastEncounter(ulong encounter);
 
         /// <summary>Multiplies every field's rate: 1 as authored, 0.5 half as often, 0 none.</summary>
         float Rate { get; }

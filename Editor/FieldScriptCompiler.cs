@@ -584,6 +584,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.AnimationName:
                 case ArgumentType.ActionName:
                 case ArgumentType.ArenaName:
+                case ArgumentType.EncounterName:
                     bw.Write(Fnv1a64.Hash(parts[part]));
                     break;
 

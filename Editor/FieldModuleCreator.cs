@@ -22,6 +22,7 @@ namespace RPGFramework.Field.Editor
 
             SerializedObject serializedModule = new SerializedObject(behaviour);
             serializedModule.FindProperty("m_CinemachineBrain").objectReferenceValue = brain;
+            serializedModule.FindProperty("m_EncounterConfig").objectReferenceValue  = FieldEncounterConfig.LoadDefault();
             serializedModule.ApplyModifiedPropertiesWithoutUndo();
 
             GameObjectUtility.SetParentAndAlign(module, command.context as GameObject);

@@ -8,32 +8,39 @@ namespace RPGFramework.Field.Tests.Compiler
     /// <summary>Each battle opcode reads only its own flags: a battle's on START_BATTLE, the game-over rules on the mode.</summary>
     internal sealed class WhenABattleIsCompiled
     {
-        private const int ARENA      = 5;
-        private const int TRANSITION = 15;
-        private const int LENGTH     = 23;
+        private const int ENCOUNTER  = 2;
+        private const int ARENA      = 10;
+        private const int TRANSITION = 21;
+        private const int LENGTH     = 29;
 
         [Test]
         public void ThenABattleWithItsOwnFlagsCompiles()
         {
-            Assert.AreEqual(LENGTH, FieldScriptCompiler.Compile("START_BATTLE 3 Forest 129 \"\"").Length);
+            Assert.AreEqual(LENGTH, FieldScriptCompiler.Compile("START_BATTLE Goblins Forest 129 \"\"").Length);
+        }
+
+        [Test]
+        public void ThenItWritesItsEncountersNameHash()
+        {
+            Assert.AreEqual(Fnv1a64.Hash("Goblins"), BitConverter.ToUInt64(FieldScriptCompiler.Compile("START_BATTLE Goblins Forest 0"), ENCOUNTER));
         }
 
         [Test]
         public void ThenItWritesItsArenasNameHash()
         {
-            Assert.AreEqual(Fnv1a64.Hash("Forest"), BitConverter.ToUInt64(FieldScriptCompiler.Compile("START_BATTLE 3 Forest 0"), ARENA));
+            Assert.AreEqual(Fnv1a64.Hash("Forest"), BitConverter.ToUInt64(FieldScriptCompiler.Compile("START_BATTLE Goblins Forest 0"), ARENA));
         }
 
         [Test]
         public void ThenABattleNamingNoTransitionLeavesItToTheRouter()
         {
-            Assert.AreEqual(0UL, BitConverter.ToUInt64(FieldScriptCompiler.Compile("START_BATTLE 3 Forest 0 \"\""), TRANSITION));
+            Assert.AreEqual(0UL, BitConverter.ToUInt64(FieldScriptCompiler.Compile("START_BATTLE Goblins Forest 0 \"\""), TRANSITION));
         }
 
         [Test]
         public void ThenALineLeavingOffItsTransitionLeavesItToTheRouter()
         {
-            byte[] line = FieldScriptCompiler.Compile("START_BATTLE 3 Forest 0");
+            byte[] line = FieldScriptCompiler.Compile("START_BATTLE Goblins Forest 0");
 
             Assert.AreEqual(LENGTH, line.Length);
             Assert.AreEqual(0UL, BitConverter.ToUInt64(line, TRANSITION));
@@ -42,7 +49,7 @@ namespace RPGFramework.Field.Tests.Compiler
         [Test]
         public void ThenABattleNamingItsTransitionWritesItsNamesHash()
         {
-            Assert.AreEqual(Fnv1a64.Hash("BossSwirl"), BitConverter.ToUInt64(FieldScriptCompiler.Compile("START_BATTLE 3 Forest 0 BossSwirl"), TRANSITION));
+            Assert.AreEqual(Fnv1a64.Hash("BossSwirl"), BitConverter.ToUInt64(FieldScriptCompiler.Compile("START_BATTLE Goblins Forest 0 BossSwirl"), TRANSITION));
         }
 
         [Test]

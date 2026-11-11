@@ -4,11 +4,12 @@ using RPGFramework.Core.SharedTypes;
 
 namespace RPGFramework.Field.Tests.Vm.Requests
 {
-    /// <summary>A battle carries what is fought, where, its flags and its transition, and ends the script's frame.</summary>
+    /// <summary>A battle carries its encounter, its arena, its flags and its transition, and ends the script's frame.</summary>
     internal sealed class WhenABattleIsStarted
     {
         private const BattleFlags FLAGS      = BattleFlags.DISABLE_ESCAPE | BattleFlags.USE_CURRENT_MUSIC;
-        private const ulong       ARENA      = 0x0102030405060708UL;
+        private const ulong       ENCOUNTER  = 0x0102030405060708UL;
+        private const ulong       ARENA      = 0x8877665544332211UL;
         private const ulong       TRANSITION = 0x1122334455667788UL;
         private const ushort      MARK       = 1000;
 
@@ -23,15 +24,15 @@ namespace RPGFramework.Field.Tests.Vm.Requests
 
             m_Field.Vm.RequestStartBattle += OnStartBattle;
 
-            m_Field.Run(new Script().Op(FieldScriptOpCode.StartBattle).Sources(Source.Immediate, Source.Immediate).UShort(3).ULong(ARENA)
+            m_Field.Run(new Script().Op(FieldScriptOpCode.StartBattle).ULong(ENCOUNTER).ULong(ARENA).Sources(Source.Immediate, Source.Immediate)
                                     .UShort((ushort)FLAGS).ULong(TRANSITION)
                                     .SetByte(MARK, 1).Return());
         }
 
         [Test]
-        public void ThenItAsksForItsEnemies()
+        public void ThenItAsksForItsEncounter()
         {
-            Assert.AreEqual(3, m_Battle.EnemyGroup);
+            Assert.AreEqual(ENCOUNTER, m_Battle.Encounter);
         }
 
         [Test]

@@ -5,14 +5,15 @@ using UnityEngine;
 namespace RPGFramework.Field.Tests.Encounters
 {
     /// <summary>
-    /// Every slot group 7, a danger no roll can pass, and a battle mode holding a random battle's flag and a game-over
-    /// rule.
+    /// Every slot encounter 7, a danger no roll can pass, and a battle mode holding a random battle's flag and a
+    /// game-over rule.
     /// </summary>
     internal sealed class WhenARandomBattleStarts
     {
         private const BattleFlags MODE = BattleFlags.USE_CURRENT_MUSIC | BattleFlags.DISABLE_GAME_OVER_ON_DEFEAT;
 
         private FakeFieldEncounterStore m_Store;
+        private FieldEncounterConfig    m_Config;
         private GameObject              m_Field;
         private bool                    m_Started;
         private BattleArgs              m_Battle;
@@ -22,9 +23,10 @@ namespace RPGFramework.Field.Tests.Encounters
         {
             m_Store        = new FakeFieldEncounterStore();
             m_Store.Danger = 300;
-            m_Field        = EncounterTable.Make(10f, 7, 7, 7, 7);
+            m_Config       = EncounterTable.Config();
+            m_Field        = EncounterTable.Make(16, 7, 7, 7, 7);
 
-            IFieldEncounterDriver driver = new RandomFieldEncounterDriver(m_Store, new FakeBattleModeStore(MODE));
+            IFieldEncounterDriver driver = new RandomFieldEncounterDriver(m_Store, new FakeBattleModeStore(MODE), m_Config);
 
             driver.Enter(m_Field);
 
@@ -35,6 +37,7 @@ namespace RPGFramework.Field.Tests.Encounters
         public void TearDown()
         {
             Object.DestroyImmediate(m_Field);
+            Object.DestroyImmediate(m_Config);
         }
 
         [Test]
@@ -44,9 +47,9 @@ namespace RPGFramework.Field.Tests.Encounters
         }
 
         [Test]
-        public void ThenItFightsTheSlotsEnemies()
+        public void ThenItFightsTheSlotsEncounter()
         {
-            Assert.AreEqual(7, m_Battle.EnemyGroup);
+            Assert.AreEqual(7UL, m_Battle.Encounter);
         }
 
         [Test]

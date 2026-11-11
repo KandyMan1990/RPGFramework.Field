@@ -7,13 +7,13 @@ namespace RPGFramework.Field.Tests.Encounters
         {
             Danger         = 0;
             StepFraction   = 0f;
-            LastEnemyGroup = 0;
+            LastEncounter  = 0;
             Rate           = 1f;
         }
 
         internal ushort Danger         { get; set; }
         internal float  StepFraction   { get; set; }
-        internal ushort LastEnemyGroup { get; set; }
+        internal ulong  LastEncounter  { get; set; }
         internal float  Rate           { get; set; }
 
         ushort IFieldEncounterStore.Danger => Danger;
@@ -30,11 +30,11 @@ namespace RPGFramework.Field.Tests.Encounters
             StepFraction = fraction;
         }
 
-        ushort IFieldEncounterStore.LastEnemyGroup => LastEnemyGroup;
+        ulong IFieldEncounterStore.LastEncounter => LastEncounter;
 
-        void IFieldEncounterStore.SetLastEnemyGroup(ushort group)
+        void IFieldEncounterStore.SetLastEncounter(ulong encounter)
         {
-            LastEnemyGroup = group;
+            LastEncounter = encounter;
         }
 
         float IFieldEncounterStore.Rate => Rate;

@@ -14,9 +14,7 @@ namespace RPGFramework.Field.Editor
     /// </summary>
     internal sealed class FieldEncountersTab
     {
-        private const string NO_ARENA = "(none)";
-
-        private static readonly string[] m_Shares = { "Half the time", "A quarter", "Three sixteenths", "A sixteenth" };
+        private const string NONE = "(none)";
 
         private readonly VisualElement m_Root;
         private readonly Action        m_Changed;
@@ -33,149 +31,208 @@ namespace RPGFramework.Field.Editor
         {
             m_Root.Clear();
 
-            FieldEncounters encounters = field.GetComponent<FieldEncounters>();
+            FieldEncounters      encounters = field.GetComponent<FieldEncounters>();
+            FieldEncounterConfig config     = CountingConfig();
 
-            m_Root.Add(new HelpBox("Random battles come as the player walks: about every so many seconds of walking, on average, " +
-                                   "0 for none — 30 is sparse, 15 a dungeon's usual pace, 7 very busy. The next is picked from " +
-                                   "four slots, so a group in two slots comes up more often; the group fought last is passed " +
-                                   "over for the slot after, but for the last slot.", HelpBoxMessageType.None));
+            m_Root.Add(new HelpBox("Random battles come as the player walks, as often as the rate says, 0 for none; the game's " +
+                                   "EncounterRate variable scales every field's. The next is picked from four slots, each an " +
+                                   "encounter and where it is fought, by a roll the encounter config divides among them, so " +
+                                   "an encounter in two slots comes up more often; the encounter fought last is passed over " +
+                                   "for the slot after, but for the last slot.", HelpBoxMessageType.None));
 
-            FloatField seconds = new FloatField("Average seconds")
-                                 {
-                                     isDelayed = true,
-                                     value     = encounters != null ? encounters.AverageSeconds : 0f,
-                                     tooltip   = "Seconds of walking between random battles, on average; 0 for none"
-                                 };
+            byte rate = encounters != null ? encounters.Rate : (byte)0;
 
-            seconds.RegisterValueChangedCallback(e => SetSeconds(field, math.max(0f, e.newValue)));
+            SliderInt slider = new SliderInt("Rate", 0, byte.MaxValue)
+                               {
+                                   showInputField = true,
+                                   value          = rate,
+                                   tooltip        = "How often random battles come, 0 for none"
+                               };
 
+            Label         seconds = new Label(SecondsText(config, rate));
+            seconds.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.Normal);
+            VisualElement slots   = new VisualElement();
+
+            slider.RegisterValueChangedCallback(e =>
+                                                {
+                                                    byte value = (byte)math.clamp(e.newValue, 0, byte.MaxValue);
+
+                                                    seconds.text = SecondsText(config, value);
+                                                    SetRate(field, value, config, slots);
+                                                });
+
+            m_Root.Add(slider);
             m_Root.Add(seconds);
+            m_Root.Add(slots);
 
             if (encounters != null)
             {
-                List<string>         arenas = ArenaNames.Gather();
-                FieldEncounterSlot[] slots  = encounters.Slots;
-
-                for (int i = 0; i < slots.Length; i++)
-                {
-                    m_Root.Add(SlotRow(encounters, i, slots[i], arenas));
-                }
+                ShowSlots(encounters, config, slots);
             }
 
             m_Root.Add(new Button(m_Save) { text = "Save field" });
         }
 
-        private void SetSeconds(GameObject field, float seconds)
+        // The game's own where it has made one, as its field module will be given it, and Field's otherwise.
+        private static FieldEncounterConfig CountingConfig()
+        {
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(FieldEncounterConfig));
+
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+
+                if (path.StartsWith("Assets/", StringComparison.Ordinal))
+                {
+                    return AssetDatabase.LoadAssetAtPath<FieldEncounterConfig>(path);
+                }
+            }
+
+            return FieldEncounterConfig.LoadDefault();
+        }
+
+        private static string SecondsText(FieldEncounterConfig config, byte rate)
+        {
+            if (rate == 0)
+            {
+                return "No random battles.";
+            }
+
+            float walking = EncounterMeter.AverageSeconds(config, rate, config.DangerPerCheckWalking);
+            float running = EncounterMeter.AverageSeconds(config, rate, config.DangerPerCheckRunning);
+
+            return $"A battle about every {walking:0.#} seconds of walking, on average, or {running:0.#} of running once running " +
+                   $"is built, as {config.name} counts.";
+        }
+
+        // The slots are drawn in a container of their own, so the slider is not rebuilt under the pointer as it adds the table.
+        private void SetRate(GameObject field, byte rate, FieldEncounterConfig config, VisualElement slots)
         {
             FieldEncounters encounters = field.GetComponent<FieldEncounters>();
 
             if (encounters == null)
             {
-                if (seconds <= 0f)
+                if (rate == 0)
                 {
                     return;
                 }
 
                 encounters = field.AddComponent<FieldEncounters>();
 
-                StartInFirstArena(encounters);
+                StartAtFirstChoices(encounters);
+                ShowSlots(encounters, config, slots);
             }
 
             SerializedObject authored = new SerializedObject(encounters);
 
-            authored.FindProperty("m_AverageSeconds").floatValue = seconds;
+            authored.FindProperty("m_Rate").intValue = rate;
             authored.ApplyModifiedPropertiesWithoutUndo();
 
             m_Changed();
-
-            Show(field);
         }
 
         /// <summary>As a new block's names start at each picker's first choice.</summary>
-        private static void StartInFirstArena(FieldEncounters encounters)
+        private static void StartAtFirstChoices(FieldEncounters encounters)
         {
-            List<string> arenas = ArenaNames.Gather();
-
-            if (arenas.Count == 0)
-            {
-                return;
-            }
+            List<string> encounterNames = EncounterNames.Gather();
+            List<string> arenaNames     = ArenaNames.Gather();
 
             SerializedObject   authored = new SerializedObject(encounters);
             SerializedProperty slots    = authored.FindProperty("m_Slots");
 
             for (int i = 0; i < slots.arraySize; i++)
             {
-                slots.GetArrayElementAtIndex(i).FindPropertyRelative("m_Arena").ulongValue = Fnv1a64.Hash(arenas[0]);
+                SerializedProperty slot = slots.GetArrayElementAtIndex(i);
+
+                slot.FindPropertyRelative("m_Encounter").ulongValue = encounterNames.Count > 0 ? Fnv1a64.Hash(encounterNames[0]) : 0;
+                slot.FindPropertyRelative("m_Arena").ulongValue     = arenaNames.Count > 0 ? Fnv1a64.Hash(arenaNames[0]) : 0;
             }
 
             authored.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private VisualElement SlotRow(FieldEncounters encounters, int index, FieldEncounterSlot slot, List<string> arenas)
+        private void ShowSlots(FieldEncounters encounters, FieldEncounterConfig config, VisualElement slots)
+        {
+            List<string>         encounterNames = EncounterNames.Gather();
+            List<string>         arenaNames     = ArenaNames.Gather();
+            FieldEncounterSlot[] chosen         = encounters.Slots;
+
+            slots.Clear();
+
+            for (int i = 0; i < chosen.Length; i++)
+            {
+                slots.Add(SlotRow(encounters, i, Share(config, i), chosen[i], encounterNames, arenaNames));
+            }
+        }
+
+        // The slot's part of the roll, before a slot holding the last encounter fought passes it on.
+        private static float Share(FieldEncounterConfig config, int index)
+        {
+            int[] limits = config.SlotRollLimits;
+            int   from   = index > 0 ? limits[index - 1] : 0;
+            int   to     = index < limits.Length ? limits[index] : FieldEncounterConfig.ROLLS;
+
+            return 100f * (to - from) / FieldEncounterConfig.ROLLS;
+        }
+
+        private VisualElement SlotRow(FieldEncounters encounters, int index, float share, FieldEncounterSlot slot, List<string> encounterNames, List<string> arenaNames)
         {
             VisualElement row = new VisualElement { style = { flexDirection = FlexDirection.Row } };
 
-            row.Add(new Label(m_Shares[index]) { style = { width = 120, unityTextAlign = TextAnchor.MiddleLeft } });
-
-            IntegerField group = new IntegerField("Enemy group")
-                                 {
-                                     isDelayed = true,
-                                     value     = slot.EnemyGroup,
-                                     tooltip   = "What is fought, as a number the game defines",
-                                     style     = { flexGrow = 1 }
-                                 };
-
-            group.RegisterValueChangedCallback(e =>
-                                               {
-                                                   int value = math.clamp(e.newValue, 0, ushort.MaxValue);
-
-                                                   group.SetValueWithoutNotify(value);
-                                                   Write(encounters, index, "m_EnemyGroup", p => p.uintValue = (uint)value);
-                                               });
-
-            DropdownField arena = new DropdownField("Arena", arenas, 0)
-                                  {
-                                      tooltip = "Where it is fought, from the project's arena databases",
-                                      style   = { flexGrow = 1 }
-                                  };
-
-            // What is already written stays shown when nothing answers to it, so opening a field cannot repoint it.
-            arena.SetValueWithoutNotify(ArenaNameOf(slot.Arena, arenas));
-            arena.RegisterValueChangedCallback(e => Write(encounters, index, "m_Arena", p => p.ulongValue = Fnv1a64.Hash(e.newValue)));
-
-            row.Add(group);
-            row.Add(arena);
+            row.Add(new Label($"Slot {index + 1}, {share:0.##}%")
+                    {
+                        tooltip = "How often a roll picks this slot, before a slot holding the last encounter fought passes it to the next",
+                        style   = { width = 110, unityTextAlign = TextAnchor.MiddleLeft }
+                    });
+            row.Add(Picker("Encounter", "What is fought and at what level, from the project's encounter databases", encounterNames, slot.Encounter,
+                           hash => Write(encounters, index, "m_Encounter", hash)));
+            row.Add(Picker("Arena", "Where it is fought, from the project's arena databases", arenaNames, slot.Arena,
+                           hash => Write(encounters, index, "m_Arena", hash)));
 
             return row;
         }
 
-        private void Write(FieldEncounters encounters, int index, string property, Action<SerializedProperty> write)
+        private static DropdownField Picker(string label, string tooltip, List<string> names, ulong chosen, Action<ulong> write)
+        {
+            DropdownField picker = new DropdownField(label, names, 0)
+                                   {
+                                       tooltip = tooltip,
+                                       style   = { flexGrow = 1 }
+                                   };
+
+            // What is already written stays shown when nothing answers to it, so opening a field cannot repoint it.
+            picker.SetValueWithoutNotify(NameOf(chosen, names));
+            picker.RegisterValueChangedCallback(e => write(Fnv1a64.Hash(e.newValue)));
+
+            return picker;
+        }
+
+        private void Write(FieldEncounters encounters, int index, string property, ulong hash)
         {
             SerializedObject authored = new SerializedObject(encounters);
 
-            write(authored.FindProperty("m_Slots").GetArrayElementAtIndex(index).FindPropertyRelative(property));
+            authored.FindProperty("m_Slots").GetArrayElementAtIndex(index).FindPropertyRelative(property).ulongValue = hash;
             authored.ApplyModifiedPropertiesWithoutUndo();
 
             m_Changed();
         }
 
-        private static string ArenaNameOf(ulong hash, List<string> arenas)
+        private static string NameOf(ulong hash, List<string> names)
         {
             if (hash == 0)
             {
-                return NO_ARENA;
+                return NONE;
             }
 
-            for (int i = 0; i < arenas.Count; i++)
+            for (int i = 0; i < names.Count; i++)
             {
-                if (Fnv1a64.Hash(arenas[i]) == hash)
+                if (Fnv1a64.Hash(names[i]) == hash)
                 {
-                    return arenas[i];
+                    return names[i];
                 }
             }
 
-            return $"(no arena database holds {hash:X16})";
+            return $"(no database holds {hash:X16})";
         }
     }
 }

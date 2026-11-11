@@ -4,35 +4,27 @@ using Unity.Mathematics;
 namespace RPGFramework.Field
 {
     /// <summary>
-    /// Brings a random battle nearer as the player walks: every so many seconds a check, which raises the danger, and a
-    /// roll below the danger starts a battle and clears it. Given its rolls, so a test chooses them.
+    /// Brings a random battle nearer as the player walks: the rate brings a check every so often, which raises the
+    /// danger, and a roll below the danger starts a battle and clears it, all as its config counts. Given its rolls, so a
+    /// test chooses them.
     /// </summary>
     internal sealed class EncounterMeter
     {
-        /// <summary>
-        /// The checks a battle takes on average, the danger rising by two a check against an even roll of 0 to 255; how
-        /// a field's average seconds become the seconds between checks.
-        /// </summary>
-        internal const float CHECKS_PER_BATTLE = 13.86f;
-
-        private const int DANGER_PER_CHECK = 2;
-
-        // A roll below each limit picks its slot unless the slot holds the last group fought; the fourth takes the rest.
-        private static readonly int[] m_SlotLimits = { 0x80, 0xC0, 0xF0 };
-
         private readonly IFieldEncounterStore m_Store;
+        private readonly FieldEncounterConfig m_Config;
         private readonly Func<byte>           m_NextRoll;
 
-        internal EncounterMeter(IFieldEncounterStore store, Func<byte> nextRoll)
+        internal EncounterMeter(IFieldEncounterStore store, FieldEncounterConfig config, Func<byte> nextRoll)
         {
             m_Store    = store;
+            m_Config   = config;
             m_NextRoll = nextRoll;
         }
 
-        /// <summary>Walks toward the next check and takes each one reached; true when one starts a battle.</summary>
-        internal bool Walk(float seconds, float secondsPerCheck)
+        /// <summary>Walks toward the next check at a field's rate and takes each one reached; true when one starts a battle.</summary>
+        internal bool Walk(float seconds, float rate)
         {
-            float walked = m_Store.StepFraction + seconds / secondsPerCheck;
+            float walked = m_Store.StepFraction + seconds * rate * m_Config.ChecksPerSecondAtRateOne;
             int   checks = (int)walked;
 
             m_Store.SetStepFraction(walked - checks);
@@ -48,30 +40,48 @@ namespace RPGFramework.Field
             return false;
         }
 
-        /// <summary>The slot the battle fights, whose group is remembered so the next does not repeat it.</summary>
+        /// <summary>The slot the battle fights, whose encounter is remembered so the next does not repeat it.</summary>
         internal FieldEncounterSlot Pick(FieldEncounterSlot[] slots)
         {
-            byte   roll   = m_NextRoll();
-            ushort last   = m_Store.LastEnemyGroup;
-            int    picked = slots.Length - 1;
+            int[] limits = m_Config.SlotRollLimits;
+            byte  roll   = m_NextRoll();
+            ulong last   = m_Store.LastEncounter;
+            int   picked = slots.Length - 1;
 
-            for (int i = 0; i < m_SlotLimits.Length; i++)
+            for (int i = 0; i < limits.Length; i++)
             {
-                if (roll < m_SlotLimits[i] && slots[i].EnemyGroup != last)
+                if (roll < limits[i] && slots[i].Encounter != last)
                 {
                     picked = i;
                     break;
                 }
             }
 
-            m_Store.SetLastEnemyGroup(slots[picked].EnemyGroup);
+            m_Store.SetLastEncounter(slots[picked].Encounter);
 
             return slots[picked];
         }
 
+#if UNITY_EDITOR
+        /// <summary>The seconds a battle takes to come on average at a rate above 0, each check raising the danger by a step.</summary>
+        internal static float AverageSeconds(FieldEncounterConfig config, byte rate, int dangerPerCheck)
+        {
+            float checks = 0f;
+            float reach  = 1f;
+
+            for (int danger = dangerPerCheck; reach > 0f; danger += dangerPerCheck)
+            {
+                checks += reach;
+                reach  *= 1f - (float)math.min(danger, FieldEncounterConfig.ROLLS) / FieldEncounterConfig.ROLLS;
+            }
+
+            return checks / (rate * config.ChecksPerSecondAtRateOne);
+        }
+#endif
+
         private bool Check()
         {
-            int danger = math.min(m_Store.Danger + DANGER_PER_CHECK, ushort.MaxValue);
+            int danger = math.min(m_Store.Danger + m_Config.DangerPerCheckWalking, ushort.MaxValue);
 
             if (m_NextRoll() < danger)
             {

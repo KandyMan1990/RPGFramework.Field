@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using UnityEngine;
 
 namespace RPGFramework.Field.Tests.Encounters
 {
@@ -6,15 +7,23 @@ namespace RPGFramework.Field.Tests.Encounters
     internal sealed class WhenACheckRollsUnderTheDanger
     {
         private FakeFieldEncounterStore m_Store;
+        private FieldEncounterConfig    m_Config;
         private bool                    m_Battle;
 
         [SetUp]
         public void SetUp()
         {
+            m_Config       = EncounterTable.OneCheckASecond();
             m_Store        = new FakeFieldEncounterStore();
             m_Store.Danger = 10;
 
-            m_Battle = new EncounterMeter(m_Store, Rolls.Of(11)).Walk(1f, 1f);
+            m_Battle = new EncounterMeter(m_Store, m_Config, Rolls.Of(11)).Walk(1f, 1f);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Object.DestroyImmediate(m_Config);
         }
 
         [Test]

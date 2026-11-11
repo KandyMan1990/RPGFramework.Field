@@ -8,6 +8,7 @@ namespace RPGFramework.Field.Tests.Encounters
     internal sealed class WhenARandomBattleCannotCome
     {
         private FakeFieldEncounterStore m_Store;
+        private FieldEncounterConfig    m_Config;
         private IFieldEncounterDriver   m_Driver;
         private GameObject              m_Field;
 
@@ -16,7 +17,8 @@ namespace RPGFramework.Field.Tests.Encounters
         {
             m_Store        = new FakeFieldEncounterStore();
             m_Store.Danger = 300;
-            m_Driver       = new RandomFieldEncounterDriver(m_Store, new FakeBattleModeStore(BattleFlags.DEFAULT));
+            m_Config       = EncounterTable.Config();
+            m_Driver       = new RandomFieldEncounterDriver(m_Store, new FakeBattleModeStore(BattleFlags.DEFAULT), m_Config);
             m_Field        = null;
         }
 
@@ -24,6 +26,7 @@ namespace RPGFramework.Field.Tests.Encounters
         public void TearDown()
         {
             Object.DestroyImmediate(m_Field);
+            Object.DestroyImmediate(m_Config);
         }
 
         [Test]
@@ -35,9 +38,9 @@ namespace RPGFramework.Field.Tests.Encounters
         }
 
         [Test]
-        public void ThenATableOfNoSecondsHasNone()
+        public void ThenATableAtRateNoneHasNone()
         {
-            m_Field = EncounterTable.Make(0f, 7, 7, 7, 7);
+            m_Field = EncounterTable.Make(0, 7, 7, 7, 7);
 
             Assert.IsFalse(Walk());
         }
@@ -45,7 +48,7 @@ namespace RPGFramework.Field.Tests.Encounters
         [Test]
         public void ThenARateOfNoneHasNone()
         {
-            m_Field      = EncounterTable.Make(10f, 7, 7, 7, 7);
+            m_Field      = EncounterTable.Make(16, 7, 7, 7, 7);
             m_Store.Rate = 0f;
 
             Assert.IsFalse(Walk());

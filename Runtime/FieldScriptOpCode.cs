@@ -146,9 +146,9 @@ namespace RPGFramework.Field
         SetBattleMode = 0x0105,
 
         [FieldOpCode("START_BATTLE", ArgumentLayout.Sequential, Summary = "Begin a battle. The script carries on after it. Ignored if the field is already changing", StopsInit = true)]
-        [Argument(0, "enemyGroup", ArgumentType.UShort, Description = "what is fought")]
+        [Argument(0, "encounter",  ArgumentType.EncounterName, Description = "what is fought and at what level")]
         [Argument(1, "arena",      ArgumentType.ArenaName, Description = "where it is fought")]
-        [Argument(2, "flags",      ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.ONE_BATTLE, Description = "this battle's own; whether losing ends the game is SET_BATTLE_MODE's")]
+        [Argument(2, "flags",      ArgumentType.UShort, EnumType = typeof(BattleFlags), EnumMask = BattleFlagMasks.ONE_BATTLE, Description = "this battle's own, with the encounter's; whether losing ends the game is SET_BATTLE_MODE's")]
         [Argument(3, "transition", ArgumentType.TransitionName, Description = "what covers the screen as it starts; empty for the router's battle transition")]
         StartBattle = 0x0106,
 

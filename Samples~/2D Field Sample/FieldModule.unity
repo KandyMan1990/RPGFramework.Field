@@ -432,6 +432,7 @@ MonoBehaviour:
   m_UIDocument: {fileID: 449652880}
   m_CinemachineBrain: {fileID: 336217847}
   m_VisibleWhileSuspended: 0
+  m_EncounterConfig: {fileID: 11400000, guid: 85a50c017162b43868aa4f6a18f2337d, type: 2}
 --- !u!114 &449652878
 MonoBehaviour:
   m_ObjectHideFlags: 0

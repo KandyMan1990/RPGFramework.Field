@@ -120,6 +120,9 @@ namespace RPGFramework.Field
         /// <summary>An arena in the game's arena database, authored by name and encoded as that name's 64-bit hash.</summary>
         ArenaName,
 
+        /// <summary>An encounter in the game's encounter database, authored by name and encoded as that name's 64-bit hash.</summary>
+        EncounterName,
+
         /// <summary>A sound's name hash as <see cref="SoundName" />, or left empty, <c>0</c>, for the game's own.</summary>
         OptionalSoundName,
 
@@ -462,6 +465,7 @@ namespace RPGFramework.Field
                 case ArgumentType.ActionName:
                 case ArgumentType.TransitionName:
                 case ArgumentType.ArenaName:
+                case ArgumentType.EncounterName:
                 case ArgumentType.OptionalSoundName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.LocalisationKey:

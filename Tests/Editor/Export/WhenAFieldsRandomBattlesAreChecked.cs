@@ -27,23 +27,31 @@ namespace RPGFramework.Field.Tests.Export
         {
             m_Field = new GameObject("Field");
 
-            Assert.IsEmpty(Problems(EncounterTable.ARENA_NAME));
+            Assert.IsEmpty(Problems(EncounterTable.ENCOUNTER_NAME, EncounterTable.ARENA_NAME));
         }
 
         [Test]
-        public void ThenATableOnTheRootInAKnownArenaPasses()
+        public void ThenATableOnTheRootNamingKnownEncountersAndArenasPasses()
         {
-            m_Field = EncounterTable.Make(15f, 1, 1, 2, 3);
+            m_Field = Table();
 
-            Assert.IsEmpty(Problems(EncounterTable.ARENA_NAME));
+            Assert.IsEmpty(Problems(EncounterTable.ENCOUNTER_NAME, EncounterTable.ARENA_NAME));
+        }
+
+        [Test]
+        public void ThenEachSlotNamingAnEncounterNoDatabaseHoldsIsRefused()
+        {
+            m_Field = Table();
+
+            Assert.AreEqual(FieldEncounters.SLOT_COUNT, Problems("Dragons", EncounterTable.ARENA_NAME).Count);
         }
 
         [Test]
         public void ThenEachSlotInAnArenaNoDatabaseHoldsIsRefused()
         {
-            m_Field = EncounterTable.Make(15f, 1, 1, 2, 3);
+            m_Field = Table();
 
-            Assert.AreEqual(FieldEncounters.SLOT_COUNT, Problems("Cave").Count);
+            Assert.AreEqual(FieldEncounters.SLOT_COUNT, Problems(EncounterTable.ENCOUNTER_NAME, "Cave").Count);
         }
 
         [Test]
@@ -51,16 +59,23 @@ namespace RPGFramework.Field.Tests.Export
         {
             m_Field = new GameObject("Field");
 
-            EncounterTable.Make(15f, 1, 1, 2, 3).transform.SetParent(m_Field.transform);
+            Table().transform.SetParent(m_Field.transform);
 
-            Assert.AreEqual(1, Problems(EncounterTable.ARENA_NAME).Count);
+            Assert.AreEqual(1, Problems(EncounterTable.ENCOUNTER_NAME, EncounterTable.ARENA_NAME).Count);
         }
 
-        private List<string> Problems(string arena)
+        private static GameObject Table()
+        {
+            ulong encounter = EncounterTable.ENCOUNTER;
+
+            return EncounterTable.Make(16, encounter, encounter, encounter, encounter);
+        }
+
+        private List<string> Problems(string encounter, string arena)
         {
             List<string> problems = new List<string>();
 
-            FieldDatabase.ValidateEncounters(m_Field, new List<string> { arena }, problems);
+            FieldDatabase.ValidateEncounters(m_Field, new List<string> { encounter }, new List<string> { arena }, problems);
 
             return problems;
         }

@@ -40,6 +40,7 @@ namespace RPGFramework.Field.Editor
         private AudioNames       m_AudioNames;
         private List<string>     m_TransitionNames;
         private List<string>     m_ArenaNames;
+        private List<string>     m_EncounterNames;
         private List<string>     m_OptionalSoundNames;
         private List<string>     m_ActionNames;
 
@@ -919,6 +920,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.MusicStateName:
                 case ArgumentType.TransitionName:
                 case ArgumentType.ArenaName:
+                case ArgumentType.EncounterName:
                 case ArgumentType.OptionalSoundName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.ActionName:
@@ -1178,6 +1180,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.ArenaName:
                     return m_ArenaNames ??= ArenaNames.Gather();
+
+                case ArgumentType.EncounterName:
+                    return m_EncounterNames ??= EncounterNames.Gather();
 
                 case ArgumentType.OptionalSoundName:
                     if (m_OptionalSoundNames == null)

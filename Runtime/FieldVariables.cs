@@ -67,8 +67,8 @@ namespace RPGFramework.Field
         /// <summary>How far the player has walked toward the next check, from 0 to 1.</summary>
         public const string ENCOUNTER_STEP_FRACTION = "EncounterStepFraction";
 
-        /// <summary>The enemy group the last random battle fought, which the next does not repeat where it can help it.</summary>
-        public const string LAST_ENEMY_GROUP = "LastEnemyGroup";
+        /// <summary>The encounter the last random battle fought, as its name's hash, which the next does not repeat where it can help it.</summary>
+        public const string LAST_ENCOUNTER = "LastEncounter";
 
         /// <summary>Multiplies every field's rate of random battles: 0.5 half as often, 0 none. Its default, 1, is a new game's.</summary>
         public const string ENCOUNTER_RATE = "EncounterRate";
@@ -89,7 +89,7 @@ namespace RPGFramework.Field
             new RequiredVariable(SCREEN_COLOUR,          MemoryBank.Persistent, VariableWidth.Int,   "The colour taken from or added to the field's screen. Its default is not used"),
             new RequiredVariable(ENCOUNTER_DANGER,        MemoryBank.Session,    VariableWidth.UShort, "How near the next random battle is: it rises with each check the player walks into, and a battle clears it"),
             new RequiredVariable(ENCOUNTER_STEP_FRACTION, MemoryBank.Session,    VariableWidth.Float,  "How far the player has walked toward the next random battle's check, from 0 to 1"),
-            new RequiredVariable(LAST_ENEMY_GROUP,        MemoryBank.Session,    VariableWidth.UShort, "The enemy group the last random battle fought, which the next does not repeat where it can help it"),
+            new RequiredVariable(LAST_ENCOUNTER,          MemoryBank.Session,    VariableWidth.ULong,  "The encounter the last random battle fought, which the next does not repeat where it can help it"),
             new RequiredVariable(ENCOUNTER_RATE,          MemoryBank.Persistent, VariableWidth.Float,  "Multiplies every field's rate of random battles: 0.5 half as often, 0 none. Its default is a new game's", (uint)System.BitConverter.SingleToInt32Bits(1f))
         };
 

@@ -1209,17 +1209,17 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Ask for a battle to begin, with its arena, enemy group, flags, enemy level and the transition that starts it,
-        /// and end the frame, so the rest of the script runs after the battle rather than before it.
+        /// Ask for a battle to begin, with its encounter, arena, flags and the transition that starts it, and end the
+        /// frame, so the rest of the script runs after the battle rather than before it.
         /// </summary>
         private void StartBattleOpcodeHandler(FieldScriptContext ctx)
         {
-            ushort enemyGroup  = ctx.ReadUShort();
+            ulong  encounter   = ctx.ReadName();
             ulong  arena       = ctx.ReadName();
             ushort battleFlags = ctx.ReadUShort();
             ulong  transition  = ctx.ReadName();
 
-            BattleArgs args = new BattleArgs(enemyGroup, arena, (BattleFlags)battleFlags, transition);
+            BattleArgs args = new BattleArgs(encounter, arena, (BattleFlags)battleFlags, transition);
 
             RequestStartBattle?.Invoke(args);
 

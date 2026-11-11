@@ -18,13 +18,13 @@ namespace RPGFramework.Field.Tests.Export
         [Test]
         public void ThenExportAcceptsOneADatabaseLists()
         {
-            Assert.IsEmpty(Problems("START_BATTLE 3 Forest 0"));
+            Assert.IsEmpty(Problems("START_BATTLE Goblins Forest 0"));
         }
 
         [Test]
         public void ThenExportRefusesOneNoDatabaseLists()
         {
-            Assert.AreEqual(1, Problems("START_BATTLE 3 Cave 0").Count);
+            Assert.AreEqual(1, Problems("START_BATTLE Goblins Cave 0").Count);
         }
     }
 }
