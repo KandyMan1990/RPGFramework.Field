@@ -259,6 +259,7 @@ namespace RPGFramework.Field.Editor
                 ValidateTileField(prefab, fieldEntities, problems);
                 ValidateCamera(prefab, cameraIds, problems);
                 ValidateScrolls(prefab, fieldEntities, problems);
+                ValidateEncounters(prefab, arenaNames, problems);
 
                 List<FieldEntityRecord> fieldEntityRecords = fieldEntities.Entities;
 
@@ -1230,6 +1231,52 @@ namespace RPGFramework.Field.Editor
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// A field's random battles are read from its root alone, one table, and a slot's arena is a name's hash, so a table
+        /// elsewhere or a second is never read and an arena no database holds cannot load.
+        /// </summary>
+        internal static void ValidateEncounters(GameObject field, List<string> arenaNames, List<string> problems)
+        {
+            FieldEncounters[] tables = field.GetComponentsInChildren<FieldEncounters>(true);
+
+            if (tables.Length > 1)
+            {
+                problems.Add($"{field.name} has {tables.Length} {nameof(FieldEncounters)}, where a field reads one, on its root. Keep the one on the root");
+            }
+
+            for (int i = 0; i < tables.Length; i++)
+            {
+                if (tables[i].gameObject != field)
+                {
+                    problems.Add($"{field.name} / '{tables[i].name}' has a {nameof(FieldEncounters)} away from the field's root, where nothing reads it. Move it to the root");
+                    continue;
+                }
+
+                FieldEncounterSlot[] slots = tables[i].Slots;
+
+                for (int j = 0; j < slots.Length; j++)
+                {
+                    if (!IsArenaName(slots[j].Arena, arenaNames))
+                    {
+                        problems.Add($"{field.name}'s random battles: slot {j + 1} is fought in an arena no arena database holds. Pick one in the Field Designer's Encounters tab");
+                    }
+                }
+            }
+        }
+
+        private static bool IsArenaName(ulong hash, List<string> arenaNames)
+        {
+            for (int i = 0; i < arenaNames.Count; i++)
+            {
+                if (Fnv1a64.Hash(arenaNames[i]) == hash)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>An arena is hashed as written, so a name no arena database holds compiles and the battle cannot load.</summary>

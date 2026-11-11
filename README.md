@@ -396,9 +396,10 @@ last argument or an argument left unread is logged, and the script stops there.
   battle or end the game.
   - A battle names what is fought and where, separately, and carries its own flags. Whether losing it, or a countdown running out, ends the
     game is the battle mode's, which a script sets and the game saves; after the battle, a script reads how it ended.
-  - Random battles come from a **Field Encounters** component on a field's root: the seconds of walking between them on
-    average, and four slots of what is fought and where, the first picked half the time, then a quarter, three
-    sixteenths and a sixteenth, so a group in two slots comes up more often. Only the player's own walking counts, not
+  - Random battles come from a **Field Encounters** component on a field's root, which the Field Designer's Encounters
+    tab edits: the seconds of walking between them on average, 0 for none, and four slots of what is fought and where,
+    the first picked half the time, then a quarter, three sixteenths and a sixteenth, so a group in two slots comes up
+    more often. Only the player's own walking counts, not
     while the screen fades or is held covered, and a script can stop them on a field. A game wanting its own kind binds an
     `IFieldEncounterDriver` in the field scene's installer; one with enemies on the field starts its battles from their
     scripts.

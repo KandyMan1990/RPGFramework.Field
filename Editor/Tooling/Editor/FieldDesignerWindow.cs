@@ -48,9 +48,10 @@ namespace RPGFramework.Field.Editor
         private Button        m_AddBlockerButton;
         private VisualElement m_ScriptBlockContainer;
 
-        private FieldEntityRecord m_SelectedEntity;
-        private FieldScriptRecord m_SelectedScript;
-        private HelpBox           m_ScriptStatus;
+        private FieldEntityRecord  m_SelectedEntity;
+        private FieldScriptRecord  m_SelectedScript;
+        private HelpBox            m_ScriptStatus;
+        private FieldEncountersTab m_EncountersTab;
 
         private GameObject    m_CurrentlyOpenPrefab;
         private string        m_CurrentlyOpenPrefabPath;
@@ -87,7 +88,7 @@ namespace RPGFramework.Field.Editor
                 return;
             }
 
-            if (hasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved script changes", $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts?", "Save", "Discard"))
+            if (hasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved changes", $"Save the changes to {m_CurrentlyOpenPrefab.name}?", "Save", "Discard"))
             {
                 SaveOpenPrefab();
             }
@@ -246,11 +247,7 @@ namespace RPGFramework.Field.Editor
             }
 
             CloseOpenPrefab();
-
-            m_CurrentlyOpenPrefabPath = AssetDatabase.GetAssetPath(m_CurrentFieldAsset.Prefab);
-            m_CurrentlyOpenPrefab     = PrefabUtility.LoadPrefabContents(m_CurrentlyOpenPrefabPath);
-            m_OpenFieldEntities       = m_CurrentlyOpenPrefab.GetComponent<FieldEntities>();
-            saveChangesMessage        = $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts?";
+            OpenCurrentPrefab();
 
             m_EntityListView.ClearSelection();
             m_EntityScriptListView.ClearSelection();
@@ -278,12 +275,28 @@ namespace RPGFramework.Field.Editor
             SetElementVisible(m_EncountersViewer, false);
         }
 
+        /// <summary>The Scripts and Encounters tabs both edit this copy, so moving between them keeps what is unsaved.</summary>
+        private void OpenCurrentPrefab()
+        {
+            m_CurrentlyOpenPrefabPath = AssetDatabase.GetAssetPath(m_CurrentFieldAsset.Prefab);
+            m_CurrentlyOpenPrefab     = PrefabUtility.LoadPrefabContents(m_CurrentlyOpenPrefabPath);
+            m_OpenFieldEntities       = m_CurrentlyOpenPrefab.GetComponent<FieldEntities>();
+            saveChangesMessage        = $"Save the changes to {m_CurrentlyOpenPrefab.name}?";
+        }
+
         private void OnEncountersButtonPressed(ClickEvent e)
         {
-            if (m_FieldsContainerListView.selectedIndex == -1)
+            if (m_FieldsContainerListView.selectedIndex == -1 || m_CurrentFieldAsset.Prefab == null)
             {
                 return;
             }
+
+            if (m_CurrentlyOpenPrefab == null)
+            {
+                OpenCurrentPrefab();
+            }
+
+            m_EncountersTab.Show(m_CurrentlyOpenPrefab);
 
             SetElementVisible(m_PrefabViewer,     false);
             SetElementVisible(m_TextViewer,       false);
@@ -305,7 +318,7 @@ namespace RPGFramework.Field.Editor
             m_Window           =  null;
 
             // Export reads the saved prefabs, so unsaved edits here would not be in it.
-            if (hasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved script changes", $"Save the changes to {m_CurrentlyOpenPrefab.name}'s scripts before exporting?", "Save", "Export without them"))
+            if (hasUnsavedChanges && EditorUtility.DisplayDialog("Unsaved changes", $"Save the changes to {m_CurrentlyOpenPrefab.name} before exporting?", "Save", "Export without them"))
             {
                 SaveOpenPrefab();
             }
@@ -499,6 +512,8 @@ namespace RPGFramework.Field.Editor
         {
             m_EncountersViewer = rootVisualElement.Q<VisualElement>("EncountersViewer");
             SetElementVisible(m_EncountersViewer, false);
+
+            m_EncountersTab = new FieldEncountersTab(m_EncountersViewer, () => hasUnsavedChanges = true, SaveOpenPrefab);
         }
 
         /// <summary>
