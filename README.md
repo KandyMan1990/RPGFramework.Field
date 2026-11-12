@@ -116,6 +116,7 @@ Bodies are built from **presets** named for what they are for:
 | Gateway | an unseen trigger area | a gateway script to write the jump in |
 | Character | a kinematic rigidbody, a capsule — standing in 3D, in 2D a footprint at its feet a cell wide — and an interaction trigger | shows itself |
 | Player character | the same, without the interaction trigger | makes itself the player |
+| Enemy | the same, with a trigger reaching past its body | starts a battle as the player walks into it, then hides until the field is entered again |
 | Interactable object | a solid box and an interaction trigger | — |
 | Examine point | an interaction trigger only, so it doesn't block | — |
 | Area | a trigger area | — |

@@ -17,6 +17,7 @@ namespace RPGFramework.Field.Editor
         Gateway,
         Character,
         PlayerCharacter,
+        Enemy,
         InteractableObject,
         ExaminePoint,
         Area,
@@ -42,6 +43,12 @@ namespace RPGFramework.Field.Editor
         private const string SAVE_POINT_2D_VISUALS = "Packages/com.rpgframework.field/Runtime/Prefabs/SavePoint2D.prefab";
         private const string SAVE_POINT_3D_VISUALS = "Packages/com.rpgframework.field/Runtime/Prefabs/SavePoint3D.prefab";
 
+        // An enemy's trigger reaches past its body, so the player walks into it before the body stops them: half a unit
+        // round a character's capsule, and in a tile field onto the four tiles beside it but not the corners.
+        private static readonly Vector3 m_EnemyTriggerSize3D   = new Vector3(2f, 2f, 2f);
+        private static readonly Vector3 m_EnemyTriggerCentre3D = new Vector3(0f, 1f, 0f);
+        private static readonly Vector3 m_EnemyTriggerSize2D   = new Vector3(1.5f, 1.5f, 0f);
+
         internal static FieldEntity Build(GameObject fieldRoot, FieldDimension dimension, FieldBodyPreset preset, string name, GameObject visuals)
         {
             GameObject bodyObject = new GameObject(name);
@@ -66,6 +73,11 @@ namespace RPGFramework.Field.Editor
 
                 case FieldBodyPreset.PlayerCharacter:
                     AddMovingBody(bodyObject, dimension);
+                    break;
+
+                case FieldBodyPreset.Enemy:
+                    AddMovingBody(bodyObject, dimension);
+                    AddEnemyTrigger(bodyObject, dimension);
                     break;
 
                 case FieldBodyPreset.InteractableObject:
@@ -154,6 +166,7 @@ namespace RPGFramework.Field.Editor
                                      FieldBodyPreset.Gateway            => "Walked into, and its Gateway script takes the player out of the field.",
                                      FieldBodyPreset.Character          => "Seen, moved, and talked to.",
                                      FieldBodyPreset.PlayerCharacter    => "The one the player drives: seen and moved, but nothing talks to it.",
+                                     FieldBodyPreset.Enemy              => "Seen and moved, and fought when the player walks into it: its enter script starts a battle with the first encounter and arena, to pick your own, and hides it once the battle is over, until the field is entered again. A variable its init script checks keeps it gone for good.",
                                      FieldBodyPreset.InteractableObject => "Seen, talked to, and walked into rather than through: a chest, a sign, something dropped.",
                                      FieldBodyPreset.ExaminePoint       => "Talked to and nothing else: a poster, a window, a place worth examining that is part of the scenery.",
                                      FieldBodyPreset.Area               => "An area the player walks into and out of, for enter and leave scripts that are not a way out.",
@@ -213,6 +226,22 @@ namespace RPGFramework.Field.Editor
 
         private static void AddTrigger(GameObject bodyObject, FieldDimension dimension)
         {
+            AddTrigger(bodyObject, dimension, Vector3.one, Vector3.zero);
+        }
+
+        private static void AddEnemyTrigger(GameObject bodyObject, FieldDimension dimension)
+        {
+            if (dimension == FieldDimension.TwoD)
+            {
+                AddTrigger(bodyObject, dimension, m_EnemyTriggerSize2D, Vector3.zero);
+                return;
+            }
+
+            AddTrigger(bodyObject, dimension, m_EnemyTriggerSize3D, m_EnemyTriggerCentre3D);
+        }
+
+        private static void AddTrigger(GameObject bodyObject, FieldDimension dimension, Vector3 size, Vector3 centre)
+        {
             GameObject triggerObject = new GameObject(TRIGGER_OBJECT);
             triggerObject.transform.SetParent(bodyObject.transform, false);
 
@@ -220,13 +249,15 @@ namespace RPGFramework.Field.Editor
             {
                 BoxCollider2D box2D = triggerObject.AddComponent<BoxCollider2D>();
                 box2D.isTrigger = true;
-                box2D.size      = Vector2.one;
+                box2D.size      = size;
+                box2D.offset    = centre;
             }
             else
             {
                 BoxCollider box = triggerObject.AddComponent<BoxCollider>();
                 box.isTrigger = true;
-                box.size      = Vector3.one;
+                box.size      = size;
+                box.center    = centre;
             }
 
             triggerObject.AddComponent<FieldCollisionTrigger>();
@@ -261,9 +292,9 @@ namespace RPGFramework.Field.Editor
 
         /// <summary>
         /// The scripts a body of this kind cannot do without: a gateway's script is what takes the player out of the
-        /// field, a save point is only its enter and leave scripts, and a camera zone its enter script, naming the
-        /// newest of the cameras under <paramref name="fieldRoot" />. Written only where the entity has none of that
-        /// type, so nothing an author wrote is touched.
+        /// field, a save point is only its enter and leave scripts, a camera zone its enter script, naming the newest of
+        /// the cameras under <paramref name="fieldRoot" />, and an enemy its enter script, the battle. Written only where
+        /// the entity has none of that type, so nothing an author wrote is touched.
         /// </summary>
         internal static void WritePresetScripts(FieldEntityRecord entity, FieldBodyPreset preset, bool hasVisuals, Transform fieldRoot)
         {
@@ -288,7 +319,27 @@ namespace RPGFramework.Field.Editor
                 AddScriptIfMissing(entity, FieldScriptType.OnEnter, $"SET_CAMERA {newest} 0 0\n" + NEW_SCRIPT_TEXT);
             }
 
+            if (preset == FieldBodyPreset.Enemy)
+            {
+                AddScriptIfMissing(entity, FieldScriptType.OnEnter, EnemyEnterScript(FirstOf(EncounterNames.Gather()), FirstOf(ArenaNames.Gather())));
+            }
+
             WriteInitScript(entity, preset, hasVisuals);
+        }
+
+        /// <summary>
+        /// The battle, then the enemy hidden, which also lets the player walk through it and stops its trigger. The script
+        /// carries on after the battle, and a field entered again shows it, as every entity starts shown.
+        /// </summary>
+        internal static string EnemyEnterScript(string encounter, string arena)
+        {
+            return $"START_BATTLE {FieldScriptLine.Quote(encounter)} {FieldScriptLine.Quote(arena)} 0\nVISIBILITY false\n" + NEW_SCRIPT_TEXT;
+        }
+
+        // As a new block's names start at each picker's first choice, and are left empty with nothing to offer.
+        private static string FirstOf(List<string> names)
+        {
+            return names.Count > 0 ? names[0] : string.Empty;
         }
 
         private static void AddScriptIfMissing(FieldEntityRecord entity, FieldScriptType type, string text)
@@ -346,6 +397,9 @@ namespace RPGFramework.Field.Editor
 
         [MenuItem(MENU + "Entity/Player Character", false, MENU_PRIORITY)]
         private static void CreatePlayerCharacter(MenuCommand command) => CreateEntity(command, FieldBodyPreset.PlayerCharacter);
+
+        [MenuItem(MENU + "Entity/Enemy", false, MENU_PRIORITY)]
+        private static void CreateEnemy(MenuCommand command) => CreateEntity(command, FieldBodyPreset.Enemy);
 
         [MenuItem(MENU + "Entity/Interactable Object", false, MENU_PRIORITY)]
         private static void CreateInteractableObject(MenuCommand command) => CreateEntity(command, FieldBodyPreset.InteractableObject);
@@ -438,6 +492,7 @@ namespace RPGFramework.Field.Editor
         [MenuItem(MENU + "Entity/Gateway",            true)]
         [MenuItem(MENU + "Entity/Character",          true)]
         [MenuItem(MENU + "Entity/Player Character",   true)]
+        [MenuItem(MENU + "Entity/Enemy",              true)]
         [MenuItem(MENU + "Entity/Interactable Object", true)]
         [MenuItem(MENU + "Entity/Examine Point",      true)]
         [MenuItem(MENU + "Entity/Area",               true)]
