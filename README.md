@@ -177,6 +177,15 @@ records the variable map's layout and the table of opcodes. **A player build is 
 opcodes, the framework's or your own, have changed since the last export**, because compiled scripts address
 variables where they were and hold the opcodes' values as they were.
 
+**From your own build steps or tests**, `IFieldBundleExport` builds the bundles as Export does, without writing
+`FieldDatabase.cs`, so nothing recompiles; it returns the problems that stopped it, none when it built. A field added or
+renamed still needs Export, which writes the database.
+
+```csharp
+IFieldBundleExport export   = new FieldBundleExport();
+string[]           problems = export.BuildBundles();
+```
+
 **RPG Framework > Field > Draw Interaction and Trigger Debug** draws interaction ranges and which way each entity faces,
 triggers, gateways and blockers in the Game view.
 

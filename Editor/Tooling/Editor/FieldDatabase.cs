@@ -2098,18 +2098,37 @@ namespace RPGFramework.Field.Editor
 
         public void BuildAssetBundles()
         {
-            int count = m_Fields.Count;
-            if (count == 0)
+            if (m_Fields.Count == 0)
             {
                 return;
             }
 
-            string[] problems = ValidateFields();
+            string[] problems = BuildBundles();
 
             if (problems.Length > 0)
             {
                 Debug.LogError($"{nameof(FieldDatabase)}::{nameof(BuildAssetBundles)} Not building — {problems.Length} problem(s) in the fields:\n  {string.Join("\n  ", problems)}");
                 return;
+            }
+
+            // Building the bundles leaves the editor's compile of the database script written before them undone, so the
+            // old database would stay loaded until something else compiled.
+            CompilationPipeline.RequestScriptCompilation();
+        }
+
+        /// <summary>
+        /// Checks every field and builds its bundle, recording the layout and opcode table they were compiled against; the
+        /// problems that stopped it, none when it built. Asks for no compile, as it writes no script.
+        /// </summary>
+        internal string[] BuildBundles()
+        {
+            int count = m_Fields.Count;
+
+            string[] problems = ValidateFields();
+
+            if (count == 0 || problems.Length > 0)
+            {
+                return problems;
             }
 
             if (Directory.Exists(m_AssetBundlesPath))
@@ -2150,9 +2169,7 @@ namespace RPGFramework.Field.Editor
 
             AssetDatabase.Refresh();
 
-            // Building the bundles leaves the editor's compile of the database script written before them undone, so the
-            // old database would stay loaded until something else compiled.
-            CompilationPipeline.RequestScriptCompilation();
+            return problems;
         }
     }
 }
