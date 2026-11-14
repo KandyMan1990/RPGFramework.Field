@@ -128,7 +128,9 @@ A body's visuals are your own prefab, placed as its visible object.
 
 The `HEAD_` opcodes turn a body's head on top of its animation, leaving the body as it is. A humanoid's head is found for
 you; on a generic rig, pick its head bone in **Head** on the body's Field Entity. A model imported with *Optimize Game
-Objects* must expose that bone. A sprite has no head, so export refuses these opcodes on a body without one.
+Objects* must expose that bone. They are 3D only: a sprite has no head to turn apart from its body, so export refuses them
+in a 2D field, where someone shows where they look by their facing (`SET_DIRECTION_TO_FACE_ENTITY`,
+`TURN_TO_ENTITY_AND_WAIT`), and the block editor does not offer them there.
 
 An **effect** is something an entity has that a script switches with `EFFECT_ACTIVATION`: a torch, steam, sparks. With an
 entity selected, GameObject › RPG Framework › Field › Effect makes one under its body, with a Particle System to start

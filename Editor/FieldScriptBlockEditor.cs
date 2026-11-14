@@ -80,7 +80,7 @@ namespace RPGFramework.Field.Editor
 
         /// <summary>
         /// Every opcode that can actually run, grouped the way the enum groups them, leaving out any that acts through a
-        /// package this project does not have.
+        /// package this project does not have, and in a 2D field the head's, which export refuses there.
         /// </summary>
         private void FillOpCodeMenu(DropdownMenu menu, List<FieldScriptBlock> target)
         {
@@ -98,6 +98,11 @@ namespace RPGFramework.Field.Editor
                 FieldOpCodeInfo opCode = opCodes[i];
 
                 if (opCode.Package != null && !UnityEditor.PackageManager.PackageInfo.IsPackageRegistered(opCode.Package))
+                {
+                    continue;
+                }
+
+                if (opCode.NeedsHead && m_Field.Dimension == FieldDimension.TwoD)
                 {
                     continue;
                 }

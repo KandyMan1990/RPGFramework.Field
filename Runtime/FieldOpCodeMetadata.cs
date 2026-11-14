@@ -266,8 +266,9 @@ namespace RPGFramework.Field
         public bool NeedsAnimator { get; set; }
 
         /// <summary>
-        /// True when the opcode turns the entity's head. A humanoid has one and a generic rig names its bone on its
-        /// body; a sprite has none, so export refuses one of these on an entity whose body cannot turn a head.
+        /// True when the opcode turns the entity's head, which makes it 3D only. A humanoid has one and a generic rig
+        /// names its bone on its body; a sprite has none, so export refuses one of these in a 2D field and on an entity
+        /// whose body cannot turn a head, and the block editor offers none in a 2D field.
         /// </summary>
         public bool NeedsHead { get; set; }
 

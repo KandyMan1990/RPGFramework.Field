@@ -62,7 +62,7 @@ namespace RPGFramework.Field.Tests.Export
         {
             List<string> problems = new List<string>();
 
-            FieldDatabase.ValidateHeadOpcodes(m_Entity, "script", lines, problems);
+            FieldDatabase.ValidateHeadOpcodes(FieldDimension.ThreeD, m_Entity, "script", lines, problems);
 
             return problems;
         }

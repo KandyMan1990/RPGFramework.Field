@@ -509,7 +509,7 @@ namespace RPGFramework.Field.Editor
                 ValidateIdTargets(ArgumentType.CameraId, cameraIds, "camera", nameof(FieldCamera), scriptDescription, lines, problems);
                 ValidateIdTargets(ArgumentType.EffectId, effectIds, "effect", nameof(FieldEffect), scriptDescription, lines, problems);
                 ValidateAnimationOpcodes(body, scriptDescription, lines, problems);
-                ValidateHeadOpcodes(body, scriptDescription, lines, problems);
+                ValidateHeadOpcodes(dimension, body, scriptDescription, lines, problems);
                 ValidateAudioNames(audioNames, scriptDescription, lines, problems);
                 ValidateActionNames(actionNames, scriptDescription, lines, problems);
                 ValidateEncounterNames(encounterNames, scriptDescription, lines, problems);
@@ -1437,11 +1437,14 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// A head needs a bone to turn: a humanoid has one, a generic rig names its own, and a sprite has none.
+        /// A head needs a bone to turn: a humanoid has one and a generic rig names its own. A 2D field has none to turn,
+        /// a sprite showing where it looks by its facing, so the head opcodes are 3D only.
         /// </summary>
-        internal static void ValidateHeadOpcodes(FieldEntity body, string scriptDescription, string[] lines, List<string> problems)
+        internal static void ValidateHeadOpcodes(FieldDimension dimension, FieldEntity body, string scriptDescription, string[] lines, List<string> problems)
         {
-            if (body == null || body.HasHead)
+            bool twoD = dimension == FieldDimension.TwoD;
+
+            if (!twoD && (body == null || body.HasHead))
             {
                 return;
             }
@@ -1450,10 +1453,14 @@ namespace RPGFramework.Field.Editor
             {
                 string[] parts = FieldScriptLine.Split(lines[i]);
 
-                if (FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) && opCode.NeedsHead)
+                if (!FieldOpCodeCatalogue.Project.TryGet(parts[0], out FieldOpCodeInfo opCode) || !opCode.NeedsHead)
                 {
-                    problems.Add($"{scriptDescription} uses {parts[0]}, but the entity's body has no head to turn. Give a generic rig's body its head bone on its Field Entity, or move the opcode to an entity that has one");
+                    continue;
                 }
+
+                problems.Add(twoD
+                                 ? $"{scriptDescription} uses {parts[0]}, which turns a 3D body's head. A 2D field shows where someone looks by their facing: use SET_DIRECTION_TO_FACE_ENTITY or TURN_TO_ENTITY_AND_WAIT"
+                                 : $"{scriptDescription} uses {parts[0]}, but the entity's body has no head to turn. Give a generic rig's body its head bone on its Field Entity, or move the opcode to an entity that has one");
             }
         }
 
