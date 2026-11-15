@@ -10,7 +10,7 @@
     "com.rpgframework.core.sharedtypes": "0.3.0",
     "com.rpgframework.di": "6.0.1",
     "com.rpgframework.field.sharedtypes": "0.3.0",
-    "com.rpgframework.hashing": "2.0.2",
+    "com.rpgframework.hashing": "3.0.0",
     "com.rpgframework.localisation": "4.0.0",
     "com.rpgframework.menu.sharedtypes": "0.4.0",
     "com.unity.cinemachine": "6.6.0",
