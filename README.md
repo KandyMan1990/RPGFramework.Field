@@ -4,7 +4,7 @@ The field: the explorable places of an RPG Framework game. A field is a prefab, 
 characters and objects are **entities**, and each runs **scripts**, authored in the Field Designer's block editor and
 compiled to bytecode, for movement, dialogue, music, the menus, saving and starting battles. Fields can be 2D or 3D.
 
-Requires Unity 6000.6 or newer, RPGFramework.Core and its shared types, the Field, Menu and Battle shared types,
+Requires Unity 6000.7 or newer, RPGFramework.Core and its shared types, the Field, Menu and Battle shared types,
 RPGFramework.DI, RPGFramework.Audio, RPGFramework.Localisation, RPGFramework.Hashing, Unity.Mathematics, the Input
 System and Cinemachine.
 

@@ -1,5 +1,6 @@
 using RPGFramework.Core.Input;
 using RPGFramework.Hashing;
+using Unity.Scripting.LifecycleManagement;
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ namespace RPGFramework.Field
     /// The actions the field reads beside Core's, each the hash of the name a game gives it, and every action the field
     /// reads, declared for the editor's check of the field scene's map.
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal sealed class FieldActions
 #if UNITY_EDITOR
         : IRequiredActions

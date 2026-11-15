@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using RPGFramework.Core.Memory;
+using Unity.Scripting.LifecycleManagement;
 
 namespace RPGFramework.Field.Editor
 {
@@ -78,6 +79,7 @@ namespace RPGFramework.Field.Editor
     /// palette, the compiler and a disassembler all describe the same opcodes without any of them keeping a second list
     /// in step. An opcode with no <see cref="FieldOpCodeAttribute" /> is a declaration of intent and is not offered.
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal sealed class FieldOpCodeCatalogue
     {
         // The words the compiler reads before it looks an opcode up, which an opcode's own name would never reach.

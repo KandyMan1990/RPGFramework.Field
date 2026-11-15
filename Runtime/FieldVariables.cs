@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Field.SharedTypes.Constants;
+using Unity.Scripting.LifecycleManagement;
 
 namespace RPGFramework.Field
 {
@@ -9,6 +10,7 @@ namespace RPGFramework.Field
     /// The variables the field module requires of every game's map, and the field module's place among the
     /// modules a new game can begin in.
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal sealed class FieldVariables
 #if UNITY_EDITOR
         : IRequiredVariables, IStartModule

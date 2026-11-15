@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Unity.Scripting.LifecycleManagement;
 using UnityEditor;
 using UnityEditor.Compilation;
 
@@ -12,6 +13,7 @@ namespace RPGFramework.Field
     /// <see cref="FieldOpCodeAttribute" />s; and a game's opcodes as their attributes describe them, for the checks
     /// made in play.
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal static class FieldOpCodeTables
     {
         private static Dictionary<ushort, DescribedGameOpCode> m_GameOpCodes;
