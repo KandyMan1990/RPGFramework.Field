@@ -106,6 +106,7 @@ namespace RPGFramework.Field
         internal event Action<QuestionArgs, Action<byte>>      RequestAskPlayerToMakeAChoice;
         internal event Action<byte, DialogueWindowStyle>       RequestSetDialogueWindowStyle;
         internal event Action<byte, int>                       RequestSetMessageVariable;
+        internal event Action<byte, float>                     RequestSetMessageSpeed;
         internal event Action<BattleFlags>                     RequestSetBattleMode;
         internal event Action<BattleArgs>                      RequestStartBattle;
         internal Func<BattleCompleteState>                     GetLastBattleResult;
@@ -385,7 +386,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.CloseDialogueWindow, CloseDialogueWindowOpcodeHandler },
                        { FieldScriptOpCode.SetDialogueWindowStyle, SetDialogueWindowStyleOpcodeHandler },
                        { FieldScriptOpCode.SetMessageVariable, SetMessageVariableOpcodeHandler },
-                       // { FieldScriptOpCode.SetMessageSpeed, SetMessageSpeedOpcodeHandler },
+                       { FieldScriptOpCode.SetMessageSpeed, SetMessageSpeedOpcodeHandler },
                        { FieldScriptOpCode.AskPlayerToMakeAChoice, AskPlayerToMakeAChoiceOpcodeHandler },
                        { FieldScriptOpCode.MainMenuAccessibility, MainMenuAccessibilityOpcodeHandler },
                        // { FieldScriptOpCode.OpenMainMenu, OpenMainMenuOpcodeHandler },
@@ -1589,6 +1590,18 @@ namespace RPGFramework.Field
             int  value = ctx.ReadInt();
 
             RequestSetMessageVariable?.Invoke(slot, value);
+        }
+
+        /// <summary>
+        /// Make a dialogue channel type at a fixed number of characters a second, its open window at once, until the
+        /// field unloads; zero or less gives it back to the player's message speed.
+        /// </summary>
+        private void SetMessageSpeedOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte  channel             = ctx.NextByte();
+            float charactersPerSecond = ctx.ReadFloat();
+
+            RequestSetMessageSpeed?.Invoke(channel, charactersPerSecond);
         }
 
         /// <summary>

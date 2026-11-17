@@ -6,14 +6,19 @@ using UnityEngine;
 namespace RPGFramework.Field
 {
     /// <summary>
-    /// One of a field's dialogue windows. A channel keeps its rectangle and style for every message shown on it,
-    /// so a script sets them once and then only names the channel. It shows one thing at a time.
+    /// One of a field's dialogue windows. A channel keeps its rectangle, style and any fixed speed for every message
+    /// shown on it, so a script sets them once and then only names the channel. It shows one thing at a time.
     /// </summary>
     internal sealed class FieldDialogueChannel
     {
         internal bool                HasRect;
         internal RectInt             Rect;
         internal DialogueWindowStyle Style;
+
+        /// <summary>
+        /// The speed <c>SET_MESSAGE_SPEED</c> fixed, in characters a second, or 0 for the player's message speed.
+        /// </summary>
+        internal float CharactersPerSecond;
 
         /// <summary>
         /// Whether the next window on this channel is sized to its text at <see cref="FitPosition" /> rather than

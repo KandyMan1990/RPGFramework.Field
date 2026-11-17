@@ -32,5 +32,15 @@ namespace RPGFramework.Field.Tests.Compiler
             Assert.AreEqual(7, variable[2]);
             Assert.AreEqual(1500, BitConverter.ToInt32(variable, 4));
         }
+
+        [Test]
+        public void ThenAMessageSpeedNamesItsChannelThenAFloat()
+        {
+            byte[] speed = FieldScriptCompiler.Compile("SET_MESSAGE_SPEED 2 45");
+
+            Assert.AreEqual(2 + 1 + 1 + 4, speed.Length);
+            Assert.AreEqual(2, speed[2]);
+            Assert.AreEqual(45f, BitConverter.ToSingle(speed, 4));
+        }
     }
 }

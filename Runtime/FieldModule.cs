@@ -568,6 +568,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestWaitForDialogueWindow       += OnRequestWaitForDialogueWindow;
             m_FieldContext.VM.RequestSetDialogueWindowStyle      += OnRequestSetDialogueWindowStyle;
             m_FieldContext.VM.RequestSetMessageVariable          += OnRequestSetMessageVariable;
+            m_FieldContext.VM.RequestSetMessageSpeed             += OnRequestSetMessageSpeed;
             m_FieldContext.VM.IsDialogueWindowOpen               =  IsDialogueWindowOpen;
             m_FieldContext.VM.RequestAskPlayerToMakeAChoice      += OnRequestAskPlayerToMakeAChoice;
             m_FieldContext.VM.RequestSetBattleMode               += OnRequestSetBattleMode;
@@ -600,6 +601,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestWaitForDialogueWindow       -= OnRequestWaitForDialogueWindow;
             m_FieldContext.VM.RequestSetDialogueWindowStyle      -= OnRequestSetDialogueWindowStyle;
             m_FieldContext.VM.RequestSetMessageVariable          -= OnRequestSetMessageVariable;
+            m_FieldContext.VM.RequestSetMessageSpeed             -= OnRequestSetMessageSpeed;
             m_FieldContext.VM.RequestCreateDialogueWindow        -= OnRequestCreateDialogueWindow;
             m_FieldContext.VM.RequestFitDialogueWindow           -= OnRequestFitDialogueWindow;
             m_FieldContext.VM.RequestOpenSaveMenu                -= OnRequestOpenSaveMenu;
@@ -2568,6 +2570,30 @@ namespace RPGFramework.Field
             m_MessageVariables[slot] = value;
         }
 
+        private void OnRequestSetMessageSpeed(byte channel, float charactersPerSecond)
+        {
+            FieldDialogueChannel dialogueChannel = m_DialogueChannels[channel];
+
+            dialogueChannel.CharactersPerSecond = charactersPerSecond;
+
+            if (dialogueChannel.Window != null)
+            {
+                SetMessageSpeed(dialogueChannel, dialogueChannel.Window);
+            }
+        }
+
+        private void SetMessageSpeed(FieldDialogueChannel dialogueChannel, IDialogueWindow window)
+        {
+            if (dialogueChannel.CharactersPerSecond > 0f)
+            {
+                window.SetCharactersPerSecond(dialogueChannel.CharactersPerSecond);
+            }
+            else
+            {
+                window.SetMessageSpeed(m_SettingsStore.FieldMessageSpeed);
+            }
+        }
+
         private void OnRequestShowDialogueWindow(byte channel, ulong dialogueId, bool blockMovement)
         {
             if (!TryOpenDialogueWindow(channel, dialogueId, out IDialogueWindow window))
@@ -2670,7 +2696,7 @@ namespace RPGFramework.Field
             window.SetRect(dialogueChannel.Rect);
             window.SetStyle(dialogueChannel.Style);
             window.SetMessageVariables(m_MessageVariables);
-            window.SetMessageSpeed(m_SettingsStore.FieldMessageSpeed);
+            SetMessageSpeed(dialogueChannel, window);
 
             dialogueChannel.Window = window;
             dialogueChannel.Close  = new CancellationTokenSource();

@@ -254,7 +254,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | **Flow** | `RETURN` `REQUEST_SCRIPT` `REQUEST_SCRIPT_WAIT_START` `REQUEST_SCRIPT_WAIT_END` `RETURN_TO_SCRIPT` `RETURN_TO_PRIORITY` `CALL_SCRIPT` `RETURN_FROM_CALL` `GOTO_JUMP` `GOTO_DIRECTLY` `IF_BOOL` to `IF_FLOAT` `YIELD` `WAIT_SECONDS` `NOP` |
 | **The field, saving, battles and game over** | `JUMP_TO_MAP` `GATEWAY_TRIGGER_ACTIVATION` `SET_FIELD_EXIT_FADE` `SAVE_ACCESSIBILITY` `SET_BATTLE_MODE` `START_BATTLE` `GET_LAST_BATTLE_RESULT` `SET_RANDOM_ENCOUNTERS_ENABLED` `GAME_OVER` |
 | **Variables** | `SET_` at each width from `BOOL` to `FLOAT`; `ADD_`, `SUB_`, `MUL_` and `DIV_` from `SBYTE` to `FLOAT`; `MOD_`, `INC_`, `DEC_`, `AND_`, `OR_`, `XOR_`, `NOT_`, `SET_BIT_` and `UNSET_BIT_` from `SBYTE` to `ULONG`; `_CLAMPED` forms of `ADD_`, `SUB_`, `INC_` and `DEC_`; `GET_RANDOM` `RANDOM_SEED` |
-| **Dialogue and menus** | `CREATE_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW_NO_WAIT` `SHOW_DIALOGUE_WINDOW_NO_WAIT_DISMISSIBLE` `SHOW_DIALOGUE_AT` `SHOW_DIALOGUE_AT_NO_WAIT` `SHOW_DIALOGUE_AT_NO_WAIT_DISMISSIBLE` `ASK_PLAYER_AT` `WAIT_FOR_DIALOGUE_WINDOW` `CLOSE_DIALOGUE_WINDOW` `SET_DIALOGUE_WINDOW_STYLE` `SET_MESSAGE_VARIABLE` `ASK_PLAYER_TO_MAKE_A_CHOICE` `MAIN_MENU_ACCESSIBILITY` `OPEN_SAVE_MENU` |
+| **Dialogue and menus** | `CREATE_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW_NO_WAIT` `SHOW_DIALOGUE_WINDOW_NO_WAIT_DISMISSIBLE` `SHOW_DIALOGUE_AT` `SHOW_DIALOGUE_AT_NO_WAIT` `SHOW_DIALOGUE_AT_NO_WAIT_DISMISSIBLE` `ASK_PLAYER_AT` `WAIT_FOR_DIALOGUE_WINDOW` `CLOSE_DIALOGUE_WINDOW` `SET_DIALOGUE_WINDOW_STYLE` `SET_MESSAGE_VARIABLE` `SET_MESSAGE_SPEED` `ASK_PLAYER_TO_MAKE_A_CHOICE` `MAIN_MENU_ACCESSIBILITY` `OPEN_SAVE_MENU` |
 | **Money** | `ADD_MONEY` `SUBTRACT_MONEY` |
 | **Entities** | `SET_PLAYER_ENTITY` `LOCK_INPUT` `VISIBILITY` `SOLIDITY` `PUSH_SCRIPT_ACTIVATION` `INTERACTION_TRIGGER_ACTIVATION` `SET_INTERACTION_RANGE` `COLLISION_TRIGGER_ACTIVATION` `SET_ENTITY_POSITION` `SET_ENTITY_ROTATION` `SET_ENTITY_ROTATION_OVER_TIME` `SET_DIRECTION_TO_FACE_ENTITY` `SET_DIRECTION_TO_FACE_POSITION` `TURN_TO_ENTITY_AND_WAIT` `COPY_ENTITY_POSE` `ENTITY_IN_FIELD` `IS_ENTITY_IN_RANGE` `GET_ENTITY_POSITION` `GET_ENTITY_DIRECTION` |
 | **Movement** | `SET_MOVEMENT_SPEED`; `MOVE_ENTITY` `GLIDE_ENTITY` `SLIDE_ENTITY` `MOVE_ENTITY_TO_ENTITY`, each also `_AND_WAIT`; `WAIT_FOR_MOVEMENT` `STOP_MOVEMENT` `SET_FOOTSTEPS_ENABLED` `SET_FOOTSTEP_SOUND` `JUMP_ENTITY_AND_WAIT` `CLIMB_LADDER_AND_WAIT` `SET_LADDER_ANIMATIONS` `SET_ENTITY_DRAW_OFFSET` `SET_ENTITY_DRAW_OFFSET_AND_WAIT` `WAIT_FOR_ENTITY_DRAW_OFFSET` |
@@ -382,7 +382,8 @@ last argument or an argument left unread is logged, and the script stops there.
     script closing each line after a while if the player does not.
   - A question's cursor starts on the answer its script names, and cancel moves it to its cancel answer, with the
     cancel sound; the player still confirms it.
-  - Text types at the player's field message speed.
+  - Text types at the player's field message speed, unless `SET_MESSAGE_SPEED` has fixed its channel's in characters
+    a second, for text timed to music, until the field unloads or 0 gives it back.
 - **Scrolling:**
   - A scroll moves the view from wherever it is to a point or onto an entity, over seconds, steadily or easing in and
     out, or at once; `WAIT_FOR_SCROLLING` waits for it to arrive. A point stays put; an entity is followed as it moves,

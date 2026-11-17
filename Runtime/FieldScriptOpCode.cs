@@ -926,7 +926,10 @@ namespace RPGFramework.Field
         [Argument(1, "value", ArgumentType.Int)]
         SetMessageVariable = 0x0306,
 
-        SetMessageSpeed = 0x0307, // float charactersPerSecond
+        [FieldOpCode("SET_MESSAGE_SPEED", ArgumentLayout.Sequential, Summary = "Make a dialogue channel type at a fixed speed whatever the player's message speed, for text timed to music, until the field unloads")]
+        [Argument(0, "channel",             ArgumentType.DialogueChannel)]
+        [Argument(1, "charactersPerSecond", ArgumentType.Float, Description = "0 gives the channel back to the player's message speed")]
+        SetMessageSpeed = 0x0307,
 
         [FieldOpCode("ASK_PLAYER_TO_MAKE_A_CHOICE", ArgumentLayout.Sequential, Summary = "Ask a question and store which answer the player chose", StopsInit = true)]
         [Argument(0, "destination", ArgumentType.Variable, VariableWidth.Byte)]
