@@ -176,8 +176,9 @@ shake moves the Scene view until you press it again, and a vibration runs a conn
 It then writes **`FieldDatabase.cs`**, which maps each field to its bundle, sheets and location name; it is generated,
 so don't edit it, and as it is C#, a field can't be added without a new build. It builds each field's asset bundle and
 records the variable map's layout and the table of opcodes. **A player build is refused if the variable map or the
-opcodes, the framework's or your own, have changed since the last export**, because compiled scripts address
-variables where they were and hold the opcodes' values as they were.
+opcodes — their values or how their arguments are written — the framework's or your own, have changed since the last
+export**, because compiled scripts address variables where they were and hold the opcodes' values and arguments as
+they were.
 
 **From your own build steps or tests**, `IFieldBundleExport` builds the bundles as Export does, without writing
 `FieldDatabase.cs`, so nothing recompiles; it returns the problems that stopped it, none when it built. A field added or

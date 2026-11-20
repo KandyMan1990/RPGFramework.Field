@@ -7,7 +7,8 @@ namespace RPGFramework.Field.Editor
     /// Refuses to build a player whose fields were exported against another layout of the variable map, or another table
     /// of opcodes. Their scripts address variables by the offsets they had then, so after a variable has moved, or a new
     /// one has filled a gap a deleted one left, they would read and write the wrong bytes; and they hold the opcodes'
-    /// values, so after one has moved, the framework's or the game's, they would run the wrong ones.
+    /// values and their arguments as they were written, so after one has moved, the framework's or the game's, they
+    /// would run the wrong ones, and after its arguments have changed, read them from the wrong bytes.
     /// </summary>
     internal sealed class FieldBuildCheck : IPreprocessBuildWithReport
     {
@@ -29,7 +30,7 @@ namespace RPGFramework.Field.Editor
 
             if (data.FieldDatabase.ExportedOpCodeHash != FieldExport.OpCodeHash(FieldOpCodeCatalogue.Project))
             {
-                throw new BuildFailedException("The field opcodes, the framework's or the game's, have changed since the fields were last exported, and their scripts hold the values they had then. Export the fields again from the Field Designer");
+                throw new BuildFailedException("The field opcodes, the framework's or the game's, or how their arguments are written, have changed since the fields were last exported, and their scripts hold the values and arguments they had then. Export the fields again from the Field Designer");
             }
         }
     }

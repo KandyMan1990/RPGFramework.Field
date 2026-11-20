@@ -22,14 +22,11 @@ namespace RPGFramework.Field.Editor
         internal const string BUILD_COPY_FOLDER = "Assets/RPGFrameworkFieldBuild";
 
         /// <summary>
-        /// What compiled scripts depend on in the variable map — every variable's name, bank, offset, width and count,
-        /// and a record's fields — in an order the list's own does not change. Scripts address variables by the offset
-        /// they had when compiled, so fields exported under one layout are wrong under another. The settings are left
-        /// out, as no script can name one.
-        /// </summary>
-        /// <summary>
-        /// Every opcode's value and script name, the framework's and the game's, in order of value. Scripts hold the
-        /// values they were compiled with, so fields exported under one table run the wrong opcodes under another.
+        /// Every opcode's value, script name, layout, and each argument's type and width in order, the framework's and
+        /// the game's, in order of value. Scripts hold the values they were compiled with and their arguments as they
+        /// were written, so fields exported under one table run the wrong opcodes, or read their arguments from the wrong
+        /// bytes, under another. What only the editor offers or export refuses — names, descriptions, defaults, the flags
+        /// — writes no byte, so is left out.
         /// </summary>
         internal static ulong OpCodeHash(FieldOpCodeCatalogue catalogue)
         {
@@ -46,12 +43,29 @@ namespace RPGFramework.Field.Editor
 
             for (int i = 0; i < opCodes.Length; i++)
             {
-                table.Append((ushort)opCodes[i].OpCode).Append(' ').Append(opCodes[i].ScriptName).Append('\n');
+                FieldOpCodeInfo opCode = opCodes[i];
+
+                table.Append((ushort)opCode.OpCode).Append(' ').Append(opCode.ScriptName).Append(' ').Append(opCode.Layout);
+
+                for (int j = 0; j < opCode.Arguments.Count; j++)
+                {
+                    FieldArgumentInfo argument = opCode.Arguments[j];
+
+                    table.Append(' ').Append(argument.Type).Append(' ').Append(argument.Width);
+                }
+
+                table.Append('\n');
             }
 
             return Fnv1a64.Hash(table.ToString());
         }
 
+        /// <summary>
+        /// What compiled scripts depend on in the variable map — every variable's name, bank, offset, width and count,
+        /// and a record's fields — in an order the list's own does not change. Scripts address variables by the offset
+        /// they had when compiled, so fields exported under one layout are wrong under another. The settings are left
+        /// out, as no script can name one.
+        /// </summary>
         internal static ulong LayoutHash(IVariableMap map)
         {
             List<VariableDefinition> variables = new List<VariableDefinition>(map.Variables.Count);
