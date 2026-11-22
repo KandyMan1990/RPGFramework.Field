@@ -219,6 +219,8 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.AnimationName:
                 case ArgumentType.ActionName:
                 case ArgumentType.LocalisationKey:
+                case ArgumentType.CharacterName:
+                case ArgumentType.CharacterNameList:
                 case ArgumentType.SpawnId:
                     return true;
 
@@ -274,6 +276,8 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.TransitionName:
                 case ArgumentType.ArenaName:
                 case ArgumentType.EncounterName:
+                case ArgumentType.CharacterName:
+                case ArgumentType.CharacterNameList:
                 case ArgumentType.OptionalSoundName:
                     return string.Empty;
 
@@ -323,7 +327,7 @@ namespace RPGFramework.Field.Editor
             {
                 string argument = Arguments[i];
 
-                bool isScriptText = i < OpCode.Arguments.Count && OpCode.Arguments[i].Type == ArgumentType.LocalisationKeyList;
+                bool isScriptText = i < OpCode.Arguments.Count && ArgumentTypes.IsList(OpCode.Arguments[i].Type);
 
                 sb.Append(' ');
                 sb.Append(isScriptText ? argument.Trim() : FieldScriptLine.Quote(argument.Trim()));
@@ -447,8 +451,7 @@ namespace RPGFramework.Field.Editor
 
                 for (int i = 0; i < opCode.Arguments.Count; i++)
                 {
-                    bool isLastAndVariadic = i                        == opCode.Arguments.Count - 1 &&
-                                             opCode.Arguments[i].Type == ArgumentType.LocalisationKeyList;
+                    bool isLastAndVariadic = i == opCode.Arguments.Count - 1 && ArgumentTypes.IsList(opCode.Arguments[i].Type);
 
                     if (isLastAndVariadic)
                     {

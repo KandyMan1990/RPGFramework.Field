@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using RPGFramework.Core.Dialogue;
 using RPGFramework.Core.Dialogue.Flows;
+using RPGFramework.Core.Editor;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Hashing;
@@ -359,6 +360,58 @@ namespace RPGFramework.Field.Editor
             return hash;
         }
 
+        // The party holds as many as the map's Party, each once; none would leave the field without a player.
+        private static void WriteCharacterList(BinaryWriter bw, string[] parts, int part, int lineNumber, ref IVariableMap variableMap)
+        {
+            variableMap ??= LoadVariableMap();
+
+            int count = parts.Length - part;
+
+            if (count < 1)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} needs at least one character, the leader");
+            }
+
+            if (variableMap.TryGetVariable(CoreVariables.PARTY, out VariableDefinition party) && count > party.Count)
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} names {count} characters, but the map's {CoreVariables.PARTY} holds {party.Count}");
+            }
+
+            ICharacterNames characters = new CharacterNames();
+
+            bw.Write((byte)count);
+
+            for (int i = part; i < parts.Length; i++)
+            {
+                if (Array.IndexOf(parts, parts[i], part, i - part) >= 0)
+                {
+                    throw new Exception($"line {lineNumber}: {parts[0]} names [{parts[i]}] twice");
+                }
+
+                bw.Write(HashCharacterName(parts, i, characters, lineNumber));
+            }
+        }
+
+        private static ulong HashCharacterName(string[] parts, int part, ICharacterNames characters, int lineNumber)
+        {
+            if (part >= parts.Length || string.IsNullOrWhiteSpace(parts[part]))
+            {
+                throw new Exception($"line {lineNumber}: {parts[0]} is missing its character");
+            }
+
+            IReadOnlyList<string> names = characters.Names;
+
+            for (int i = 0; i < names.Count; i++)
+            {
+                if (names[i] == parts[part])
+                {
+                    return Fnv1a64.Hash(parts[part]);
+                }
+            }
+
+            throw new KeyNotFoundException($"line {lineNumber}: no character is named [{parts[part]}]. {parts[0]} names a character, and the name has to match one in a Character Database");
+        }
+
         private static void WriteOpCode(BinaryWriter bw, MemoryStream ms, FieldOpCodeInfo opCode, string[] parts, int lineNumber, ref IVariableMap variableMap, Stack<OpenBlock> openBlocks)
         {
             switch (opCode.Layout)
@@ -392,7 +445,9 @@ namespace RPGFramework.Field.Editor
         {
             // A surplus argument would otherwise be dropped without a word, and the ones before it read as meaning
             // something else — as an old REQUEST_SCRIPT's slot would read as its event.
-            if (parts.Length - 1 > opCode.Arguments.Count)
+            bool endsInList = opCode.Arguments.Count > 0 && ArgumentTypes.IsList(opCode.Arguments[opCode.Arguments.Count - 1].Type);
+
+            if (parts.Length - 1 > opCode.Arguments.Count && !endsInList)
             {
                 throw new Exception($"line {lineNumber}: {parts[0]} takes {opCode.Arguments.Count} argument(s), but was given {parts.Length - 1}. A name with a space in it goes in double quotes");
             }
@@ -423,6 +478,10 @@ namespace RPGFramework.Field.Editor
                 else if (ArgumentTypes.TakesSource(argument.Type))
                 {
                     WriteSourcedArgument(bw, ms, argument.Type, parts[part], parts[0], lineNumber, ref sourcesPosition, ref variableMap);
+                }
+                else if (argument.Type == ArgumentType.CharacterNameList)
+                {
+                    WriteCharacterList(bw, parts, part, lineNumber, ref variableMap);
                 }
                 else
                 {
@@ -600,6 +659,10 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.LocalisationKey:
                     bw.Write(HashDialogueKey(parts, part, lineNumber));
+                    break;
+
+                case ArgumentType.CharacterName:
+                    bw.Write(HashCharacterName(parts, part, new CharacterNames(), lineNumber));
                     break;
 
                 case ArgumentType.DialogueChannel:

@@ -74,6 +74,7 @@ namespace RPGFramework.Field
         private readonly IGameOverFieldStore        m_GameOverFieldStore;
         private readonly ISongVolumeStore           m_SongVolumeStore;
         private readonly IMoneyStore                m_MoneyStore;
+        private readonly IPartyStore                m_PartyStore;
         private readonly ISettingsStore             m_SettingsStore;
         private readonly ISaveEnabledStore          m_SaveEnabledStore;
         private readonly ILocationNameStore         m_LocationNameStore;
@@ -156,6 +157,7 @@ namespace RPGFramework.Field
                              IBattleMusicStore         battleMusicStore,
                              ISongVolumeStore          songVolumeStore,
                              IMoneyStore               moneyStore,
+                             IPartyStore               partyStore,
                              IPausedMusicStore         pausedMusicStore,
                              IBattleModeStore          battleModeStore,
                              IBattleCompleteStateStore battleCompleteStateStore,
@@ -190,6 +192,7 @@ namespace RPGFramework.Field
             m_GameOverFieldStore       = gameOverFieldStore;
             m_SongVolumeStore          = songVolumeStore;
             m_MoneyStore               = moneyStore;
+            m_PartyStore               = partyStore;
             m_SettingsStore            = settingsStore;
             m_SaveEnabledStore         = saveEnabledStore;
             m_LocationNameStore        = locationNameStore;
@@ -483,6 +486,12 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusicCrossfade              += OnRequestMusicCrossfade;
             m_FieldContext.VM.RequestStopMusic                   += OnRequestStopMusic;
             m_FieldContext.VM.RequestAddMoney                    += OnRequestAddMoney;
+            m_FieldContext.VM.RequestAddToParty                  += m_PartyStore.AddToParty;
+            m_FieldContext.VM.RequestRemoveFromParty             += m_PartyStore.RemoveFromParty;
+            m_FieldContext.VM.RequestSetParty                    += m_PartyStore.SetParty;
+            m_FieldContext.VM.GetPartySlot                       =  m_PartyStore.FindSlot;
+            m_FieldContext.VM.RequestSetCharacterJoined          += m_PartyStore.SetJoined;
+            m_FieldContext.VM.HasCharacterJoined                 =  HasCharacterJoined;
             m_FieldContext.VM.RequestMusicVolume                 += OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             += OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              += OnRequestMusicStemState;
@@ -679,6 +688,12 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusicCrossfade              -= OnRequestMusicCrossfade;
             m_FieldContext.VM.RequestStopMusic                   -= OnRequestStopMusic;
             m_FieldContext.VM.RequestAddMoney                    -= OnRequestAddMoney;
+            m_FieldContext.VM.RequestAddToParty                  -= m_PartyStore.AddToParty;
+            m_FieldContext.VM.RequestRemoveFromParty             -= m_PartyStore.RemoveFromParty;
+            m_FieldContext.VM.RequestSetParty                    -= m_PartyStore.SetParty;
+            m_FieldContext.VM.GetPartySlot                       =  null;
+            m_FieldContext.VM.RequestSetCharacterJoined          -= m_PartyStore.SetJoined;
+            m_FieldContext.VM.HasCharacterJoined                 =  null;
             m_FieldContext.VM.RequestMusicVolume                 -= OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             -= OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              -= OnRequestMusicStemState;
@@ -1301,6 +1316,13 @@ namespace RPGFramework.Field
         private void OnRequestAddMoney(int amount)
         {
             m_MoneyStore.AddMoney(amount);
+        }
+
+        private bool HasCharacterJoined(ulong character)
+        {
+            int record = m_PartyStore.FindRecord(character);
+
+            return record >= 0 && m_PartyStore.HasJoined(record);
         }
 
         private void OnRequestMusicVolume(float volume, float seconds)

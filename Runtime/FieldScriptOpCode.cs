@@ -993,19 +993,37 @@ namespace RPGFramework.Field
         AskPlayerAt = 0x0314,
 
         // Party and inventory (0x0400)
-        AddCharacterToParty      = 0x0400,
-        RemoveCharacterFromParty = 0x0401,
-        ChangePartyMembers       = 0x0402,
-        SetAllPartyCharacters    = 0x0403,
-        GetCharacterInPartySlot  = 0x0404,
-        GetCharacterPartySlot    = 0x0405,
-        SetCharacterAvailability = 0x0406,
-        GetCharacterIsAvailable  = 0x0407,
-        SetPartyMemberLocked     = 0x0408, // byte characterId, bool locked - locked members cannot be swapped out
-        SetCharacterHP           = 0x0409, // byte characterId, ushort hp
-        GetCharacterHP           = 0x040A, // byte characterId, ushort destination
-        SetCharacterMP           = 0x040B,
-        GetCharacterMP           = 0x040C,
+
+        [FieldOpCode("ADD_TO_PARTY", ArgumentLayout.Sequential, Summary = "Put a character in the party's first empty slot, joining them too. With no slot empty, they only join")]
+        [Argument(0, "character", ArgumentType.CharacterName)]
+        AddToParty = 0x0400,
+
+        [FieldOpCode("REMOVE_FROM_PARTY", ArgumentLayout.Sequential, Summary = "Take a character out of the party, their slot left empty. Removing the leader leaves no player: set another with SET_PARTY")]
+        [Argument(0, "character", ArgumentType.CharacterName)]
+        RemoveFromParty = 0x0401,
+
+        [FieldOpCode("SET_PARTY", ArgumentLayout.Sequential, Summary = "Set the whole party, the leader first, each character joining; the slots after them are left empty")]
+        [Argument(0, "characters", ArgumentType.CharacterNameList, Description = "as many as the party has slots, each once")]
+        SetParty = 0x0403,
+
+        GetCharacterInPartySlot = 0x0404,
+
+        [FieldOpCode("GET_PARTY_SLOT", ArgumentLayout.Sequential, Summary = "Store the party slot a character is in, 0 the leader, or 255 when they are not in the party")]
+        [Argument(0, "character",   ArgumentType.CharacterName)]
+        [Argument(1, "destination", ArgumentType.Variable, VariableWidth.Byte)]
+        GetPartySlot = 0x0405,
+
+        [FieldOpCode("SET_CHARACTER_JOINED", ArgumentLayout.Sequential, Summary = "A character joins, so they may be put in the party, or leaves, leaving the party too. What they have is kept either way")]
+        [Argument(0, "character", ArgumentType.CharacterName)]
+        [Argument(1, "joined",    ArgumentType.Bool)]
+        SetCharacterJoined = 0x0406,
+
+        [FieldOpCode("GET_CHARACTER_JOINED", ArgumentLayout.Sequential, Summary = "Store whether a character has joined")]
+        [Argument(0, "character",   ArgumentType.CharacterName)]
+        [Argument(1, "destination", ArgumentType.Variable, VariableWidth.Bool)]
+        GetCharacterJoined = 0x0407,
+
+        SetPartyMemberLocked = 0x0408, // byte characterId, bool locked - locked members cannot be swapped out
 
         [FieldOpCode("ADD_MONEY", ArgumentLayout.Sequential, Summary = "Give the party money, up to the game's maximum")]
         [Argument(0, "amount", ArgumentType.Int)]

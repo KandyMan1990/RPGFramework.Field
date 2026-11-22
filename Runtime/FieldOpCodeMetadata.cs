@@ -123,6 +123,15 @@ namespace RPGFramework.Field
         /// <summary>An encounter in the game's encounter database, authored by name and encoded as that name's 64-bit hash.</summary>
         EncounterName,
 
+        /// <summary>A character in the game's character databases, authored by name and encoded as that name's 64-bit hash.</summary>
+        CharacterName,
+
+        /// <summary>
+        /// Characters as <see cref="CharacterName" />, each named once, running to the end of the line; encoded as a count
+        /// byte, then the hashes.
+        /// </summary>
+        CharacterNameList,
+
         /// <summary>A sound's name hash as <see cref="SoundName" />, or left empty, <c>0</c>, for the game's own.</summary>
         OptionalSoundName,
 
@@ -422,6 +431,12 @@ namespace RPGFramework.Field
             return takesSource;
         }
 
+        /// <summary>Whether an argument of this type is a list, the last of its opcode's, running to the end of the line.</summary>
+        internal static bool IsList(ArgumentType type)
+        {
+            return type == ArgumentType.LocalisationKeyList || type == ArgumentType.CharacterNameList;
+        }
+
         /// <summary>
         /// What a game's opcode handler reads for an argument of this type through <see cref="FieldScriptContext" />, or
         /// false for a type it cannot read: a jump, a comparison, a bank layout's value, or one of dialogue's literals.
@@ -467,6 +482,7 @@ namespace RPGFramework.Field
                 case ArgumentType.TransitionName:
                 case ArgumentType.ArenaName:
                 case ArgumentType.EncounterName:
+                case ArgumentType.CharacterName:
                 case ArgumentType.OptionalSoundName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.LocalisationKey:

@@ -12,8 +12,8 @@ namespace RPGFramework.Field.Tests.Catalogue
     /// <summary>
     /// An opcode's width and order live in two places: the attributes the compiler writes from, and the reads its
     /// handler makes. Each sequential opcode's new block is compiled and run, with the field answering every wait at
-    /// once, and the instruction after it must run. Opcodes naming a variable or a field resolve them against the
-    /// project's assets, and jumps need a label, so neither is run here. RETURN and the other returns end the script
+    /// once, and the instruction after it must run. Opcodes naming a variable, a field or a character resolve them
+    /// against the project's assets, and jumps need a label, so none of them is run here. RETURN and the other returns end the script
     /// on purpose, and a call in a new block would call the script running it; what they do is tested where scripts
     /// are scheduled.
     /// </summary>
@@ -105,7 +105,8 @@ namespace RPGFramework.Field.Tests.Catalogue
             {
                 ArgumentType type = info.Arguments[i].Type;
 
-                if (type == ArgumentType.Variable || type == ArgumentType.Value || type == ArgumentType.FieldName || type == ArgumentType.Label)
+                if (type == ArgumentType.Variable      || type == ArgumentType.Value             || type == ArgumentType.FieldName ||
+                    type == ArgumentType.CharacterName || type == ArgumentType.CharacterNameList || type == ArgumentType.Label)
                 {
                     return false;
                 }

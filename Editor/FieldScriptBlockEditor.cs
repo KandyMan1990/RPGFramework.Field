@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using RPGFramework.Core.Dialogue;
+using RPGFramework.Core.Editor;
 using RPGFramework.Core.Memory;
 using RPGFramework.Core.SharedTypes;
 using RPGFramework.Core.Transitions;
@@ -41,6 +42,7 @@ namespace RPGFramework.Field.Editor
         private List<string>     m_TransitionNames;
         private List<string>     m_ArenaNames;
         private List<string>     m_EncounterNames;
+        private List<string>     m_CharacterNames;
         private List<string>     m_OptionalSoundNames;
         private List<string>     m_ActionNames;
 
@@ -926,6 +928,7 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.TransitionName:
                 case ArgumentType.ArenaName:
                 case ArgumentType.EncounterName:
+                case ArgumentType.CharacterName:
                 case ArgumentType.OptionalSoundName:
                 case ArgumentType.AnimationName:
                 case ArgumentType.ActionName:
@@ -975,7 +978,10 @@ namespace RPGFramework.Field.Editor
                 }
 
                 case ArgumentType.LocalisationKeyList:
-                    return KeyList(block, argumentIndex, label, current);
+                    return NameList(block, argumentIndex, label, current, m_DialogueKeys ??= GatherDialogueKeys(), "Sheet/Key", "answer");
+
+                case ArgumentType.CharacterNameList:
+                    return NameList(block, argumentIndex, label, current, GetNameChoices(block, argument.Type), string.Empty, "character");
 
                 case ArgumentType.Answer:
                 case ArgumentType.CancelAnswer:
@@ -1189,6 +1195,10 @@ namespace RPGFramework.Field.Editor
                 case ArgumentType.EncounterName:
                     return m_EncounterNames ??= EncounterNames.Gather();
 
+                case ArgumentType.CharacterName:
+                case ArgumentType.CharacterNameList:
+                    return m_CharacterNames ??= new List<string>(((ICharacterNames)new CharacterNames()).Names);
+
                 case ArgumentType.OptionalSoundName:
                     if (m_OptionalSoundNames == null)
                     {
@@ -1272,10 +1282,10 @@ namespace RPGFramework.Field.Editor
             return field;
         }
 
-        private VisualElement KeyList(FieldScriptBlock block, int argumentIndex, string label, string current)
+        // A row per name, each offered from the choices, or typed while there are none; typed names start as typedName.
+        private VisualElement NameList(FieldScriptBlock block, int argumentIndex, string label, string current, List<string> choices, string typedName, string what)
         {
-            List<string> keys    = string.IsNullOrWhiteSpace(current) ? new List<string>() : new List<string>(FieldScriptLine.Split(current));
-            List<string> choices = m_DialogueKeys ??= GatherDialogueKeys();
+            List<string> keys = string.IsNullOrWhiteSpace(current) ? new List<string>() : new List<string>(FieldScriptLine.Split(current));
 
             VisualElement list = new VisualElement();
             list.Add(new Label(label));
@@ -1314,7 +1324,7 @@ namespace RPGFramework.Field.Editor
 
                 key.style.flexGrow = 1;
                 row.Add(key);
-                row.Add(MakeSmallButton("−", "Remove this answer", () =>
+                row.Add(MakeSmallButton("−", $"Remove this {what}", () =>
                                                                    {
                                                                        keys.RemoveAt(index);
                                                                        Write();
@@ -1324,11 +1334,11 @@ namespace RPGFramework.Field.Editor
 
             list.Add(new Button(() =>
                                 {
-                                    keys.Add(choices.Count > 0 ? choices[0] : "Sheet/Key");
+                                    keys.Add(choices.Count > 0 ? choices[0] : typedName);
                                     Write();
                                 })
                      {
-                         text = "Add answer"
+                         text = $"Add {what}"
                      });
 
             return list;

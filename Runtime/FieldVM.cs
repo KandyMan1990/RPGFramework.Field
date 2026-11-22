@@ -19,6 +19,12 @@ namespace RPGFramework.Field
         internal event Action<ulong, ulong, float, float>      RequestMusicCrossfade;
         internal event Action                                  RequestStopMusic;
         internal event Action<int>                             RequestAddMoney;
+        internal event Action<ulong>                           RequestAddToParty;
+        internal event Action<ulong>                           RequestRemoveFromParty;
+        internal event Action<ulong[]>                         RequestSetParty;
+        internal Func<ulong, int>                              GetPartySlot;
+        internal event Action<ulong, bool>                     RequestSetCharacterJoined;
+        internal Func<ulong, bool>                             HasCharacterJoined;
         internal Func<bool>                                    IsMusicPlaying;
         internal event Action<float, float>                    RequestMusicVolume;
         internal event Action<float, float, float>             RequestMusicVolumeFrom;
@@ -402,19 +408,14 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.AskPlayerAt, AskPlayerAtOpcodeHandler },
 
                        // Party and inventory
-                       // { FieldScriptOpCode.AddCharacterToParty, AddCharacterToPartyOpcodeHandler },
-                       // { FieldScriptOpCode.RemoveCharacterFromParty, RemoveCharacterFromPartyOpcodeHandler },
-                       // { FieldScriptOpCode.ChangePartyMembers, ChangePartyMembersOpcodeHandler },
-                       // { FieldScriptOpCode.SetAllPartyCharacters, SetAllPartyCharactersOpcodeHandler },
+                       { FieldScriptOpCode.AddToParty, AddToPartyOpcodeHandler },
+                       { FieldScriptOpCode.RemoveFromParty, RemoveFromPartyOpcodeHandler },
+                       { FieldScriptOpCode.SetParty, SetPartyOpcodeHandler },
                        // { FieldScriptOpCode.GetCharacterInPartySlot, GetCharacterInPartySlotOpcodeHandler },
-                       // { FieldScriptOpCode.GetCharacterPartySlot, GetCharacterPartySlotOpcodeHandler },
-                       // { FieldScriptOpCode.SetCharacterAvailability, SetCharacterAvailabilityOpcodeHandler },
-                       // { FieldScriptOpCode.GetCharacterIsAvailable, GetCharacterIsAvailableOpcodeHandler },
+                       { FieldScriptOpCode.GetPartySlot, GetPartySlotOpcodeHandler },
+                       { FieldScriptOpCode.SetCharacterJoined, SetCharacterJoinedOpcodeHandler },
+                       { FieldScriptOpCode.GetCharacterJoined, GetCharacterJoinedOpcodeHandler },
                        // { FieldScriptOpCode.SetPartyMemberLocked, SetPartyMemberLockedOpcodeHandler },
-                       // { FieldScriptOpCode.SetCharacterHP, SetCharacterHPOpcodeHandler },
-                       // { FieldScriptOpCode.GetCharacterHP, GetCharacterHPOpcodeHandler },
-                       // { FieldScriptOpCode.SetCharacterMP, SetCharacterMPOpcodeHandler },
-                       // { FieldScriptOpCode.GetCharacterMP, GetCharacterMPOpcodeHandler },
                        { FieldScriptOpCode.AddMoney, AddMoneyOpcodeHandler },
                        // { FieldScriptOpCode.AddItem, AddItemOpcodeHandler },
                        // { FieldScriptOpCode.GetItemCount, GetItemCountOpcodeHandler },
@@ -1742,6 +1743,61 @@ namespace RPGFramework.Field
         private void AskPlayerAtOpcodeHandler(FieldScriptContext ctx)
         {
             AskPlayer(ctx, true);
+        }
+
+        private void AddToPartyOpcodeHandler(FieldScriptContext ctx)
+        {
+            ulong character = ctx.ReadName();
+
+            RequestAddToParty?.Invoke(character);
+        }
+
+        private void RemoveFromPartyOpcodeHandler(FieldScriptContext ctx)
+        {
+            ulong character = ctx.ReadName();
+
+            RequestRemoveFromParty?.Invoke(character);
+        }
+
+        private void SetPartyOpcodeHandler(FieldScriptContext ctx)
+        {
+            byte    count      = ctx.NextByte();
+            ulong[] characters = new ulong[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                characters[i] = ctx.ReadName();
+            }
+
+            RequestSetParty?.Invoke(characters);
+        }
+
+        /// <summary>
+        /// Store a character's party slot, or the party's own empty marker when they are not in it.
+        /// </summary>
+        private void GetPartySlotOpcodeHandler(FieldScriptContext ctx)
+        {
+            ulong                  character   = ctx.ReadName();
+            FieldScriptDestination destination = ctx.ReadDestination();
+            int                    slot        = GetPartySlot(character);
+
+            ctx.WriteByte(destination, slot < 0 ? CoreVariables.EMPTY_PARTY_SLOT : (byte)slot);
+        }
+
+        private void SetCharacterJoinedOpcodeHandler(FieldScriptContext ctx)
+        {
+            ulong character = ctx.ReadName();
+            bool  joined    = ctx.ReadBool();
+
+            RequestSetCharacterJoined?.Invoke(character, joined);
+        }
+
+        private void GetCharacterJoinedOpcodeHandler(FieldScriptContext ctx)
+        {
+            ulong                  character   = ctx.ReadName();
+            FieldScriptDestination destination = ctx.ReadDestination();
+
+            ctx.WriteBool(destination, HasCharacterJoined(character));
         }
 
         /// <summary>
