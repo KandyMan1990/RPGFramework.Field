@@ -115,7 +115,7 @@ Bodies are built from **presets** named for what they are for:
 | --- | --- | --- |
 | Gateway | an unseen trigger area | a gateway script to write the jump in |
 | Character | a kinematic rigidbody, a capsule — standing in 3D, in 2D a footprint at its feet a cell wide — and an interaction trigger | shows itself |
-| Player character | the same, without the interaction trigger | makes itself the player |
+| Player character | the same, without the interaction trigger | names the character it plays, the first in your Character Databases until you pick |
 | Enemy | the same, with a trigger reaching past its body | starts a battle as the player walks into it, then hides until the field is entered again |
 | Interactable object | a solid box and an interaction trigger | — |
 | Examine point | an interaction trigger only, so it doesn't block | — |
@@ -125,6 +125,15 @@ Bodies are built from **presets** named for what they are for:
 | Plain | nothing: seen and moved by scripts, walked through and never talked to | — |
 
 A body's visuals are your own prefab, placed as its visible object.
+
+**The player is whoever leads the party.** An entity's init names the character it plays with
+`SET_PARTY_CHARACTER`; once every init has run, the first entity still in the field playing the party's leader is the
+one the player controls, and every other entity naming a character is hidden — invisible and not solid — whatever its
+init did, as there are no followers yet. A scene that needs someone shown shows them from a script that runs after the
+load, such as their Default script: `VISIBILITY true`, then `SOLIDITY true`. Give a character several entities, one per
+costume, and leave out the unwanted ones with `ENTITY_IN_FIELD false`. When the party changes — a party opcode, or a menu
+over the field — the player is whichever entity plays the new leader, wherever it stands; nothing is moved or shown, so
+the scene's scripts do that. A field with no entity for the leader has no player.
 
 The `HEAD_` opcodes turn a body's head on top of its animation, leaving the body as it is. A humanoid's head is found for
 you; on a generic rig, pick its head bone in **Head** on the body's Field Entity. A model imported with *Optimize Game
@@ -258,7 +267,7 @@ What a script can do, by what it acts on. Each block in the palette says what it
 | **Dialogue and menus** | `CREATE_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW` `SHOW_DIALOGUE_WINDOW_NO_WAIT` `SHOW_DIALOGUE_WINDOW_NO_WAIT_DISMISSIBLE` `SHOW_DIALOGUE_AT` `SHOW_DIALOGUE_AT_NO_WAIT` `SHOW_DIALOGUE_AT_NO_WAIT_DISMISSIBLE` `ASK_PLAYER_AT` `WAIT_FOR_DIALOGUE_WINDOW` `CLOSE_DIALOGUE_WINDOW` `SET_DIALOGUE_WINDOW_STYLE` `SET_MESSAGE_VARIABLE` `SET_MESSAGE_SPEED` `ASK_PLAYER_TO_MAKE_A_CHOICE` `MAIN_MENU_ACCESSIBILITY` `OPEN_SAVE_MENU` |
 | **The party** | `ADD_TO_PARTY` `REMOVE_FROM_PARTY` `SET_PARTY` `GET_PARTY_SLOT` `SET_CHARACTER_JOINED` `GET_CHARACTER_JOINED`, each naming a character as a Character Database does |
 | **Money** | `ADD_MONEY` `SUBTRACT_MONEY` |
-| **Entities** | `SET_PLAYER_ENTITY` `LOCK_INPUT` `VISIBILITY` `SOLIDITY` `PUSH_SCRIPT_ACTIVATION` `INTERACTION_TRIGGER_ACTIVATION` `SET_INTERACTION_RANGE` `COLLISION_TRIGGER_ACTIVATION` `SET_ENTITY_POSITION` `SET_ENTITY_ROTATION` `SET_ENTITY_ROTATION_OVER_TIME` `SET_DIRECTION_TO_FACE_ENTITY` `SET_DIRECTION_TO_FACE_POSITION` `TURN_TO_ENTITY_AND_WAIT` `COPY_ENTITY_POSE` `ENTITY_IN_FIELD` `IS_ENTITY_IN_RANGE` `GET_ENTITY_POSITION` `GET_ENTITY_DIRECTION` |
+| **Entities** | `SET_PARTY_CHARACTER` `LOCK_INPUT` `VISIBILITY` `SOLIDITY` `PUSH_SCRIPT_ACTIVATION` `INTERACTION_TRIGGER_ACTIVATION` `SET_INTERACTION_RANGE` `COLLISION_TRIGGER_ACTIVATION` `SET_ENTITY_POSITION` `SET_ENTITY_ROTATION` `SET_ENTITY_ROTATION_OVER_TIME` `SET_DIRECTION_TO_FACE_ENTITY` `SET_DIRECTION_TO_FACE_POSITION` `TURN_TO_ENTITY_AND_WAIT` `COPY_ENTITY_POSE` `ENTITY_IN_FIELD` `IS_ENTITY_IN_RANGE` `GET_ENTITY_POSITION` `GET_ENTITY_DIRECTION` |
 | **Movement** | `SET_MOVEMENT_SPEED`; `MOVE_ENTITY` `GLIDE_ENTITY` `SLIDE_ENTITY` `MOVE_ENTITY_TO_ENTITY`, each also `_AND_WAIT`; `WAIT_FOR_MOVEMENT` `STOP_MOVEMENT` `SET_FOOTSTEPS_ENABLED` `SET_FOOTSTEP_SOUND` `JUMP_ENTITY_AND_WAIT` `CLIMB_LADDER_AND_WAIT` `SET_LADDER_ANIMATIONS` `SET_ENTITY_DRAW_OFFSET` `SET_ENTITY_DRAW_OFFSET_AND_WAIT` `WAIT_FOR_ENTITY_DRAW_OFFSET` |
 | **Animation** | `SET_BASE_ANIMATION`; `PLAY_ANIMATION` and `PLAY_PART_OF_ANIMATION`, each also `_AND_WAIT`, `_AND_HOLD`, `_HOLDING` and `_LOOPING`; `SET_ANIMATION_SPEED` `WAIT_FOR_ANIMATION` `STOP_ANIMATION` `PUSH_ANIMATION_STATE` `POP_ANIMATION_STATE` |
 | **The head** | `HEAD_LOOK_AT_ENTITY` `HEAD_LOOK_AT_POSITION` `HEAD_LOOK_FORWARD`, each also `_AND_WAIT`; `WAIT_FOR_HEAD` `SET_HEAD_LIMITS` |
@@ -453,7 +462,7 @@ last argument or an argument left unread is logged, and the script stops there.
     channel 0 keeps none. `STOP_SOUND`, `FADE_SOUND_VOLUME` and `FADE_SOUND_PAN` reach it again by its channel.
   - A looping sound on a channel stops for a battle and starts again after it, from where it had got to. Looping
     ambience is a looping sound played in `Init`.
-  - Footsteps are off until a script turns them on, and `SET_PLAYER_ENTITY` turns on the player's. A step sounds at two
+  - Footsteps are off until a script turns them on, and becoming the player turns on the player's. A step sounds at two
     points of the walk animation, set on the body's Field Entity, panned by where the entity is on the screen and
     quieter further from a perspective camera.
 
@@ -465,7 +474,7 @@ last argument or an argument left unread is logged, and the script stops there.
 drawn with Unity's built-in sprites:
 
 - `SampleField`, walked freely and larger than the screen: ground walled in, with pillars, a 2D Follow camera, a player
-  character, a villager who turns to face whoever talks to them, and a save point;
+  character playing the Starter's first character, `TestCharacterTerra`, a villager who turns to face whoever talks to them, and a save point;
 - `SampleTileField`, a tile field walked a tile at a time, seen through a 2D Fixed camera: its ground the Walkable
   Tilemap, a wall across it, and a villager standing in the way, who steps aside when talked to, across and then up,
   and comes back.

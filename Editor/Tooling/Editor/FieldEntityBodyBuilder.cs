@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RPGFramework.Core.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -351,9 +352,9 @@ namespace RPGFramework.Field.Editor
         }
 
         /// <summary>
-        /// What a body of this kind cannot do without: the player's entity is the one that claims the player, and an
-        /// entity starts hidden, so anything with visuals has to show itself. Only written into an init script still
-        /// left as a new entity's, so nothing an author wrote is touched.
+        /// What a body of this kind cannot do without: the player's entity names the character it plays, the first in the
+        /// project's databases until the author picks, and an entity starts hidden, so anything with visuals has to show
+        /// itself. Only written into an init script still left as a new entity's, so nothing an author wrote is touched.
         /// </summary>
         private static void WriteInitScript(FieldEntityRecord entity, FieldBodyPreset preset, bool hasVisuals)
         {
@@ -368,7 +369,9 @@ namespace RPGFramework.Field.Editor
 
             if (preset == FieldBodyPreset.PlayerCharacter)
             {
-                lines.Add("SET_PLAYER_ENTITY");
+                IReadOnlyList<string> characters = ((ICharacterNames)new CharacterNames()).Names;
+
+                lines.Add(characters.Count > 0 ? "SET_PARTY_CHARACTER " + FieldScriptLine.Quote(characters[0]) : "SET_PARTY_CHARACTER");
             }
 
             if (hasVisuals)

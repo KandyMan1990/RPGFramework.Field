@@ -1038,8 +1038,9 @@ namespace RPGFramework.Field
 
         // Field models and animation (0x0500)
 
-        [FieldOpCode("SET_PLAYER_ENTITY", ArgumentLayout.Sequential, Summary = "Make this entity the one the player controls", NeedsBody = true)]
-        SetPlayerEntity = 0x0500,
+        [FieldOpCode("SET_PARTY_CHARACTER", ArgumentLayout.Sequential, Summary = "Make this entity a character's. The first still in the field whose character leads the party is the one the player controls, found again whenever the party changes; every other character's is hidden once the inits have run, for a later script to show", NeedsBody = true)]
+        [Argument(0, "character", ArgumentType.CharacterName)]
+        SetPartyCharacter = 0x0500,
 
         [FieldOpCode("LOCK_INPUT", ArgumentLayout.Sequential, Summary = "Take control away from the player, or give it back")]
         [Argument(0, "locked", ArgumentType.Bool)]

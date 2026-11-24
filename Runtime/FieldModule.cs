@@ -115,6 +115,7 @@ namespace RPGFramework.Field
         private Vector2                                m_PlayerPush;
         private Tilemap                                m_WalkableTilemap;
         private int                                    m_PlayerEntityId;
+        private bool                                   m_PartyBound;
         private bool                                   m_FieldTransitionRequested;
         private FieldDefinition                        m_FieldDefinition;
         private bool                                   m_BattleTransitionRequested;
@@ -193,6 +194,7 @@ namespace RPGFramework.Field
             m_SongVolumeStore          = songVolumeStore;
             m_MoneyStore               = moneyStore;
             m_PartyStore               = partyStore;
+            m_PartyBound               = false;
             m_SettingsStore            = settingsStore;
             m_SaveEnabledStore         = saveEnabledStore;
             m_LocationNameStore        = locationNameStore;
@@ -320,6 +322,9 @@ namespace RPGFramework.Field
 
             Unfreeze();
             SetAnimationsPaused(false);
+
+            // A menu over the field may have changed who leads.
+            FindPlayer();
 
             m_InputRouter.Pop(m_SuspendedInputBlock);
 
@@ -486,11 +491,11 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusicCrossfade              += OnRequestMusicCrossfade;
             m_FieldContext.VM.RequestStopMusic                   += OnRequestStopMusic;
             m_FieldContext.VM.RequestAddMoney                    += OnRequestAddMoney;
-            m_FieldContext.VM.RequestAddToParty                  += m_PartyStore.AddToParty;
-            m_FieldContext.VM.RequestRemoveFromParty             += m_PartyStore.RemoveFromParty;
-            m_FieldContext.VM.RequestSetParty                    += m_PartyStore.SetParty;
+            m_FieldContext.VM.RequestAddToParty                  += OnRequestAddToParty;
+            m_FieldContext.VM.RequestRemoveFromParty             += OnRequestRemoveFromParty;
+            m_FieldContext.VM.RequestSetParty                    += OnRequestSetParty;
             m_FieldContext.VM.GetPartySlot                       =  m_PartyStore.FindSlot;
-            m_FieldContext.VM.RequestSetCharacterJoined          += m_PartyStore.SetJoined;
+            m_FieldContext.VM.RequestSetCharacterJoined          += OnRequestSetCharacterJoined;
             m_FieldContext.VM.HasCharacterJoined                 =  HasCharacterJoined;
             m_FieldContext.VM.RequestMusicVolume                 += OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             += OnRequestMusicVolumeFrom;
@@ -505,7 +510,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestFadeSoundVolume             += OnRequestFadeSoundVolume;
             m_FieldContext.VM.RequestFadeSoundPan                += OnRequestFadeSoundPan;
             m_FieldContext.VM.RequestFadeAllSoundVolume          += OnRequestFadeAllSoundVolume;
-            m_FieldContext.VM.RequestSetPlayerEntity             += OnRequestSetPlayerEntity;
+            m_FieldContext.VM.RequestSetPartyCharacter           += OnRequestSetPartyCharacter;
             m_FieldContext.VM.RequestSetEntityVisible            += OnRequestSetEntityVisible;
             m_FieldContext.VM.RequestSetEntitySolid              += OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetPushScriptActive         += OnRequestSetPushScriptActive;
@@ -676,7 +681,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestSetPushScriptActive         -= OnRequestSetPushScriptActive;
             m_FieldContext.VM.RequestSetEntitySolid              -= OnRequestSetEntitySolid;
             m_FieldContext.VM.RequestSetEntityVisible            -= OnRequestSetEntityVisible;
-            m_FieldContext.VM.RequestSetPlayerEntity             -= OnRequestSetPlayerEntity;
+            m_FieldContext.VM.RequestSetPartyCharacter           -= OnRequestSetPartyCharacter;
             m_FieldContext.VM.RequestFadeAllSoundVolume          -= OnRequestFadeAllSoundVolume;
             m_FieldContext.VM.RequestFadeSoundPan                -= OnRequestFadeSoundPan;
             m_FieldContext.VM.RequestFadeSoundVolume             -= OnRequestFadeSoundVolume;
@@ -688,11 +693,11 @@ namespace RPGFramework.Field
             m_FieldContext.VM.RequestMusicCrossfade              -= OnRequestMusicCrossfade;
             m_FieldContext.VM.RequestStopMusic                   -= OnRequestStopMusic;
             m_FieldContext.VM.RequestAddMoney                    -= OnRequestAddMoney;
-            m_FieldContext.VM.RequestAddToParty                  -= m_PartyStore.AddToParty;
-            m_FieldContext.VM.RequestRemoveFromParty             -= m_PartyStore.RemoveFromParty;
-            m_FieldContext.VM.RequestSetParty                    -= m_PartyStore.SetParty;
+            m_FieldContext.VM.RequestAddToParty                  -= OnRequestAddToParty;
+            m_FieldContext.VM.RequestRemoveFromParty             -= OnRequestRemoveFromParty;
+            m_FieldContext.VM.RequestSetParty                    -= OnRequestSetParty;
             m_FieldContext.VM.GetPartySlot                       =  null;
-            m_FieldContext.VM.RequestSetCharacterJoined          -= m_PartyStore.SetJoined;
+            m_FieldContext.VM.RequestSetCharacterJoined          -= OnRequestSetCharacterJoined;
             m_FieldContext.VM.HasCharacterJoined                 =  null;
             m_FieldContext.VM.RequestMusicVolume                 -= OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             -= OnRequestMusicVolumeFrom;
@@ -975,8 +980,11 @@ namespace RPGFramework.Field
 
             SubscribeVm();
 
+            m_PartyBound = false;
+
             InitialiseFieldScripts();
             LeaveOutEntities();
+            BindParty();
             StartDefaultScripts(fieldEntities);
             InitialisePlayer();
 
@@ -1049,6 +1057,73 @@ namespace RPGFramework.Field
                     LeaveBodyOut(entities[i].EntityId);
                 }
             }
+        }
+
+        /// <summary>
+        /// Once every init has run and the entities left out have gone: the entity playing the leader is the player,
+        /// and every other character's entity is hidden.
+        /// </summary>
+        private void BindParty()
+        {
+            m_PartyBound = true;
+
+            FindPlayer();
+
+            IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
+
+            for (int i = 0; i < entities.Count; i++)
+            {
+                FieldEntityState state = m_FieldContext.EntityStateAt(i);
+
+                if (state.Character != 0 && !state.IsLeftOut && entities[i] != m_FieldContext.PlayerEntity)
+                {
+                    OnRequestSetEntityVisible(entities[i].EntityId, false);
+                    OnRequestSetEntitySolid(entities[i].EntityId, false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The player is whichever entity plays the leader, found again as the party or an entity's character changes;
+        /// nothing is moved or shown, as the scripts do that. Not before the inits have run, as only then is it known
+        /// which entities are in the field.
+        /// </summary>
+        private void FindPlayer()
+        {
+            if (!m_PartyBound)
+            {
+                return;
+            }
+
+            int                record = m_PartyStore.GetRecordInSlot(0);
+            FieldEntityRuntime leader = m_FieldContext.FindEntityPlaying(record < 0 ? 0UL : m_PartyStore.GetCharacter(record));
+
+            if (leader != m_FieldContext.PlayerEntity)
+            {
+                SetPlayer(leader);
+            }
+        }
+
+        private void SetPlayer(FieldEntityRuntime entity)
+        {
+            m_PlayerMovementDriver?.SetMoveInput(Vector3.zero);
+
+            m_FieldContext.SetPlayerEntity(entity);
+
+            if (entity == null)
+            {
+                m_PlayerEntityId       = FieldEntity.NO_ENTITY;
+                m_PlayerMovementDriver = null;
+            }
+            else
+            {
+                m_FieldContext.EntityState(entity.EntityId).FootstepsEnabled = true;
+
+                m_PlayerEntityId       = entity.EntityId;
+                m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
+            }
+
+            SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
         }
 
         private void LeaveBodyOut(int entityId)
@@ -1148,6 +1223,10 @@ namespace RPGFramework.Field
             }
 
             SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
+
+            m_PartyBound = true;
+
+            FindPlayer();
 
             IReadOnlyList<FieldEntityRuntime> entities = m_FieldContext.Entities;
 
@@ -1318,6 +1397,34 @@ namespace RPGFramework.Field
             m_MoneyStore.AddMoney(amount);
         }
 
+        private void OnRequestAddToParty(ulong character)
+        {
+            m_PartyStore.AddToParty(character);
+
+            FindPlayer();
+        }
+
+        private void OnRequestRemoveFromParty(ulong character)
+        {
+            m_PartyStore.RemoveFromParty(character);
+
+            FindPlayer();
+        }
+
+        private void OnRequestSetParty(ulong[] characters)
+        {
+            m_PartyStore.SetParty(characters);
+
+            FindPlayer();
+        }
+
+        private void OnRequestSetCharacterJoined(ulong character, bool joined)
+        {
+            m_PartyStore.SetJoined(character, joined);
+
+            FindPlayer();
+        }
+
         private bool HasCharacterJoined(ulong character)
         {
             int record = m_PartyStore.FindRecord(character);
@@ -1465,17 +1572,11 @@ namespace RPGFramework.Field
             m_MusicPlayer.SetReverbVolume(volume);
         }
 
-        private void OnRequestSetPlayerEntity(FieldEntityRuntime entity)
+        private void OnRequestSetPartyCharacter(int entityId, ulong character)
         {
-            m_FieldContext.SetPlayerEntity(entity);
-            m_FieldContext.EntityState(entity.EntityId).FootstepsEnabled = true;
+            m_FieldContext.EntityState(entityId).Character = character;
 
-            m_PlayerMovementDriver?.SetMoveInput(Vector3.zero);
-
-            m_PlayerEntityId       = entity.EntityId;
-            m_PlayerMovementDriver = GetMovementDriver(m_PlayerEntityId);
-
-            SetCollisionTriggerPlayerEntityId(m_PlayerEntityId);
+            FindPlayer();
         }
 
         /// <summary>

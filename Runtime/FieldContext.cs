@@ -96,6 +96,23 @@ namespace RPGFramework.Field
 
         internal void SetPlayerEntity(FieldEntityRuntime playerEntity) => m_PlayerEntity = playerEntity;
 
+        /// <summary>
+        /// The first entity still in the field that <c>SET_PARTY_CHARACTER</c> made <paramref name="character" />'s; null
+        /// for none, as for zero, which names no one.
+        /// </summary>
+        internal FieldEntityRuntime FindEntityPlaying(ulong character)
+        {
+            for (int i = 0; i < m_Entities.Length && character != 0; i++)
+            {
+                if (m_EntityStates[i].Character == character && !m_EntityStates[i].IsLeftOut)
+                {
+                    return m_Entities[i];
+                }
+            }
+
+            return null;
+        }
+
         internal void SetGatewaysActive(bool active) => m_GatewaysActive = active;
 
         internal void SetRandomEncountersEnabled(bool enabled) => m_RandomEncountersEnabled = enabled;

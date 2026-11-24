@@ -61,6 +61,7 @@ namespace RPGFramework.Field
         internal float             AnimationSpeed;
         internal ulong             BaseAnimation;
         internal PlayAnimationArgs PlayedAnimation;
+        internal ulong             Character;
         internal MoveEntityArgs    Move;
 
         /// <summary>Whether a script has left this entity out of the field; one that says nothing is in it.</summary>

@@ -40,7 +40,7 @@ namespace RPGFramework.Field
         internal event Action<float, float>                    RequestFadeAllSoundVolume;
         internal event Action<byte>                            RequestReverbPreset;
         internal event Action<float>                           RequestReverbVolume;
-        internal event Action<FieldEntityRuntime>              RequestSetPlayerEntity;
+        internal event Action<int, ulong>                      RequestSetPartyCharacter;
         internal event Action<int, bool>                       RequestSetEntityVisible;
         internal event Action<int, bool>                       RequestSetEntitySolid;
         internal event Action<int, bool>                       RequestSetPushScriptActive;
@@ -422,7 +422,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SubtractMoney, SubtractMoneyOpcodeHandler },
 
                        // Field models and animation
-                       { FieldScriptOpCode.SetPlayerEntity, SetPlayerEntityOpcodeHandler },
+                       { FieldScriptOpCode.SetPartyCharacter, SetPartyCharacterOpcodeHandler },
                        { FieldScriptOpCode.LockInput, LockInputOpcodeHandler },
                        // { FieldScriptOpCode.SetRunningEnabled, SetRunningEnabledOpcodeHandler },
                        // { FieldScriptOpCode.JoinPartyToLeader, JoinPartyToLeaderOpcodeHandler },
@@ -1820,12 +1820,11 @@ namespace RPGFramework.Field
             RequestAddMoney?.Invoke(-amount);
         }
 
-        /// <summary>
-        /// Make this entity the player character.
-        /// </summary>
-        private void SetPlayerEntityOpcodeHandler(FieldScriptContext ctx)
+        private void SetPartyCharacterOpcodeHandler(FieldScriptContext ctx)
         {
-            RequestSetPlayerEntity?.Invoke(m_Entities[ctx.EntityId]);
+            ulong character = ctx.ReadName();
+
+            RequestSetPartyCharacter?.Invoke(ctx.EntityId, character);
         }
 
         /// <summary>
