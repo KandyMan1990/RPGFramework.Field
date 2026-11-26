@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using RPGFramework.Core.SharedTypes;
+using RPGFramework.Field.FieldVmArgs;
 using UnityEngine;
 
 namespace RPGFramework.Field.Tests.Vm.Requests
@@ -19,21 +20,35 @@ namespace RPGFramework.Field.Tests.Vm.Requests
         private TestField m_Field;
         private int       m_Turned;
         private int       m_LookedAt;
+        private int       m_WalkedTo;
+        private int       m_Faced;
+        private int       m_ScrolledTo;
+        private Vector3?  m_JumpedTo;
 
         [SetUp]
         public void SetUp()
         {
             m_Field    = new TestField();
-            m_Turned   = FieldEntity.NO_ENTITY;
-            m_LookedAt = FieldEntity.NO_ENTITY;
+            m_Turned     = FieldEntity.NO_ENTITY;
+            m_LookedAt   = FieldEntity.NO_ENTITY;
+            m_WalkedTo   = FieldEntity.NO_ENTITY;
+            m_Faced      = FieldEntity.NO_ENTITY;
+            m_ScrolledTo = FieldEntity.NO_ENTITY;
+            m_JumpedTo   = null;
 
-            m_Field.Vm.GetPartyMemberEntity      =  slot => slot == 1 ? MEMBER : FieldEntity.NO_ENTITY;
-            m_Field.Vm.GetEntityPosition         =  entityId => entityId == MEMBER ? new Vector3(1f, 2f, 3f) : Vector3.zero;
-            m_Field.Vm.GetEntityDirection        =  entityId => entityId == MEMBER ? 90f : 0f;
-            m_Field.Vm.IsEntityRotating          =  entityId => false;
-            m_Field.Vm.IsEntityHeadTurning       =  entityId => false;
-            m_Field.Vm.RequestTurnEntityToEntity += (entityId, target, seconds, easing) => m_Turned = target;
-            m_Field.Vm.RequestHeadLookAtEntity   += (entityId, target, seconds, follow) => m_LookedAt = target;
+            m_Field.Vm.GetPartyMemberEntity         =  slot => slot == 1 ? MEMBER : FieldEntity.NO_ENTITY;
+            m_Field.Vm.GetEntityPosition            =  entityId => entityId == MEMBER ? new Vector3(1f, 2f, 3f) : Vector3.zero;
+            m_Field.Vm.GetEntityDirection           =  entityId => entityId == MEMBER ? 90f : 0f;
+            m_Field.Vm.IsEntityRotating             =  entityId => false;
+            m_Field.Vm.IsEntityHeadTurning          =  entityId => false;
+            m_Field.Vm.RequestTurnEntityToEntity    += (entityId, target, seconds, easing) => m_Turned = target;
+            m_Field.Vm.RequestHeadLookAtEntity      += (entityId, target, seconds, follow) => m_LookedAt = target;
+            m_Field.Vm.IsEntityMoving               =  entityId => false;
+            m_Field.Vm.IsEntityJumping              =  entityId => false;
+            m_Field.Vm.RequestMoveEntity            += (entityId, args) => m_WalkedTo = args.TargetEntityId;
+            m_Field.Vm.RequestJumpEntity            += (entityId, target, seconds, height) => m_JumpedTo = target;
+            m_Field.Vm.RequestSetEntityToFaceEntity += (entityId, target) => m_Faced = target;
+            m_Field.Vm.RequestScrollScreenToEntity  += (target, seconds, easing) => m_ScrolledTo = target;
         }
 
         [Test]
@@ -92,6 +107,62 @@ namespace RPGFramework.Field.Tests.Vm.Requests
             Run(new Script().Op(FieldScriptOpCode.GetPartyMemberDirection).Sources(Source.Immediate, Source.Persistent).Byte(1).UShort(X));
 
             Assert.AreEqual(90f, m_Field.Memory.ReadFloat(MemoryBank.Persistent, X));
+        }
+
+        [Test]
+        public void ThenAWalkGoesUpToTheMembersEntity()
+        {
+            Run(Walk(FieldScriptOpCode.MoveEntityToPartyMemberAndWait, 1));
+
+            Assert.AreEqual(MEMBER, m_WalkedTo);
+        }
+
+        [Test]
+        public void ThenAWalkToAnEmptySlotDoesNothing()
+        {
+            Run(Walk(FieldScriptOpCode.MoveEntityToPartyMember, 2));
+
+            Assert.AreEqual(FieldEntity.NO_ENTITY, m_WalkedTo);
+        }
+
+        [Test]
+        public void ThenAJumpLandsWhereTheMemberStands()
+        {
+            Run(new Script().Op(FieldScriptOpCode.JumpEntityToPartyMemberAndWait).Sources(Source.Immediate, Source.Immediate).Byte(1).Float(0.5f)
+                            .Sources(Source.Immediate, Source.Immediate).Float(1f));
+
+            Assert.AreEqual(new Vector3(1f, 2f, 3f), m_JumpedTo);
+        }
+
+        [Test]
+        public void ThenAJumpToAnEmptySlotDoesNothing()
+        {
+            Run(new Script().Op(FieldScriptOpCode.JumpEntityToPartyMemberAndWait).Sources(Source.Immediate, Source.Immediate).Byte(2).Float(0.5f)
+                            .Sources(Source.Immediate, Source.Immediate).Float(1f));
+
+            Assert.IsNull(m_JumpedTo);
+        }
+
+        [Test]
+        public void ThenItFacesTheMembersEntity()
+        {
+            Run(new Script().Op(FieldScriptOpCode.SetDirectionToFacePartyMember).Sources(Source.Immediate, Source.Immediate).Byte(1));
+
+            Assert.AreEqual(MEMBER, m_Faced);
+        }
+
+        [Test]
+        public void ThenTheViewScrollsOntoTheMembersEntity()
+        {
+            Run(new Script().Op(FieldScriptOpCode.ScrollScreenToPartyMember).Sources(Source.Immediate, Source.Immediate).Byte(1).Float(0.5f)
+                            .Sources(Source.Immediate, Source.Immediate).Byte(0));
+
+            Assert.AreEqual(MEMBER, m_ScrolledTo);
+        }
+
+        private static Script Walk(FieldScriptOpCode opCode, byte slot)
+        {
+            return new Script().Op(opCode).Sources(Source.Immediate, Source.Immediate).Byte(slot).Float(1.5f);
         }
 
         private static Script Turn(byte slot)

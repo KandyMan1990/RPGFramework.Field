@@ -1156,7 +1156,10 @@ namespace RPGFramework.Field
         [Argument(1, "stopDistance",   ArgumentType.Float, Description = "how far short of it to stop, so as not to walk into it")]
         MoveEntityToEntity = 0x051A,
 
-        MoveToPartyMember = 0x051B,
+        [FieldOpCode("MOVE_ENTITY_TO_PARTY_MEMBER_AND_WAIT", ArgumentLayout.Sequential, Summary = "Walk this entity up to the entity playing a party slot, following it if it moves, and wait until it arrives", StopsInit = true, NeedsBody = true)]
+        [Argument(0, "partySlot",    ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "stopDistance", ArgumentType.Float, Description = "how far short of it to stop, so as not to walk into it")]
+        MoveEntityToPartyMemberAndWait = 0x051B,
 
         [FieldOpCode("JUMP_ENTITY_AND_WAIT", ArgumentLayout.Sequential, Summary = "Jump this entity to a point in an arc, through whatever is in the way, waiting until it lands. It does not turn or walk", StopsInit = true, NeedsBody = true)]
         [Argument(0, "x",       ArgumentType.Float)]
@@ -1166,7 +1169,11 @@ namespace RPGFramework.Field
         [Argument(4, "height",  ArgumentType.Float, Description = "how far above a straight line to the point the arc peaks")]
         JumpEntityAndWait = 0x051C,
 
-        JumpToPartyMember = 0x051D, // byte partySlot, float seconds
+        [FieldOpCode("JUMP_ENTITY_TO_PARTY_MEMBER_AND_WAIT", ArgumentLayout.Sequential, Summary = "Jump this entity in an arc to where the entity playing a party slot stands now, through whatever is in the way, waiting until it lands. It does not turn or walk", StopsInit = true, NeedsBody = true)]
+        [Argument(0, "partySlot", ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "seconds",   ArgumentType.Float)]
+        [Argument(2, "height",    ArgumentType.Float, Description = "how far above a straight line to the point the arc peaks")]
+        JumpEntityToPartyMemberAndWait = 0x051D,
 
         [FieldOpCode("CLIMB_LADDER_AND_WAIT", ArgumentLayout.Sequential, Summary = "Get on a ladder, climb it and get off, waiting until it has. The player steers the climb up and down and can come back off where it began; with input locked, or for any other entity, it climbs by itself", StopsInit = true, NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "up", ArgumentType.Bool, Description = "On: going up the ladder. Off: going down, the animations played backwards")]
@@ -1212,7 +1219,9 @@ namespace RPGFramework.Field
         [Argument(2, "z", ArgumentType.Float)]
         SetDirectionToFacePosition = 0x0524,
 
-        SetDirectionToPartyMember = 0x0525, // byte partySlot
+        [FieldOpCode("SET_DIRECTION_TO_FACE_PARTY_MEMBER", ArgumentLayout.Sequential, Summary = "Face this entity towards the entity playing a party slot", NeedsBody = true)]
+        [Argument(0, "partySlot", ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        SetDirectionToFacePartyMember = 0x0525,
 
         [FieldOpCode("TURN_TO_ENTITY_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity over time to face where another stands now, the short way round, waiting until it has", StopsInit = true, NeedsBody = true)]
         [Argument(0, "targetEntityId", ArgumentType.EntityId)]
@@ -1413,6 +1422,11 @@ namespace RPGFramework.Field
         [Argument(2, "follow",    ArgumentType.Bool, Description = "On: keep looking at it as it moves. Off: look at where it is now and stay that way")]
         HeadLookAtPartyMemberAndWait = 0x054E,
 
+        [FieldOpCode("MOVE_ENTITY_TO_PARTY_MEMBER", ArgumentLayout.Sequential, Summary = "Start this entity walking up to the entity playing a party slot, following it if it moves, and carry on", NeedsBody = true)]
+        [Argument(0, "partySlot",    ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "stopDistance", ArgumentType.Float, Description = "how far short of it to stop, so as not to walk into it")]
+        MoveEntityToPartyMember = 0x054F,
+
         // Screen and field effects (0x0600)
         [FieldOpCode("SUBTRACT_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Take a colour from the screen beneath the message windows, fading to it from the colour there now, kept until a fade or another colour")]
         [Argument(0, "red",     ArgumentType.Float, Description = "0 to 1, taken from each pixel's red: 1 takes it all")]
@@ -1478,7 +1492,11 @@ namespace RPGFramework.Field
         [Argument(2, "easing",         ArgumentType.Byte,  EnumType = typeof(Easing), Description = "whether it eases in and out")]
         ScrollScreenToEntity = 0x0705,
 
-        ScrollToPartyMember = 0x0706,
+        [FieldOpCode("SCROLL_SCREEN_TO_PARTY_MEMBER", ArgumentLayout.Sequential, Summary = "Move the view onto the entity playing a party slot and follow it; onto the leader, the view follows the player again")]
+        [Argument(0, "partySlot", ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "seconds",   ArgumentType.Float, Description = "how long the scroll takes; 0 moves the view at once")]
+        [Argument(2, "easing",    ArgumentType.Byte,  EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        ScrollScreenToPartyMember = 0x0706,
 
         [FieldOpCode("WAIT_FOR_SCROLLING", ArgumentLayout.Sequential, Summary = "Wait until the view has arrived where a script scrolled it", StopsInit = true)]
         WaitForScrolling = 0x0707,

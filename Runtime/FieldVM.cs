@@ -449,9 +449,9 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SlideEntity, SlideEntityOpcodeHandler },
                        { FieldScriptOpCode.MoveEntityToEntityAndWait, MoveEntityToEntityAndWaitOpcodeHandler },
                        { FieldScriptOpCode.MoveEntityToEntity, MoveEntityToEntityOpcodeHandler },
-                       // { FieldScriptOpCode.MoveToPartyMember, MoveToPartyMemberOpcodeHandler },
+                       { FieldScriptOpCode.MoveEntityToPartyMemberAndWait, MoveEntityToPartyMemberAndWaitOpcodeHandler },
                        { FieldScriptOpCode.JumpEntityAndWait, JumpEntityAndWaitOpcodeHandler },
-                       // { FieldScriptOpCode.JumpToPartyMember, JumpToPartyMemberOpcodeHandler },
+                       { FieldScriptOpCode.JumpEntityToPartyMemberAndWait, JumpEntityToPartyMemberAndWaitOpcodeHandler },
                        { FieldScriptOpCode.ClimbLadderAndWait, ClimbLadderAndWaitOpcodeHandler },
                        { FieldScriptOpCode.WaitForMovement, WaitForMovementOpcodeHandler },
                        { FieldScriptOpCode.StopMovement, StopMovementOpcodeHandler },
@@ -459,7 +459,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SetEntityRotationOverTime, SetEntityRotationOverTimeOpcodeHandler },
                        { FieldScriptOpCode.SetDirectionToFaceEntity, SetDirectionToFaceEntityOpcodeHandler },
                        { FieldScriptOpCode.SetDirectionToFacePosition, SetDirectionToFacePositionOpcodeHandler },
-                       // { FieldScriptOpCode.SetDirectionToPartyMember, SetDirectionToPartyMemberOpcodeHandler },
+                       { FieldScriptOpCode.SetDirectionToFacePartyMember, SetDirectionToFacePartyMemberOpcodeHandler },
                        { FieldScriptOpCode.TurnToEntityAndWait, TurnToEntityAndWaitOpcodeHandler },
                        { FieldScriptOpCode.TurnToPartyMemberAndWait, TurnToPartyMemberAndWaitOpcodeHandler },
                        { FieldScriptOpCode.SetBaseAnimation, SetBaseAnimationOpcodeHandler },
@@ -500,6 +500,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.HeadLookAtPositionAndWait, HeadLookAtPositionAndWaitOpcodeHandler },
                        { FieldScriptOpCode.HeadLookForwardAndWait, HeadLookForwardAndWaitOpcodeHandler },
                        { FieldScriptOpCode.HeadLookAtPartyMemberAndWait, HeadLookAtPartyMemberAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.MoveEntityToPartyMember, MoveEntityToPartyMemberOpcodeHandler },
 
                        // Screen and field effects
                        { FieldScriptOpCode.SubtractiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx, false) },
@@ -515,7 +516,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.ShakeScreen, ShakeScreenOpcodeHandler },
                        { FieldScriptOpCode.ScrollScreenToPosition, ScrollScreenToPositionOpcodeHandler },
                        { FieldScriptOpCode.ScrollScreenToEntity, ScrollScreenToEntityOpcodeHandler },
-                       // { FieldScriptOpCode.ScrollToPartyMember, ScrollToPartyMemberOpcodeHandler },
+                       { FieldScriptOpCode.ScrollScreenToPartyMember, ScrollScreenToPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.WaitForScrolling, WaitForScrollingOpcodeHandler },
                        { FieldScriptOpCode.SetCamera, SetCameraOpcodeHandler },
                        { FieldScriptOpCode.StopScreenShake, StopScreenShakeOpcodeHandler },
@@ -2010,7 +2011,7 @@ namespace RPGFramework.Field
         /// </summary>
         private void MoveEntityToEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
-            MoveEntityToEntity(ctx, MoveStyle.Walk, true);
+            MoveEntityToEntity(ctx, MoveStyle.Walk, true, false);
         }
 
         /// <summary>
@@ -2018,7 +2019,12 @@ namespace RPGFramework.Field
         /// </summary>
         private void MoveEntityToEntityOpcodeHandler(FieldScriptContext ctx)
         {
-            MoveEntityToEntity(ctx, MoveStyle.Walk, false);
+            MoveEntityToEntity(ctx, MoveStyle.Walk, false, false);
+        }
+
+        private void MoveEntityToPartyMemberAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            MoveEntityToEntity(ctx, MoveStyle.Walk, true, true);
         }
 
         /// <summary>
@@ -2034,12 +2040,15 @@ namespace RPGFramework.Field
             MoveEntity(ctx, new MoveEntityArgs(new Vector3(x, y, z), FieldEntity.NO_ENTITY, 0f, style), waits);
         }
 
-        private void MoveEntityToEntity(FieldScriptContext ctx, MoveStyle style, bool waits)
+        private void MoveEntityToEntity(FieldScriptContext ctx, MoveStyle style, bool waits, bool toPartyMember)
         {
-            byte  targetEntityId = ctx.ReadByte();
+            int   targetEntityId = ReadTarget(ctx, toPartyMember);
             float stopDistance   = ctx.ReadFloat();
 
-            MoveEntity(ctx, new MoveEntityArgs(Vector3.zero, targetEntityId, stopDistance, style), waits);
+            if (targetEntityId != FieldEntity.NO_ENTITY)
+            {
+                MoveEntity(ctx, new MoveEntityArgs(Vector3.zero, targetEntityId, stopDistance, style), waits);
+            }
         }
 
         private void MoveEntity(FieldScriptContext ctx, MoveEntityArgs args, bool waits)
@@ -2064,6 +2073,25 @@ namespace RPGFramework.Field
             float height  = ctx.ReadFloat();
 
             RequestJumpEntity?.Invoke(ctx.EntityId, new Vector3(x, y, z), seconds, height);
+
+            ctx.Block(new WaitUntilBlock(() => !IsEntityJumping(ctx.EntityId)));
+        }
+
+        /// <summary>
+        /// Jump this entity to where the entity playing a party slot stands now, and block until it lands.
+        /// </summary>
+        private void JumpEntityToPartyMemberAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            int   target  = ReadTarget(ctx, true);
+            float seconds = ctx.ReadFloat();
+            float height  = ctx.ReadFloat();
+
+            if (target == FieldEntity.NO_ENTITY)
+            {
+                return;
+            }
+
+            RequestJumpEntity?.Invoke(ctx.EntityId, GetEntityPosition(target), seconds, height);
 
             ctx.Block(new WaitUntilBlock(() => !IsEntityJumping(ctx.EntityId)));
         }
@@ -2149,6 +2177,16 @@ namespace RPGFramework.Field
             float z = ctx.ReadFloat();
 
             RequestSetEntityToFacePosition?.Invoke(ctx.EntityId, new Vector3(x, y, z));
+        }
+
+        private void SetDirectionToFacePartyMemberOpcodeHandler(FieldScriptContext ctx)
+        {
+            int target = ReadTarget(ctx, true);
+
+            if (target != FieldEntity.NO_ENTITY)
+            {
+                RequestSetEntityToFaceEntity?.Invoke(ctx.EntityId, target);
+            }
         }
 
         /// <summary>
@@ -2542,6 +2580,11 @@ namespace RPGFramework.Field
             WaitForHeadOpcodeHandler(ctx);
         }
 
+        private void MoveEntityToPartyMemberOpcodeHandler(FieldScriptContext ctx)
+        {
+            MoveEntityToEntity(ctx, MoveStyle.Walk, false, true);
+        }
+
         private void RequestDrawOffset(FieldScriptContext ctx)
         {
             Vector3 offset  = ReadPoint(ctx);
@@ -2668,6 +2711,18 @@ namespace RPGFramework.Field
             Easing easing         = (Easing)ctx.ReadByte();
 
             RequestScrollScreenToEntity?.Invoke(targetEntityId, seconds, easing);
+        }
+
+        private void ScrollScreenToPartyMemberOpcodeHandler(FieldScriptContext ctx)
+        {
+            int    target  = ReadTarget(ctx, true);
+            float  seconds = ctx.ReadFloat();
+            Easing easing  = (Easing)ctx.ReadByte();
+
+            if (target != FieldEntity.NO_ENTITY)
+            {
+                RequestScrollScreenToEntity?.Invoke(target, seconds, easing);
+            }
         }
 
         /// <summary>
