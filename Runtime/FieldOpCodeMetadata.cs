@@ -93,6 +93,12 @@ namespace RPGFramework.Field
         /// <summary>A priority slot, 0-7.</summary>
         Priority,
 
+        /// <summary>
+        /// A party slot, 0 the leader, below the map's <c>Party</c> count; the entity it names is the one playing the
+        /// character in that slot.
+        /// </summary>
+        PartySlot,
+
         /// <summary>A field, authored by name and encoded as that name's 64-bit hash.</summary>
         FieldName,
 
@@ -391,6 +397,7 @@ namespace RPGFramework.Field
                 case ArgumentType.Byte:
                 case ArgumentType.EntityId:
                 case ArgumentType.Priority:
+                case ArgumentType.PartySlot:
                 case ArgumentType.BlockerId:
                 case ArgumentType.EffectId:
                 case ArgumentType.CameraId:
@@ -453,6 +460,7 @@ namespace RPGFramework.Field
                 case ArgumentType.Byte:
                 case ArgumentType.EntityId:
                 case ArgumentType.Priority:
+                case ArgumentType.PartySlot:
                 case ArgumentType.BlockerId:
                 case ArgumentType.EffectId:
                 case ArgumentType.CameraId:

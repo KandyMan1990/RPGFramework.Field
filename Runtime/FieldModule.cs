@@ -497,6 +497,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.GetPartySlot                       =  m_PartyStore.FindSlot;
             m_FieldContext.VM.RequestSetCharacterJoined          += OnRequestSetCharacterJoined;
             m_FieldContext.VM.HasCharacterJoined                 =  HasCharacterJoined;
+            m_FieldContext.VM.GetPartyMemberEntity               =  PartyMemberEntity;
             m_FieldContext.VM.RequestMusicVolume                 += OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             += OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              += OnRequestMusicStemState;
@@ -699,6 +700,7 @@ namespace RPGFramework.Field
             m_FieldContext.VM.GetPartySlot                       =  null;
             m_FieldContext.VM.RequestSetCharacterJoined          -= OnRequestSetCharacterJoined;
             m_FieldContext.VM.HasCharacterJoined                 =  null;
+            m_FieldContext.VM.GetPartyMemberEntity               =  null;
             m_FieldContext.VM.RequestMusicVolume                 -= OnRequestMusicVolume;
             m_FieldContext.VM.RequestMusicVolumeFrom             -= OnRequestMusicVolumeFrom;
             m_FieldContext.VM.RequestMusicStemState              -= OnRequestMusicStemState;
@@ -1423,6 +1425,16 @@ namespace RPGFramework.Field
             m_PartyStore.SetJoined(character, joined);
 
             FindPlayer();
+        }
+
+        // The entity playing the character in a party slot, as the player plays the leader's; a slot past the party, an empty
+        // one, or one no entity here plays has none.
+        private int PartyMemberEntity(byte slot)
+        {
+            int                record = slot < m_PartyStore.PartySize ? m_PartyStore.GetRecordInSlot(slot) : -1;
+            FieldEntityRuntime entity = record < 0 ? null : m_FieldContext.FindEntityPlaying(m_PartyStore.GetCharacter(record));
+
+            return entity == null ? FieldEntity.NO_ENTITY : entity.EntityId;
         }
 
         private bool HasCharacterJoined(ulong character)

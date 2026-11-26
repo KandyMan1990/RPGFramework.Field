@@ -736,6 +736,12 @@ namespace RPGFramework.Field.Editor
                     continue;
                 }
 
+                // Whoever plays a party slot, and so which scripts it has, is known only in play.
+                if (ArgumentIndex(opCode, ArgumentType.PartySlot) >= 0)
+                {
+                    continue;
+                }
+
                 int entityArgument = ArgumentIndex(opCode, ArgumentType.EntityId);
                 int eventArgument  = ArgumentIndex(opCode, ArgumentType.EventId);
 

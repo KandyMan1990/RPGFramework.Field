@@ -372,7 +372,9 @@ namespace RPGFramework.Field.Editor
                 throw new Exception($"line {lineNumber}: {parts[0]} needs at least one character, the leader");
             }
 
-            if (variableMap.TryGetVariable(CoreVariables.PARTY, out VariableDefinition party) && count > party.Count)
+            VariableDefinition party = PartyOf(variableMap, parts[0], lineNumber);
+
+            if (count > party.Count)
             {
                 throw new Exception($"line {lineNumber}: {parts[0]} names {count} characters, but the map's {CoreVariables.PARTY} holds {party.Count}");
             }
@@ -390,6 +392,16 @@ namespace RPGFramework.Field.Editor
 
                 bw.Write(HashCharacterName(parts, i, characters, lineNumber));
             }
+        }
+
+        private static VariableDefinition PartyOf(IVariableMap variableMap, string scriptName, int lineNumber)
+        {
+            if (!variableMap.TryGetVariable(CoreVariables.PARTY, out VariableDefinition party))
+            {
+                throw new KeyNotFoundException($"line {lineNumber}: {scriptName} names the party, but the variable map has no {CoreVariables.PARTY}: add it with the Variable Map's Add Missing Required Variables");
+            }
+
+            return party;
         }
 
         private static ulong HashCharacterName(string[] parts, int part, ICharacterNames characters, int lineNumber)
@@ -557,6 +569,21 @@ namespace RPGFramework.Field.Editor
                     }
 
                     bw.Write(priority);
+                    break;
+
+                case ArgumentType.PartySlot:
+                    byte partySlot = byte.Parse(token, CultureInfo.InvariantCulture);
+
+                    variableMap ??= LoadVariableMap();
+
+                    VariableDefinition party = PartyOf(variableMap, scriptName, lineNumber);
+
+                    if (partySlot >= party.Count)
+                    {
+                        throw new Exception($"line {lineNumber}: {scriptName} party slot [{partySlot}] is outside the map's {CoreVariables.PARTY}, 0..{party.Count - 1}");
+                    }
+
+                    bw.Write(partySlot);
                     break;
 
                 case ArgumentType.UShort:

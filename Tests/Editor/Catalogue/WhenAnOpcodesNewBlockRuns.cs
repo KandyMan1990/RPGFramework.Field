@@ -45,6 +45,7 @@ namespace RPGFramework.Field.Tests.Catalogue
             m_Field.Vm.GetLastBattleResult      = Won;
             m_Field.Vm.GetCountdown             = NoTimeLeft;
             m_Field.Vm.StartWaitingForButton    = AlreadyPressed;
+            m_Field.Vm.GetPartyMemberEntity     = NoOne;
 
             // Entity 0, which a new block's entity arguments name.
             m_Field.AddEntity(0, new byte[1], m_Field.Add(new Script().Return()));
@@ -138,6 +139,11 @@ namespace RPGFramework.Field.Tests.Catalogue
         private static bool Never(byte channel)
         {
             return false;
+        }
+
+        private static int NoOne(byte partySlot)
+        {
+            return FieldEntity.NO_ENTITY;
         }
 
         private static BattleCompleteState Won()

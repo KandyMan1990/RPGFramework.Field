@@ -25,6 +25,7 @@ namespace RPGFramework.Field
         internal Func<ulong, int>                              GetPartySlot;
         internal event Action<ulong, bool>                     RequestSetCharacterJoined;
         internal Func<ulong, bool>                             HasCharacterJoined;
+        internal Func<byte, int>                               GetPartyMemberEntity;
         internal Func<bool>                                    IsMusicPlaying;
         internal event Action<float, float>                    RequestMusicVolume;
         internal event Action<float, float, float>             RequestMusicVolumeFrom;
@@ -195,9 +196,9 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.RunAnotherEntityScriptUnlessBusy, RunAnotherEntityScriptUnlessBusyOpcodeHandler },
                        { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilStarted, RunAnotherEntityScriptWaitUntilStartedOpcodeHandler },
                        { FieldScriptOpCode.RunAnotherEntityScriptWaitUntilFinished, RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler },
-                       // { FieldScriptOpCode.RunPartyMemberScriptUnlessBusy, RunPartyMemberScriptUnlessBusyOpcodeHandler },
-                       // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilStarted, RunPartyMemberScriptWaitUntilStartedOpcodeHandler },
-                       // { FieldScriptOpCode.RunPartyMemberScriptWaitUntilFinished, RunPartyMemberScriptWaitUntilFinishedOpcodeHandler },
+                       { FieldScriptOpCode.RunPartyMemberScriptUnlessBusy, RunPartyMemberScriptUnlessBusyOpcodeHandler },
+                       { FieldScriptOpCode.RunPartyMemberScriptWaitUntilStarted, RunPartyMemberScriptWaitUntilStartedOpcodeHandler },
+                       { FieldScriptOpCode.RunPartyMemberScriptWaitUntilFinished, RunPartyMemberScriptWaitUntilFinishedOpcodeHandler },
                        { FieldScriptOpCode.ReturnToAnotherScript, ReturnToAnotherScriptOpcodeHandler },
                        { FieldScriptOpCode.CallAnotherScript, CallAnotherScriptOpcodeHandler },
                        { FieldScriptOpCode.ReturnFromCall, ReturnFromCallOpcodeHandler },
@@ -460,7 +461,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.SetDirectionToFacePosition, SetDirectionToFacePositionOpcodeHandler },
                        // { FieldScriptOpCode.SetDirectionToPartyMember, SetDirectionToPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.TurnToEntityAndWait, TurnToEntityAndWaitOpcodeHandler },
-                       // { FieldScriptOpCode.TurnToPartyMember, TurnToPartyMemberOpcodeHandler },
+                       { FieldScriptOpCode.TurnToPartyMemberAndWait, TurnToPartyMemberAndWaitOpcodeHandler },
                        { FieldScriptOpCode.SetBaseAnimation, SetBaseAnimationOpcodeHandler },
                        { FieldScriptOpCode.SetLadderAnimations, SetLadderAnimationsOpcodeHandler },
                        { FieldScriptOpCode.PlayAnimationOnceAndWait, PlayAnimationOnceAndWaitOpcodeHandler },
@@ -479,7 +480,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.PushAnimationState, PushAnimationStateOpcodeHandler },
                        { FieldScriptOpCode.PopAnimationState, PopAnimationStateOpcodeHandler },
                        { FieldScriptOpCode.HeadLookAtEntity, HeadLookAtEntityOpcodeHandler },
-                       // { FieldScriptOpCode.SetHeadFacingPlayer, SetHeadFacingPlayerOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookAtPartyMember, HeadLookAtPartyMemberOpcodeHandler },
                        { FieldScriptOpCode.SetHeadLimits, SetHeadLimitsOpcodeHandler },
                        { FieldScriptOpCode.HeadLookAtPosition, HeadLookAtPositionOpcodeHandler },
                        { FieldScriptOpCode.HeadLookForward, HeadLookForwardOpcodeHandler },
@@ -489,8 +490,8 @@ namespace RPGFramework.Field
                        // { FieldScriptOpCode.SetEntityShadeLevel, SetEntityShadeLevelOpcodeHandler },
                        { FieldScriptOpCode.GetEntityPosition, GetEntityPositionOpcodeHandler },
                        { FieldScriptOpCode.GetEntityDirection, GetEntityDirectionOpcodeHandler },
-                       // { FieldScriptOpCode.GetPartyMemberPosition, GetPartyMemberPositionOpcodeHandler },
-                       // { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
+                       { FieldScriptOpCode.GetPartyMemberPosition, GetPartyMemberPositionOpcodeHandler },
+                       { FieldScriptOpCode.GetPartyMemberDirection, GetPartyMemberDirectionOpcodeHandler },
                        { FieldScriptOpCode.CopyEntityPose, CopyEntityPoseOpcodeHandler },
                        { FieldScriptOpCode.IsEntityInRange, IsEntityInRangeOpcodeHandler },
                        { FieldScriptOpCode.CollisionTriggerActivation, CollisionTriggerActivationOpcodeHandler },
@@ -498,6 +499,7 @@ namespace RPGFramework.Field
                        { FieldScriptOpCode.HeadLookAtEntityAndWait, HeadLookAtEntityAndWaitOpcodeHandler },
                        { FieldScriptOpCode.HeadLookAtPositionAndWait, HeadLookAtPositionAndWaitOpcodeHandler },
                        { FieldScriptOpCode.HeadLookForwardAndWait, HeadLookForwardAndWaitOpcodeHandler },
+                       { FieldScriptOpCode.HeadLookAtPartyMemberAndWait, HeadLookAtPartyMemberAndWaitOpcodeHandler },
 
                        // Screen and field effects
                        { FieldScriptOpCode.SubtractiveScreenFade, ctx => ScreenColourOpcodeHandler(ctx, false) },
@@ -900,14 +902,14 @@ namespace RPGFramework.Field
         }
 
         /// <summary>
-        /// Decode the arguments shared by the three request opcodes and resolve the target entity.
+        /// Decode the arguments shared by the request opcodes and resolve the target entity, named by its id or by the
+        /// party slot it plays.
         /// </summary>
-        private bool TryReadScriptRequest(FieldScriptContext ctx, out byte targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
+        private bool TryReadScriptRequest(FieldScriptContext ctx, bool toPartyMember, out int targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority)
         {
-            ushort targetEventId;
+            targetEntityId = ReadTarget(ctx, toPartyMember);
 
-            targetEntityId = ctx.ReadByte();
-            targetEventId  = ctx.ReadUShort();
+            ushort targetEventId = ctx.ReadUShort();
 
             targetScriptId = 0;
             priority       = 0;
@@ -948,14 +950,44 @@ namespace RPGFramework.Field
             // noop
         }
 
+        private void RunAnotherEntityScriptUnlessBusyOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestScriptUnlessBusy(ctx, false);
+        }
+
+        private void RunAnotherEntityScriptWaitUntilStartedOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestScriptWaitUntilStarted(ctx, false);
+        }
+
+        private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestScriptWaitUntilFinished(ctx, false);
+        }
+
+        private void RunPartyMemberScriptUnlessBusyOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestScriptUnlessBusy(ctx, true);
+        }
+
+        private void RunPartyMemberScriptWaitUntilStartedOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestScriptWaitUntilStarted(ctx, true);
+        }
+
+        private void RunPartyMemberScriptWaitUntilFinishedOpcodeHandler(FieldScriptContext ctx)
+        {
+            RequestScriptWaitUntilFinished(ctx, true);
+        }
+
         /// <summary>
         /// Put a script in an entity's priority slot and carry on; refused if the slot is busy. A request on
         /// another entity ends this script's frame. One on this entity for a more urgent slot takes over
         /// straight away.
         /// </summary>
-        private void RunAnotherEntityScriptUnlessBusyOpcodeHandler(FieldScriptContext ctx)
+        private void RequestScriptUnlessBusy(FieldScriptContext ctx, bool toPartyMember)
         {
-            if (TryReadScriptRequest(ctx, out byte targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
+            if (TryReadScriptRequest(ctx, toPartyMember, out int targetEntityId, out FieldEntityRuntime target, out int targetScriptId, out byte priority))
             {
                 target.TryRequestScript(targetScriptId, priority);
             }
@@ -971,9 +1003,9 @@ namespace RPGFramework.Field
         /// running it — or has already run it to its return, which would otherwise leave this waiting for
         /// good.
         /// </summary>
-        private void RunAnotherEntityScriptWaitUntilStartedOpcodeHandler(FieldScriptContext ctx)
+        private void RequestScriptWaitUntilStarted(FieldScriptContext ctx, bool toPartyMember)
         {
-            if (!TryReadScriptRequest(ctx, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
+            if (!TryReadScriptRequest(ctx, toPartyMember, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
                 !target.TryRequestScript(targetScriptId, priority))
             {
                 ctx.YieldRequested = true;
@@ -989,9 +1021,9 @@ namespace RPGFramework.Field
         /// Request a script once. If the slot is busy, carry on. If it is accepted, wait until the entity is
         /// running something less urgent than it — the requested script has returned.
         /// </summary>
-        private void RunAnotherEntityScriptWaitUntilFinishedOpcodeHandler(FieldScriptContext ctx)
+        private void RequestScriptWaitUntilFinished(FieldScriptContext ctx, bool toPartyMember)
         {
-            if (!TryReadScriptRequest(ctx, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
+            if (!TryReadScriptRequest(ctx, toPartyMember, out _, out FieldEntityRuntime target, out int targetScriptId, out byte priority) ||
                 !target.TryRequestScript(targetScriptId, priority))
             {
                 ctx.YieldRequested = true;
@@ -2124,13 +2156,36 @@ namespace RPGFramework.Field
         /// </summary>
         private void TurnToEntityAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
-            byte   targetEntityId = ctx.ReadByte();
-            float  duration       = ctx.ReadFloat();
-            Easing rotationType   = (Easing)ctx.ReadByte();
+            TurnToAndWait(ctx, false);
+        }
 
-            RequestTurnEntityToEntity?.Invoke(ctx.EntityId, targetEntityId, duration, rotationType);
+        private void TurnToPartyMemberAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            TurnToAndWait(ctx, true);
+        }
+
+        private void TurnToAndWait(FieldScriptContext ctx, bool toPartyMember)
+        {
+            int    target       = ReadTarget(ctx, toPartyMember);
+            float  duration     = ctx.ReadFloat();
+            Easing rotationType = (Easing)ctx.ReadByte();
+
+            if (target == FieldEntity.NO_ENTITY)
+            {
+                return;
+            }
+
+            RequestTurnEntityToEntity?.Invoke(ctx.EntityId, target, duration, rotationType);
 
             ctx.Block(new WaitUntilBlock(() => !IsEntityRotating(ctx.EntityId)));
+        }
+
+        // An entity named by its id, or the entity playing a party slot: none for an empty slot or one no entity here plays.
+        private int ReadTarget(FieldScriptContext ctx, bool partySlot)
+        {
+            byte named = ctx.ReadByte();
+
+            return partySlot ? GetPartyMemberEntity(named) : named;
         }
 
         /// <summary>
@@ -2297,11 +2352,24 @@ namespace RPGFramework.Field
 
         private void HeadLookAtEntityOpcodeHandler(FieldScriptContext ctx)
         {
-            byte  target  = ctx.ReadByte();
+            HeadLookAt(ctx, false);
+        }
+
+        private void HeadLookAtPartyMemberOpcodeHandler(FieldScriptContext ctx)
+        {
+            HeadLookAt(ctx, true);
+        }
+
+        private void HeadLookAt(FieldScriptContext ctx, bool atPartyMember)
+        {
+            int   target  = ReadTarget(ctx, atPartyMember);
             float seconds = ctx.ReadFloat();
             bool  follow  = ctx.ReadBool();
 
-            RequestHeadLookAtEntity?.Invoke(ctx.EntityId, target, seconds, follow);
+            if (target != FieldEntity.NO_ENTITY)
+            {
+                RequestHeadLookAtEntity?.Invoke(ctx.EntityId, target, seconds, follow);
+            }
         }
 
         private void SetHeadLimitsOpcodeHandler(FieldScriptContext ctx)
@@ -2359,11 +2427,22 @@ namespace RPGFramework.Field
         /// </summary>
         private void GetEntityPositionOpcodeHandler(FieldScriptContext ctx)
         {
-            byte                   entityId = ctx.ReadByte();
+            ReadPosition(ctx, false);
+        }
+
+        private void ReadPosition(FieldScriptContext ctx, bool ofPartyMember)
+        {
+            int                    entityId = ReadTarget(ctx, ofPartyMember);
             FieldScriptDestination x        = ctx.ReadDestination();
             FieldScriptDestination y        = ctx.ReadDestination();
             FieldScriptDestination z        = ctx.ReadDestination();
-            Vector3                position = GetEntityPosition(entityId);
+
+            if (entityId == FieldEntity.NO_ENTITY)
+            {
+                return;
+            }
+
+            Vector3 position = GetEntityPosition(entityId);
 
             ctx.WriteFloat(x, position.x);
             ctx.WriteFloat(y, position.y);
@@ -2375,10 +2454,28 @@ namespace RPGFramework.Field
         /// </summary>
         private void GetEntityDirectionOpcodeHandler(FieldScriptContext ctx)
         {
-            byte                   entityId    = ctx.ReadByte();
+            ReadDirection(ctx, false);
+        }
+
+        private void GetPartyMemberPositionOpcodeHandler(FieldScriptContext ctx)
+        {
+            ReadPosition(ctx, true);
+        }
+
+        private void GetPartyMemberDirectionOpcodeHandler(FieldScriptContext ctx)
+        {
+            ReadDirection(ctx, true);
+        }
+
+        private void ReadDirection(FieldScriptContext ctx, bool ofPartyMember)
+        {
+            int                    entityId    = ReadTarget(ctx, ofPartyMember);
             FieldScriptDestination destination = ctx.ReadDestination();
 
-            ctx.WriteFloat(destination, GetEntityDirection(entityId));
+            if (entityId != FieldEntity.NO_ENTITY)
+            {
+                ctx.WriteFloat(destination, GetEntityDirection(entityId));
+            }
         }
 
         /// <summary>
@@ -2436,6 +2533,12 @@ namespace RPGFramework.Field
         private void HeadLookForwardAndWaitOpcodeHandler(FieldScriptContext ctx)
         {
             HeadLookForwardOpcodeHandler(ctx);
+            WaitForHeadOpcodeHandler(ctx);
+        }
+
+        private void HeadLookAtPartyMemberAndWaitOpcodeHandler(FieldScriptContext ctx)
+        {
+            HeadLookAtPartyMemberOpcodeHandler(ctx);
             WaitForHeadOpcodeHandler(ctx);
         }
 

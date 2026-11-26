@@ -27,8 +27,19 @@ namespace RPGFramework.Field
         [Argument(1, "targetEventId",  ArgumentType.EventId, Description = "which of that entity's scripts; its type decides its slot")]
         RunAnotherEntityScriptWaitUntilFinished = 0x0003,
 
-        RunPartyMemberScriptUnlessBusy        = 0x0004, // as REQUEST_SCRIPT but addressed to a party slot rather than an entity id
-        RunPartyMemberScriptWaitUntilStarted  = 0x0005,
+        [FieldOpCode("REQUEST_PARTY_MEMBER_SCRIPT", ArgumentLayout.Sequential, Summary = "Run one of the scripts of the entity playing a party slot. Does nothing if the slot its type runs in is busy", StopsInit = true)]
+        [Argument(0, "partySlot",     ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "targetEventId", ArgumentType.EventId, Description = "which of that entity's scripts; its type decides its slot")]
+        RunPartyMemberScriptUnlessBusy = 0x0004,
+
+        [FieldOpCode("REQUEST_PARTY_MEMBER_SCRIPT_WAIT_START", ArgumentLayout.Sequential, Summary = "Run one of the scripts of the entity playing a party slot and wait until it starts. Does nothing if the slot its type runs in is busy", StopsInit = true)]
+        [Argument(0, "partySlot",     ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "targetEventId", ArgumentType.EventId, Description = "which of that entity's scripts; its type decides its slot")]
+        RunPartyMemberScriptWaitUntilStarted = 0x0005,
+
+        [FieldOpCode("REQUEST_PARTY_MEMBER_SCRIPT_WAIT_END", ArgumentLayout.Sequential, Summary = "Run one of the scripts of the entity playing a party slot and wait for it to finish. Does nothing if the slot its type runs in is busy", StopsInit = true)]
+        [Argument(0, "partySlot",     ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "targetEventId", ArgumentType.EventId, Description = "which of that entity's scripts; its type decides its slot")]
         RunPartyMemberScriptWaitUntilFinished = 0x0006,
 
         [FieldOpCode("RETURN_TO_SCRIPT", ArgumentLayout.Sequential, Summary = "Hand this priority slot to another of this entity's scripts")]
@@ -1209,7 +1220,11 @@ namespace RPGFramework.Field
         [Argument(2, "rotationType",   ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
         TurnToEntityAndWait = 0x0526,
 
-        TurnToPartyMember = 0x0527,
+        [FieldOpCode("TURN_TO_PARTY_MEMBER_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity over time to face where the entity playing a party slot stands now, the short way round, waiting until it has", StopsInit = true, NeedsBody = true)]
+        [Argument(0, "partySlot",    ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "duration",     ArgumentType.Float)]
+        [Argument(2, "rotationType", ArgumentType.Byte, EnumType = typeof(Easing), Description = "whether it eases in and out")]
+        TurnToPartyMemberAndWait = 0x0527,
 
         [FieldOpCode("SET_BASE_ANIMATION", ArgumentLayout.Sequential, Summary = "Set what this entity does when no script is animating it", NeedsBody = true, NeedsAnimator = true)]
         [Argument(0, "state", ArgumentType.AnimationName, Description = "the state it rests in; a locomotion blend tree reads the entity's speed from there")]
@@ -1293,7 +1308,11 @@ namespace RPGFramework.Field
         [Argument(2, "follow",         ArgumentType.Bool, Description = "On: keep looking at it as it moves. Off: look at where it is now and stay that way")]
         HeadLookAtEntity = 0x053A,
 
-        SetHeadFacingPlayer = 0x053B, // int frameCount - track the player entity with the head only
+        [FieldOpCode("HEAD_LOOK_AT_PARTY_MEMBER", ArgumentLayout.Sequential, Summary = "Turn this entity's head towards the entity playing a party slot and carry on, leaving the body as it is", NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "partySlot", ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "seconds",   ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        [Argument(2, "follow",    ArgumentType.Bool, Description = "On: keep looking at it as it moves. Off: look at where it is now and stay that way")]
+        HeadLookAtPartyMember = 0x053B,
 
         [FieldOpCode("SET_HEAD_LIMITS", ArgumentLayout.Sequential, Summary = "Say how far this entity's head may turn, for the next time it looks at something. Until a script says, it may go 90 degrees to either side and 45 up or down", NeedsBody = true, NeedsHead = true)]
         [Argument(0, "yaw",   ArgumentType.Float, Description = "how far to either side, in degrees")]
@@ -1338,7 +1357,16 @@ namespace RPGFramework.Field
         [Argument(1, "destination", ArgumentType.Variable, VariableWidth.Float)]
         GetEntityDirection = 0x0544,
 
-        GetPartyMemberPosition  = 0x0545,
+        [FieldOpCode("GET_PARTY_MEMBER_POSITION", ArgumentLayout.Sequential, Summary = "Store where the entity playing a party slot is; nothing is stored for a slot no one in this field plays")]
+        [Argument(0, "partySlot", ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "x",         ArgumentType.Variable, VariableWidth.Float)]
+        [Argument(2, "y",         ArgumentType.Variable, VariableWidth.Float)]
+        [Argument(3, "z",         ArgumentType.Variable, VariableWidth.Float)]
+        GetPartyMemberPosition = 0x0545,
+
+        [FieldOpCode("GET_PARTY_MEMBER_DIRECTION", ArgumentLayout.Sequential, Summary = "Store which way the entity playing a party slot faces, in degrees, as GET_ENTITY_DIRECTION does; nothing is stored for a slot no one in this field plays")]
+        [Argument(0, "partySlot",   ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "destination", ArgumentType.Variable, VariableWidth.Float)]
         GetPartyMemberDirection = 0x0546,
 
         [FieldOpCode("COPY_ENTITY_POSE", ArgumentLayout.Sequential, Summary = "Put this entity where another stands, facing the way it faces", NeedsBody = true)]
@@ -1378,6 +1406,12 @@ namespace RPGFramework.Field
         [FieldOpCode("HEAD_LOOK_FORWARD_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity's head back to its animation, waiting until it has", StopsInit = true, NeedsBody = true, NeedsHead = true)]
         [Argument(0, "seconds", ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
         HeadLookForwardAndWait = 0x054D,
+
+        [FieldOpCode("HEAD_LOOK_AT_PARTY_MEMBER_AND_WAIT", ArgumentLayout.Sequential, Summary = "Turn this entity's head towards the entity playing a party slot, waiting until it has, and leave the body as it is", StopsInit = true, NeedsBody = true, NeedsHead = true)]
+        [Argument(0, "partySlot", ArgumentType.PartySlot, Description = "0 the leader; a slot no one fills, or no one in this field plays, does nothing")]
+        [Argument(1, "seconds",   ArgumentType.Float, Description = "how long the turn takes, 0 for at once")]
+        [Argument(2, "follow",    ArgumentType.Bool, Description = "On: keep looking at it as it moves. Off: look at where it is now and stay that way")]
+        HeadLookAtPartyMemberAndWait = 0x054E,
 
         // Screen and field effects (0x0600)
         [FieldOpCode("SUBTRACT_SCREEN_COLOUR", ArgumentLayout.Sequential, Summary = "Take a colour from the screen beneath the message windows, fading to it from the colour there now, kept until a fade or another colour")]

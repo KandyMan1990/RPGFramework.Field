@@ -735,6 +735,12 @@ namespace RPGFramework.Field.Editor
 
             for (int i = 0; i < block.OpCode.Arguments.Count; i++)
             {
+                if (block.OpCode.Arguments[i].Type == ArgumentType.PartySlot)
+                {
+                    owner = null;
+                    break;
+                }
+
                 if (block.OpCode.Arguments[i].Type != ArgumentType.EntityId)
                 {
                     continue;
@@ -748,6 +754,18 @@ namespace RPGFramework.Field.Editor
             bool hasOwner = owner != null;
 
             return hasOwner;
+        }
+
+        private int PartySize()
+        {
+            m_VariableMap ??= FindVariableMap();
+
+            if (m_VariableMap == null || !((IVariableMap)m_VariableMap).TryGetVariable(CoreVariables.PARTY, out VariableDefinition party))
+            {
+                throw new InvalidOperationException($"A party slot is one of the variable map's {CoreVariables.PARTY}, which the project has none of: add it with the Variable Map's Add Missing Required Variables");
+            }
+
+            return party.Count;
         }
 
         private static string DescribeScript(FieldScriptRecord script, int eventId)
@@ -992,6 +1010,9 @@ namespace RPGFramework.Field.Editor
 
                 case ArgumentType.Priority:
                     return IndexDropdown(block, argumentIndex, label, current, Enum.GetValues(typeof(FieldScriptPriority)).Length, i => $"{i}: {(FieldScriptPriority)i}");
+
+                case ArgumentType.PartySlot:
+                    return IndexDropdown(block, argumentIndex, label, current, PartySize(), i => i == 0 ? "0: the leader" : $"{i}");
 
                 case ArgumentType.DialogueChannel:
                     return IndexDropdown(block, argumentIndex, label, current, ArgumentTypes.DIALOGUE_CHANNEL_COUNT, i => $"Channel {i}");
@@ -1682,9 +1703,7 @@ namespace RPGFramework.Field.Editor
                 }
             }
 
-            VariableMapAsset none = null;
-
-            return none;
+            return null;
         }
 
         private void Set(FieldScriptBlock block, int argumentIndex, string value, bool rebuild = false)
